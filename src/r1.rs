@@ -22,7 +22,7 @@ use consts::EPSILON;
 /// Interval represents a closed interval on ℝ.
 /// Zero-length intervals (where Lo == Hi) represent single points.
 /// If Lo > Hi then the interval is empty.
-#[derive(Clone,Default)]
+#[derive(Clone,Copy,Default)]
 pub struct Interval {
     /// lower bound of the interval
     pub lo: f64,

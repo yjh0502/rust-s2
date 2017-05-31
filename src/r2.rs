@@ -20,7 +20,7 @@ use std;
 use r1::{self, Interval};
 
 /// Point represents a point in ℝ².
-#[derive(PartialEq,Clone,Debug)]
+#[derive(Clone,Copy,PartialEq,Debug)]
 pub struct Point {
     /// x coordinate of the point
     pub x: f64,
@@ -195,24 +195,22 @@ impl Rect {
     /// vertices returns all four vertices of the rectangle. Vertices are returned in
     /// CCW direction starting with the lower left corner.
     pub fn vertices(&self) -> [Point; 4] {
-        [
-            Point {
-                x: self.x.lo,
-                y: self.y.lo,
-            },
-            Point {
-                x: self.x.hi,
-                y: self.y.lo,
-            },
-            Point {
-                x: self.x.hi,
-                y: self.y.hi,
-            },
-            Point {
-                x: self.x.lo,
-                y: self.y.hi,
-            },
-        ]
+        [Point {
+             x: self.x.lo,
+             y: self.y.lo,
+         },
+         Point {
+             x: self.x.hi,
+             y: self.y.lo,
+         },
+         Point {
+             x: self.x.hi,
+             y: self.y.hi,
+         },
+         Point {
+             x: self.x.lo,
+             y: self.y.hi,
+         }]
     }
 
     /// vertex_ij returns the vertex in direction i along the X-axis (0=left, 1=right) and
@@ -316,9 +314,9 @@ impl Rect {
     /// expanded_by_margin returns a Rect that has been expanded by the amount on all sides.
     pub fn expanded_by_margin(&self, margin: f64) -> Self {
         self.expanded(&Point {
-                           x: margin,
-                           y: margin,
-                       })
+                          x: margin,
+                          y: margin,
+                      })
     }
 
     /// union returns the smallest rectangle containing the union of this rectangle and

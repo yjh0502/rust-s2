@@ -36,7 +36,7 @@ use s1::angle::Angle;
 ///
 /// ChordAngles are represented by the squared chord length, which can
 /// range from 0 to 4. Positive infinity represents an infinite squared length.
-#[derive(Debug,PartialEq,PartialOrd,Clone)]
+#[derive(Clone,Copy,PartialEq,PartialOrd,Debug)]
 pub struct ChordAngle(pub f64);
 
 /// NEGATIVE represents a chord angle smaller than the zero angle.

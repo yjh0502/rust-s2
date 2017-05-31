@@ -30,7 +30,7 @@ use consts::*;
 ///   - the full interval, [-π,π], and
 ///   - the empty interval, [π,-π].
 /// Treat the exported fields as read-only.
-#[derive(Clone,PartialEq,Default)]
+#[derive(Clone,Copy,PartialEq,Default)]
 pub struct Interval {
     pub lo: f64,
     pub hi: f64,
