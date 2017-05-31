@@ -409,7 +409,7 @@ mod tests {
                 assert_eq!(gotlevel, level as i8);
 
                 assert_eq!(ci,
-                           cellid_from_face_ij(f, (si / 2) as i32, (ti / 2) as i32).parent(level));
+                           CellID::from_face_ij(f, (si / 2) as i32, (ti / 2) as i32).parent(level));
 
                 //TODO: add by ref
                 let p_moved = Point::from(ci) + shift.clone();
@@ -442,7 +442,7 @@ mod tests {
                     assert_eq!(si, si_random);
                     assert_eq!(ti, ti_random);
                     if gotlevel >= 0 {
-                        assert!(p_random.approx_eq(&cellid_from_face_ij(f, si as i32 / 2, ti as i32 / 2)
+                        assert!(p_random.approx_eq(&CellID::from_face_ij(f, si as i32 / 2, ti as i32 / 2)
                                                         .parent(gotlevel as u64)
                                                         .into()));
                     }

@@ -36,36 +36,38 @@ const CENTER_POINT: Point = Point(Vector {
                                       z: 0.,
                                   });
 
-// Cap represents a disc-shaped region defined by a center and radius.
-// Technically this shape is called a "spherical cap" (rather than disc)
-// because it is not planar; the cap represents a portion of the sphere that
-// has been cut off by a plane. The boundary of the cap is the circle defined
-// by the intersection of the sphere and the plane. For containment purposes,
-// the cap is a closed set, i.e. it contains its boundary.
-//
-// For the most part, you can use a spherical cap wherever you would use a
-// disc in planar geometry. The radius of the cap is measured along the
-// surface of the sphere (rather than the straight-line distance through the
-// interior). Thus a cap of radius π/2 is a hemisphere, and a cap of radius
-// π covers the entire sphere.
-//
-// The center is a point on the surface of the unit sphere. (Hence the need for
-// it to be of unit length.)
-//
-// A cap can also be defined by its center point and height. The height is the
-// distance from the center point to the cutoff plane. There is also support for
-// "empty" and "full" caps, which contain no points and all points respectively.
-//
-// Here are some useful relationships between the cap height (h), the cap
-// radius (r), the maximum chord length from the cap's center (d), and the
-// radius of cap's base (a).
-//
-//     h = 1 - cos(r)
-//       = 2 * sin^2(r/2)
-//   d^2 = 2 * h
-//       = a^2 + h^2
-//
-// The zero value of Cap is an invalid cap. Use EmptyCap to get a valid empty cap.
+/// Cap represents a disc-shaped region defined by a center and radius.
+/// Technically this shape is called a "spherical cap" (rather than disc)
+/// because it is not planar; the cap represents a portion of the sphere that
+/// has been cut off by a plane. The boundary of the cap is the circle defined
+/// by the intersection of the sphere and the plane. For containment purposes,
+/// the cap is a closed set, i.e. it contains its boundary.
+///
+/// For the most part, you can use a spherical cap wherever you would use a
+/// disc in planar geometry. The radius of the cap is measured along the
+/// surface of the sphere (rather than the straight-line distance through the
+/// interior). Thus a cap of radius π/2 is a hemisphere, and a cap of radius
+/// π covers the entire sphere.
+///
+/// The center is a point on the surface of the unit sphere. (Hence the need for
+/// it to be of unit length.)
+///
+/// A cap can also be defined by its center point and height. The height is the
+/// distance from the center point to the cutoff plane. There is also support for
+/// "empty" and "full" caps, which contain no points and all points respectively.
+///
+/// Here are some useful relationships between the cap height (h), the cap
+/// radius (r), the maximum chord length from the cap's center (d), and the
+/// radius of cap's base (a).
+///
+/// ```ignore
+///     h = 1 - cos(r)
+///       = 2 * sin^2(r/2)
+///   d^2 = 2 * h
+///       = a^2 + h^2
+/// ```
+///
+/// The zero value of Cap is an invalid cap. Use EmptyCap to get a valid empty cap.
 #[derive(Clone,Debug)]
 pub struct Cap {
     pub center: Point,

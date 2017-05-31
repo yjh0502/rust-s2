@@ -1,3 +1,21 @@
+/*
+Copyright 2014 Google Inc. All rights reserved.
+Copyright 2017 Jihyun Yu. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+
 use std;
 use std::u64;
 use std::iter::*;
@@ -11,7 +29,31 @@ use s2::stuv::*;
 use s2::point::Point;
 use s2::latlng::*;
 
-#[derive(PartialEq,Eq,PartialOrd,Ord,Clone,Hash)]
+/// CellID uniquely identifies a cell in the S2 cell decomposition.
+/// The most significant 3 bits encode the face number (0-5). The
+/// remaining 61 bits encode the position of the center of this cell
+/// along the Hilbert curve on that face. The zero value and the value
+/// (1<<64)-1 are invalid cell IDs. The first compares less than any
+/// valid cell ID, the second as greater than any valid cell ID.
+///
+/// Sequentially increasing cell IDs follow a continuous space-filling curve
+/// over the entire sphere. They have the following properties:
+///
+///  - The ID of a cell at level k consists of a 3-bit face number followed
+///    by k bit pairs that recursively select one of the four children of
+///    each cell. The next bit is always 1, and all other bits are 0.
+///    Therefore, the level of a cell is determined by the position of its
+///    lowest-numbered bit that is turned on (for a cell at level k, this
+///    position is 2 * (maxLevel - k)).
+///
+///  - The ID of a parent cell is at the midpoint of the range of IDs spanned
+///    by its children (or by its descendants at any level).
+///
+/// Leaf cells are often used to represent points on the unit sphere, and
+/// this type provides methods for converting directly between these two
+/// representations. For cells that represent 2D regions rather than
+/// discrete point, it is better to use Cells.
+#[derive(Clone,Copy,PartialEq,Eq,PartialOrd,Ord,Hash)]
 pub struct CellID(pub u64);
 
 const FACE_BITS: u64 = 3;
@@ -37,14 +79,72 @@ pub fn size_ij(level: u64) -> u64 {
 }
 
 impl CellID {
+    /// from_pos_level returns a cell given its face in the range
+    /// [0,5], the 61-bit Hilbert curve position pos within that face, and
+    /// the level in the range [0,maxLevel]. The position in the cell ID
+    /// will be truncated to correspond to the Hilbert curve position at
+    /// the center of the returned cell.
     pub fn from_face_pos_level(face: u64, pos: u64, level: u64) -> Self {
         CellID((face << POS_BITS) + (pos | 1)).parent(level)
     }
 
+    /// from_face returns the cell corresponding to a given S2 cube face.
     pub fn from_face(face: u64) -> Self {
         CellID((face << POS_BITS) + lsb_for_level(0))
     }
 
+    /// from_ij returns a leaf cell given its cube face (range 0..5) and IJ coordinates.
+    fn from_face_ij_wrap(face: u8, mut i: i32, mut j: i32) -> Self {
+        // Convert i and j to the coordinates of a leaf cell just beyond the
+        // boundary of this face.  This prevents 32-bit overflow in the case
+        // of finding the neighbors of a face cell.
+        i = clamp(i, -1i32, MAX_SIZE_I32);
+        j = clamp(j, -1i32, MAX_SIZE_I32);
+
+        const SCALE: f64 = 1.0 / (MAX_SIZE as f64);
+        const LIMIT: f64 = 1f64 + std::f64::EPSILON;
+
+        let u = clamp(SCALE * (2. * (i as f64) + 1. - MAX_SIZE_F64), -LIMIT, LIMIT);
+        let v = clamp(SCALE * (2. * (j as f64) + 1. - MAX_SIZE_F64), -LIMIT, LIMIT);
+
+        // Find the leaf cell coordinates on the adjacent face, and convert
+        // them to a cell id at the appropriate level.
+        let (f, u, v) = xyz_to_face_uv(&face_uv_to_xyz(face, u, v));
+        Self::from_face_ij(f, st_to_ij(0.5 * (u + 1.)), st_to_ij(0.5 * (v + 1.)))
+    }
+
+    //TODO private
+    pub fn from_face_ij(f: u8, i: i32, j: i32) -> Self {
+        let mut n = (f as u64) << (POS_BITS - 1);
+        let mut bits = (f & SWAP_MASK) as i32;
+
+        let mut k = 7;
+        let mask = (1 << LOOKUP_BITS) - 1;
+        loop {
+            bits += ((i >> (k * LOOKUP_BITS)) & mask) << (LOOKUP_BITS + 2);
+            bits += ((j >> (k * LOOKUP_BITS)) & mask) << 2;
+            bits = LOOKUP_POS[bits as usize] as i32;
+            n |= ((bits >> 2) as u64) << ((k * 2 * LOOKUP_BITS) as u64);
+            bits &= (SWAP_MASK | INVERT_MASK) as i32;
+
+            if k == 0 {
+                break;
+            }
+            k -= 1;
+        }
+        CellID(n * 2 + 1)
+    }
+
+    fn from_face_ij_same(f: u8, i: i32, j: i32, same_face: bool) -> Self {
+        if same_face {
+            Self::from_face_ij(f, i, j)
+        } else {
+            Self::from_face_ij_wrap(f, i, j)
+        }
+    }
+
+
+    /// from_token returns a cell given a hex-encoded string of its uint64 ID.
     pub fn from_token(s: &str) -> CellID {
         match u64::from_str_radix(s, 16) {
             Err(_) => CellID(0),
@@ -57,6 +157,8 @@ impl CellID {
         }
     }
 
+    /// to_token returns a hex-encoded string of the uint64 cell id, with leading
+    /// zeros included but trailing zeros stripped.
     pub fn to_token(&self) -> String {
         if self.0 == 0 {
             "X".into()
@@ -65,51 +167,67 @@ impl CellID {
         }
     }
 
+    /// is_valid reports whether ci represents a valid cell.
     pub fn is_valid(&self) -> bool {
         self.face() < NUM_FACES && (self.lsb() & 0x1555555555555555 != 0)
     }
 
+    /// face returns the cube face for this cell ID, in the range [0,5].
     pub fn face(&self) -> u8 {
         (self.0 >> POS_BITS) as u8
     }
 
+    /// pos returns the position along the Hilbert curve of this cell ID, in the range [0,2^posBits-1].
     pub fn pos(&self) -> u64 {
         self.0 & ((!0u64) >> FACE_BITS)
     }
 
+    /// level returns the subdivision level of this cell ID, in the range [0, maxLevel].
     pub fn level(&self) -> u64 {
         MAX_LEVEL - (self.0.trailing_zeros() >> 1) as u64
     }
 
+    /// is_leaf returns whether this cell ID is at the deepest level;
+    /// that is, the level at which the cells are smallest.
     pub fn is_leaf(&self) -> bool {
         self.0 & 1 != 0
     }
 
+    /// child_position returns the child position (0..3) of this cell's
+    /// ancestor at the given level, relative to its parent.  The argument
+    /// should be in the range 1..kMaxLevel.  For example,
+    /// ChildPosition(1) returns the position of this cell's level-1
+    /// ancestor within its top-level face cell.
     pub fn child_position(&self, level: u64) -> u64 {
         (self.0 >> (2 * (MAX_LEVEL - level) + 1)) & 3
     }
 
+    /// parent returns the cell at the given level, which must be no greater than the current level.
     pub fn parent(&self, level: u64) -> Self {
         let lsb = lsb_for_level(level);
         CellID((self.0 & (-(lsb as i64)) as u64) | lsb)
     }
 
-
+    /// immediate_parent is cheaper than Parent, but assumes !ci.isFace().
     pub fn immediate_parent(&self) -> Self {
         let nlsb = self.lsb() << 2;
         CellID((self.0 & (-(nlsb as i64)) as u64) | nlsb)
     }
 
     //TODO private
+    /// is_face returns whether this is a top-level (face) cell.
     pub fn is_face(&self) -> bool {
         (self.0 & (lsb_for_level(0) - 1)) == 0
     }
 
     //TODO private
+    /// lsb returns the least significant bit that is set.
     pub fn lsb(&self) -> u64 {
         self.0 & (-(self.0 as i64) as u64)
     }
 
+    /// children returns the four immediate children of this cell.
+    /// If ci is a leaf cell, it returns four identical cells that are not the children.
     pub fn children(&self) -> [CellID; 4] {
         let mut lsb = self.lsb();
         let ch0 = self.0 - lsb + (lsb >> 2);
@@ -122,6 +240,7 @@ impl CellID {
     }
 
     //TODO private
+    /// face_ij_orientation uses the global lookupIJ table to unfiddle the bits of ci.
     pub fn face_ij_orientation(&self) -> (u8, i32, i32, u8) {
         let f = self.face();
         let mut i = 0i32;
@@ -151,19 +270,25 @@ impl CellID {
         return (f, i, j, orientation as u8);
     }
 
+    /// edge_neighbors returns the four cells that are adjacent across the cell's four edges.
+    /// Edges 0, 1, 2, 3 are in the down, right, up, left directions in the face space.
+    /// All neighbors are guaranteed to be distinct.
     pub fn edge_neighbors(&self) -> [CellID; 4] {
         let level = self.level();
         let size = size_ij(level) as i32;
         let (f, i, j, _) = self.face_ij_orientation();
 
         [
-            cellid_from_face_ij_wrap(f, i, j - size).parent(level),
-            cellid_from_face_ij_wrap(f, i + size, j).parent(level),
-            cellid_from_face_ij_wrap(f, i, j + size).parent(level),
-            cellid_from_face_ij_wrap(f, i - size, j).parent(level),
+            CellID::from_face_ij_wrap(f, i, j - size).parent(level),
+            CellID::from_face_ij_wrap(f, i + size, j).parent(level),
+            CellID::from_face_ij_wrap(f, i, j + size).parent(level),
+            CellID::from_face_ij_wrap(f, i - size, j).parent(level),
         ]
     }
 
+    /// vertex_neighbors returns the neighboring cellIDs with vertex closest to this cell at the given level.
+    /// (Normally there are four neighbors, but the closest vertex may only have three neighbors if it is one of
+    /// the 8 cube vertices.)
     pub fn vertex_neighbors(&self, level: u64) -> Vec<CellID> {
         let half_size = size_ij(level + 1) as i32;
         let size = half_size << 1;
@@ -182,14 +307,22 @@ impl CellID {
 
         let mut results = Vec::with_capacity(4);
         results.push(self.parent(level));
-        results.push(cellid_from_face_ij_same(f, i + ioffset, j, isame).parent(level));
-        results.push(cellid_from_face_ij_same(f, i, j + joffset, jsame).parent(level));
+        results.push(CellID::from_face_ij_same(f, i + ioffset, j, isame).parent(level));
+        results.push(CellID::from_face_ij_same(f, i, j + joffset, jsame).parent(level));
         if isame || jsame {
-            results.push(cellid_from_face_ij_same(f, i + ioffset, j + joffset, isame && jsame).parent(level));
+            results.push(CellID::from_face_ij_same(f, i + ioffset, j + joffset, isame && jsame).parent(level));
         }
         results
     }
 
+    /// all_neighbors returns all neighbors of this cell at the given level. Two
+    /// cells X and Y are neighbors if their boundaries intersect but their
+    /// interiors do not. In particular, two cells that intersect at a single
+    /// point are neighbors. Note that for cells adjacent to a face vertex, the
+    /// same neighbor may be returned more than once. There could be up to eight
+    /// neighbors including the diagonal ones that share the vertex.
+    ///
+    /// This requires level >= ci.Level().
     pub fn all_neighbors(&self, level: u64) -> Vec<CellID> {
         let mut neighbors = Vec::new();
 
@@ -208,14 +341,14 @@ impl CellID {
             } else if k >= size {
                 (j + k) < MAX_SIZE_I32
             } else {
-                neighbors.push(cellid_from_face_ij_same(face, i + k, j - nbr_size, j - size >= 0).parent(level));
-                neighbors.push(cellid_from_face_ij_same(face, i + k, j + size, j + size < MAX_SIZE_I32).parent(level));
+                neighbors.push(CellID::from_face_ij_same(face, i + k, j - nbr_size, j - size >= 0).parent(level));
+                neighbors.push(CellID::from_face_ij_same(face, i + k, j + size, j + size < MAX_SIZE_I32).parent(level));
                 true
             };
 
             neighbors
-                .push(cellid_from_face_ij_same(face, i - nbr_size, j + k, same_face && i - size >= 0).parent(level));
-            neighbors.push(cellid_from_face_ij_same(face, i + size, j + k, same_face && i + size < MAX_SIZE_I32)
+                .push(CellID::from_face_ij_same(face, i - nbr_size, j + k, same_face && i - size >= 0).parent(level));
+            neighbors.push(CellID::from_face_ij_same(face, i + size, j + k, same_face && i + size < MAX_SIZE_I32)
                                .parent(level));
 
             if k >= size {
@@ -227,21 +360,27 @@ impl CellID {
         neighbors
     }
 
+    /// range_min returns the minimum CellID that is contained within this cell.
     pub fn range_min(&self) -> Self {
         CellID(self.0 - (self.lsb() - 1))
     }
+
+    /// range_max returns the maximum CellID that is contained within this cell.
     pub fn range_max(&self) -> Self {
         CellID(self.0 + (self.lsb() - 1))
     }
 
+    /// contains returns true iff the CellID contains oci.
     pub fn contains(&self, other: &CellID) -> bool {
         &self.range_min() <= other && other <= &self.range_max()
     }
 
+    /// intersects returns true iff the CellID intersects oci.
     pub fn intersects(&self, other: &CellID) -> bool {
         other.range_min() <= self.range_max() && other.range_max() >= self.range_min()
     }
 
+    /// face_siti returns the Face/Si/Ti coordinates of the center of the cell.
     fn face_siti(&self) -> (u8, i32, i32) {
         let (face, i, j, _) = self.face_ij_orientation();
         let delta = if self.is_leaf() {
@@ -262,36 +401,52 @@ impl CellID {
                        st_to_uv(siti_to_st(ti as u64)))
     }
 
+    /// child_begin returns the first child in a traversal of the children of this cell, in Hilbert curve order.
     pub fn child_begin(&self) -> Self {
         let ol = self.lsb();
         CellID(self.0 - ol + (ol >> 2))
     }
 
+    /// child_begin_at_level returns the first cell in a traversal of children a given level deeper than this cell, in
+    /// Hilbert curve order. The given level must be no smaller than the cell's level.
+    /// See ChildBegin for example use.
     pub fn child_begin_at_level(&self, level: u64) -> Self {
         assert!(self.level() <= level);
 
         CellID(self.0 - self.lsb() + lsb_for_level(level))
     }
 
+    /// child_end returns the first cell after a traversal of the children of this cell in Hilbert curve order.
+    /// The returned cell may be invalid.
     pub fn child_end(&self) -> Self {
         let ol = self.lsb();
         CellID(self.0 + ol + (ol >> 2))
     }
 
+    /// child_end_at_level returns the first cell after the last child in a traversal of children a given level deeper
+    /// than this cell, in Hilbert curve order.
+    /// The given level must be no smaller than the cell's level.
+    /// The returned cell may be invalid.
     pub fn child_end_at_level(&self, level: u64) -> Self {
         assert!(self.level() <= level);
 
         CellID(self.0 + self.lsb() + lsb_for_level(level))
     }
 
+    /// next returns the next cell along the Hilbert curve.
+    /// This is expected to be used with child_begin and child_end,
+    /// or child_begin_at_level and child_end_at_level.
     pub fn next(&self) -> Self {
         CellID(self.0.wrapping_add(self.lsb() << 1))
     }
 
+    /// prev returns the previous cell along the Hilbert curve.
     pub fn prev(&self) -> Self {
         CellID(self.0.wrapping_sub(self.lsb() << 1))
     }
 
+    /// next_wrap returns the next cell along the Hilbert curve, wrapping from last to
+    /// first as necessary. This should not be used with ChildBegin and ChildEnd.
     pub fn next_wrap(&self) -> Self {
         let next = self.next();
         if next.0 < WRAP_OFFSET {
@@ -301,6 +456,8 @@ impl CellID {
         }
     }
 
+    /// prev_wrap returns the previous cell along the Hilbert curve, wrapping around from
+    /// first to last as necessary. This should not be used with ChildBegin and ChildEnd.
     pub fn prev_wrap(&self) -> Self {
         let prev = self.prev();
         if prev.0 < WRAP_OFFSET {
@@ -310,6 +467,9 @@ impl CellID {
         }
     }
 
+    /// advance_wrap advances or retreats the indicated number of steps along the
+    /// Hilbert curve at the current level and returns the new position. The
+    /// position wraps between the first and last faces as necessary.
     pub fn advance_wrap(&self, mut steps: i64) -> Self {
         if steps == 0 {
             return self.clone();
@@ -338,11 +498,18 @@ impl CellID {
         CellID(self.0.wrapping_add((steps as u64) << shift))
     }
 
+    // TODO: the methods below are not exported yet.  Settle on the entire API design
+    // before doing this.  Do we want to mirror the C++ one as closely as possible?
+
     //TODO private
+    /// distance_from_begin returns the number of steps that this cell is from the first
+    /// node in the S2 heirarchy at our level. (i.e., FromFace(0).ChildBeginAtLevel(ci.Level())).
+    /// The return value is always non-negative.
     pub fn distance_from_begin(&self) -> i64 {
         (self.0 >> (2 * (MAX_LEVEL - self.level()) + 1)) as i64
     }
 
+    /// common_ancestor_level returns the level of the common ancestor of the two S2 CellIDs.
     pub fn common_ancestor_level(&self, other: &Self) -> Option<u64> {
         let mut bits = self.0 ^ other.0;
 
@@ -361,6 +528,9 @@ impl CellID {
         }
     }
 
+    /// advance advances or retreats the indicated number of steps along the
+    /// Hilbert curve at the current level, and returns the new position. The
+    /// position is never advanced past End() or before Begin().
     pub fn advance(&self, mut steps: i64) -> Self {
         if steps == 0 {
             return self.clone();
@@ -381,11 +551,7 @@ impl CellID {
         CellID(self.0.wrapping_add((steps << step_shift) as u64))
     }
 
-    pub fn bound_uv(&self) -> r2::Rect {
-        let (_, i, j, _) = self.face_ij_orientation();
-        ij_level_to_bound_uv(i, j, self.level())
-    }
-
+    /// center_st return the center of the CellID in (s,t)-space.
     fn center_st(&self) -> r2::Point {
         let (_, si, ti) = self.face_siti();
         r2::Point {
@@ -394,23 +560,35 @@ impl CellID {
         }
     }
 
+    /// size_st returns the edge length of this CellID in (s,t)-space at the given level.
     fn size_st(&self, level: u64) -> f64 {
         ij_to_stmin(size_ij(level) as i32)
     }
 
     //TODO private
+    /// bound_st returns the bound of this CellID in (s,t)-space.
     pub fn bound_st(&self) -> r2::Rect {
         let s = self.size_st(self.level());
         r2::Rect::from_center_size(&self.center_st(), &r2::Point { x: s, y: s })
     }
 
     //TODO private
+    /// center_uv returns the center of this CellID in (u,v)-space. Note that
+    /// the center of the cell is defined as the point at which it is recursively
+    /// subdivided into four children; in general, it is not at the midpoint of
+    /// the (u,v) rectangle covered by the cell.
     pub fn center_uv(&self) -> r2::Point {
         let (_, si, ti) = self.face_siti();
         r2::Point {
             x: st_to_uv(siti_to_st(si as u64)),
             y: st_to_uv(siti_to_st(ti as u64)),
         }
+    }
+
+    /// bound_uv returns the bound of this CellID in (u,v)-space.
+    pub fn bound_uv(&self) -> r2::Rect {
+        let (_, i, j, _) = self.face_ij_orientation();
+        ij_level_to_bound_uv(i, j, self.level())
     }
 
     //TODO private
@@ -431,6 +609,17 @@ impl CellID {
         }
     }
 
+    /// max_tile returns the largest cell with the same range_min such that
+    /// range_max < limit.range_min. It returns limit if no such cell exists.
+    /// This method can be used to generate a small set of CellIDs that covers
+    /// a given range (a tiling). This example shows how to generate a tiling
+    /// for a semi-open range of leaf cells [start, limit):
+    ///
+    /// for id := start.MaxTile(limit); id != limit; id = id.Next().MaxTile(limit)) { ... }
+    ///
+    /// Note that in general the cells in the tiling will be of different sizes;
+    /// they gradually get larger (near the middle of the range) and then
+    /// gradually get smaller as limit is approached.
     pub fn max_tile(&self, limit: &Self) -> Self {
         let mut s = self.clone();
         let start = s.range_min();
@@ -458,6 +647,10 @@ impl CellID {
     }
 
     //TODO private
+    /// center_face_siti returns the (face, si, ti) coordinates of the center of the cell.
+    /// Note that although (si,ti) coordinates span the range [0,2**31] in general,
+    /// the cell center coordinates are always in the range [1,2**31-1] and
+    /// therefore can be represented using a signed 32-bit integer.
     pub fn center_face_siti(&self) -> (u8, i32, i32) {
         let (face, i, j, _) = self.face_ij_orientation();
         let delta = if self.is_leaf() {
@@ -472,68 +665,26 @@ impl CellID {
     }
 }
 
+/// expand_endpoint returns a new u-coordinate u' such that the distance from the
+/// line u=u' to the given edge (u,v0)-(u,v1) is exactly the given distance
+/// (which is specified as the sine of the angle corresponding to the distance).
 fn expand_endpoint(u: f64, max_v: f64, sin_dist: f64) -> f64 {
     let sin_u_shift = sin_dist * ((1. + u * u + max_v * max_v) / (1. + u * u)).sqrt();
     let cos_u_shift = (1. - sin_u_shift * sin_u_shift).sqrt();
     (cos_u_shift * u + sin_u_shift) / (cos_u_shift - sin_u_shift * u)
 }
 
-fn cellid_from_face_ij_wrap(face: u8, mut i: i32, mut j: i32) -> CellID {
-    // Convert i and j to the coordinates of a leaf cell just beyond the
-    // boundary of this face.  This prevents 32-bit overflow in the case
-    // of finding the neighbors of a face cell.
-    i = clamp(i, -1i32, MAX_SIZE_I32);
-    j = clamp(j, -1i32, MAX_SIZE_I32);
-
-    const SCALE: f64 = 1.0 / (MAX_SIZE as f64);
-    const LIMIT: f64 = 1f64 + std::f64::EPSILON;
-
-    let u = clamp(SCALE * (2. * (i as f64) + 1. - MAX_SIZE_F64), -LIMIT, LIMIT);
-    let v = clamp(SCALE * (2. * (j as f64) + 1. - MAX_SIZE_F64), -LIMIT, LIMIT);
-
-    // Find the leaf cell coordinates on the adjacent face, and convert
-    // them to a cell id at the appropriate level.
-    let (f, u, v) = xyz_to_face_uv(&face_uv_to_xyz(face, u, v));
-    cellid_from_face_ij(f, st_to_ij(0.5 * (u + 1.)), st_to_ij(0.5 * (v + 1.)))
-}
-
+/// ij_tostmin converts the i- or j-index of a leaf cell to the minimum corresponding
+/// s- or t-value contained by that cell. The argument must be in the range
+/// [0..2**30], i.e. up to one position beyond the normal range of valid leaf
+/// cell indices.
 fn ij_to_stmin(i: i32) -> f64 {
     return (i as f64) / (MAX_SIZE as f64);
 }
 
+/// st_to_ij converts value in ST coordinates to a value in IJ coordinates.
 fn st_to_ij(s: f64) -> i32 {
     clamp(((MAX_SIZE as f64 * s).floor() as i32), 0, MAX_SIZE_I32 - 1)
-}
-
-
-//TODO private
-pub fn cellid_from_face_ij(f: u8, i: i32, j: i32) -> CellID {
-    let mut n = (f as u64) << (POS_BITS - 1);
-    let mut bits = (f & SWAP_MASK) as i32;
-
-    let mut k = 7;
-    let mask = (1 << LOOKUP_BITS) - 1;
-    loop {
-        bits += ((i >> (k * LOOKUP_BITS)) & mask) << (LOOKUP_BITS + 2);
-        bits += ((j >> (k * LOOKUP_BITS)) & mask) << 2;
-        bits = LOOKUP_POS[bits as usize] as i32;
-        n |= ((bits >> 2) as u64) << ((k * 2 * LOOKUP_BITS) as u64);
-        bits &= (SWAP_MASK | INVERT_MASK) as i32;
-
-        if k == 0 {
-            break;
-        }
-        k -= 1;
-    }
-    CellID(n * 2 + 1)
-}
-
-fn cellid_from_face_ij_same(f: u8, i: i32, j: i32, same_face: bool) -> CellID {
-    if same_face {
-        cellid_from_face_ij(f, i, j)
-    } else {
-        cellid_from_face_ij_wrap(f, i, j)
-    }
 }
 
 impl std::fmt::Debug for CellID {
@@ -547,17 +698,31 @@ impl std::fmt::Debug for CellID {
 }
 
 impl From<CellID> for Point {
+    /// returns the center of the s2 cell on the sphere as a Point.
+    /// The maximum directional error in Point (compared to the exact
+    /// mathematical result) is 1.5 * dblEpsilon radians, and the maximum length
+    /// error is 2 * dblEpsilon (the same as Normalize).
     fn from(id: CellID) -> Self {
         Point::from(&id)
     }
 }
 impl<'a> From<&'a CellID> for Point {
+    /// cellIDFromPoint returns a leaf cell containing point p. Usually there is
+    /// exactly one such cell, but for points along the edge of a cell, any
+    /// adjacent cell may be (deterministically) chosen. This is because
+    /// s2.CellIDs are considered to be closed sets. The returned cell will
+    /// always contain the given point, i.e.
+    ///
+    /// Cell::from(&p).contains_point(&p)
+    ///
+    /// is always true.
     fn from(id: &'a CellID) -> Self {
         Point(id.raw_point().normalize())
     }
 }
 
 impl From<CellID> for LatLng {
+    /// returns the center of the s2 cell on the sphere as a LatLng.
     fn from(id: CellID) -> Self {
         LatLng::from(&id)
     }
@@ -581,7 +746,7 @@ impl<'a> From<&'a Point> for CellID {
         let (f, u, v) = xyz_to_face_uv(&p.0);
         let i = st_to_ij(uv_to_st(u));
         let j = st_to_ij(uv_to_st(v));
-        return cellid_from_face_ij(f, i, j);
+        return CellID::from_face_ij(f, i, j);
     }
 }
 impl From<Point> for CellID {
@@ -654,6 +819,7 @@ lazy_static! {
     };
 }
 
+/// init_lookup_cell initializes the lookupIJ table at init time.
 fn init_lookup_cell(level: u64,
                     i: i32,
                     j: i32,
@@ -682,6 +848,8 @@ fn init_lookup_cell(level: u64,
     }
 }
 
+/// ij_level_to_bound_uv returns the bounds in (u,v)-space for the cell at the given
+/// level containing the leaf cell with the given (i,j)-coordinates.
 pub fn ij_level_to_bound_uv(i: i32, j: i32, level: u64) -> r2::Rect {
     let cell_size = size_ij(level) as i32;
     let x_lo = i & -cell_size;
@@ -842,7 +1010,7 @@ pub mod tests {
     fn test_cellid_edge_neighbors() {
         let faces = [5, 3, 2, 0];
 
-        for (i, nbr) in cellid_from_face_ij(1, 0, 0)
+        for (i, nbr) in CellID::from_face_ij(1, 0, 0)
                 .parent(0)
                 .edge_neighbors()
                 .iter()
@@ -853,13 +1021,13 @@ pub mod tests {
 
         let max_ij = MAX_SIZE_I32 - 1;
         for level in 1..(MAX_LEVEL + 1) {
-            let id = cellid_from_face_ij(1, 0, 0).parent(level);
+            let id = CellID::from_face_ij(1, 0, 0).parent(level);
             let level_size_ij = size_ij(level) as i32;
             let want = [
-                cellid_from_face_ij(5, max_ij, max_ij).parent(level),
-                cellid_from_face_ij(1, level_size_ij, 0).parent(level),
-                cellid_from_face_ij(1, 0, level_size_ij).parent(level),
-                cellid_from_face_ij(0, max_ij, 0).parent(level),
+                CellID::from_face_ij(5, max_ij, max_ij).parent(level),
+                CellID::from_face_ij(1, level_size_ij, 0).parent(level),
+                CellID::from_face_ij(1, 0, level_size_ij).parent(level),
+                CellID::from_face_ij(0, max_ij, 0).parent(level),
             ];
 
             assert_eq!(want, id.edge_neighbors());
@@ -887,7 +1055,7 @@ pub mod tests {
             if n == 0 || n == 3 {
                 j -= 1;
             }
-            assert_eq!(*nbr, cellid_from_face_ij(2, i, j).parent(5));
+            assert_eq!(*nbr, CellID::from_face_ij(2, i, j).parent(5));
         }
 
         let id2 = CellID::from_face_pos_level(0, 0, MAX_LEVEL);

@@ -1,3 +1,19 @@
+/*
+Copyright 2014 Google Inc. All rights reserved.
+Copyright 2017 Jihyun Yu. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 use consts::*;
 use r1;
@@ -18,9 +34,9 @@ lazy_static! {
     static ref POLE_MIN_LAT: f64 = (1./3f64).sqrt().asin() - 0.5*DBL_EPSILON;
 }
 
-// Cell is an S2 region object that represents a cell. Unlike CellIDs,
-// it supports efficient containment and intersection tests. However, it is
-// also a more expensive representation.
+/// Cell is an S2 region object that represents a cell. Unlike CellIDs,
+/// it supports efficient containment and intersection tests. However, it is
+/// also a more expensive representation.
 #[derive(Debug,Clone)]
 pub struct Cell {
     face: u8,
@@ -85,8 +101,8 @@ impl Cell {
         size_ij(self.level as u64)
     }
 
-    // Vertex returns the k-th vertex of the cell (k = 0,1,2,3) in CCW order
-    // (lower left, lower right, upper right, upper left in the UV plane).
+    /// vertex returns the k-th vertex of the cell (k = 0,1,2,3) in CCW order
+    /// (lower left, lower right, upper right, upper left in the UV plane).
     pub fn vertex(&self, k: usize) -> Point {
         let v = &self.uv.vertices()[k];
         Point(face_uv_to_xyz(self.face, v.x, v.y).normalize())
@@ -102,8 +118,8 @@ impl Cell {
         ]
     }
 
-    // Edge returns the inward-facing normal of the great circle passing through
-    // the CCW ordered edge from vertex k to vertex k+1 (mod 4) (for k = 0,1,2,3).
+    /// edge returns the inward-facing normal of the great circle passing through
+    /// the CCW ordered edge from vertex k to vertex k+1 (mod 4) (for k = 0,1,2,3).
     pub fn edge(&self, k: usize) -> Point {
         match k {
             0 => Point(vnorm(self.face, self.uv.y.lo).normalize()),
@@ -114,7 +130,7 @@ impl Cell {
         }
     }
 
-    // BoundUV returns the bounds of this cell in (u,v)-space.
+    /// bound_uv returns the bounds of this cell in (u,v)-space.
     pub fn bound_uv(&self) -> &r2::Rect {
         &self.uv
     }
@@ -127,8 +143,12 @@ impl Cell {
         Point(self.id.raw_point().normalize())
     }
 
-    //TODO: fix redundent copy
+    /// Children returns the four direct children of this cell in traversal order
+    /// and returns true. If this is a leaf cell, or the children could not be created,
+    /// false is returned.
+    /// The C++ method is called Subdivide.
     pub fn children(&self) -> Option<[Cell; 4]> {
+        //TODO: fix redundent copy
         if self.is_leaf() {
             return None;
         }
@@ -173,16 +193,16 @@ impl Cell {
         Some(children)
     }
 
-    // ExactArea returns the area of this cell as accurately as possible.
+    /// exact_area returns the area of this cell as accurately as possible.
     pub fn exact_area(&self) -> f64 {
         let verts = self.vertices();
         point_area(&verts[0], &verts[1], &verts[2]) + point_area(&verts[0], &verts[2], &verts[3])
     }
 
-    // approx_area returns the approximate area of this cell. This method is accurate
-    // to within 3% percent for all cell sizes and accurate to within 0.1% for cells
-    // at level 5 or higher (i.e. squares 350km to a side or smaller on the Earth's
-    // surface). It is moderately cheap to compute.
+    /// approx_area returns the approximate area of this cell. This method is accurate
+    /// to within 3% percent for all cell sizes and accurate to within 0.1% for cells
+    /// at level 5 or higher (i.e. squares 350km to a side or smaller on the Earth's
+    /// surface). It is moderately cheap to compute.
     pub fn approx_area(&self) -> f64 {
         // All cells at the first two levels have the same area.
         if self.level < 2 {
@@ -208,8 +228,8 @@ impl Cell {
         flat_area * 2. / (1. + (1. - (1. / PI * flat_area).min(1.)).sqrt())
     }
 
-    // average_area returns the average area of cells at the level of this cell.
-    // This is accurate to within a factor of 1.7.
+    /// average_area returns the average area of cells at the level of this cell.
+    /// This is accurate to within a factor of 1.7.
     pub fn average_area(&self) -> f64 {
         AVG_AREAMETRIC.value(self.level)
     }
@@ -410,7 +430,7 @@ impl Cell {
 }
 
 impl Region for Cell {
-    // CapBound returns the bounding cap of this cell.
+    /// cap_bound returns the bounding cap of this cell.
     fn cap_bound(&self) -> Cap {
         // We use the cell center in (u,v)-space as the cap axis.  This vector is very close
         // to GetCenter() and faster to compute.  Neither one of these vectors yields the
@@ -426,12 +446,12 @@ impl Region for Cell {
         cap
     }
 
-    // intersects_cell reports whether the intersection of this cell and the other cell is not nil.
+    /// intersects_cell reports whether the intersection of this cell and the other cell is not nil.
     fn intersects_cell(&self, other: &Cell) -> bool {
         self.id.intersects(&other.id)
     }
 
-    // contains_cell reports whether this cell contains the other cell.
+    /// contains_cell reports whether this cell contains the other cell.
     fn contains_cell(&self, other: &Cell) -> bool {
         self.id.contains(&other.id)
     }
