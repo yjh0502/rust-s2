@@ -1,7 +1,18 @@
 [package]
 name = "s2"
+
 version = "0.0.1"
 authors = ["Jihyun Yu <yjh0502@gmail.com>"]
+
+license = "Apache-2.0"
+license-file = "LICENSE"
+
+description = "S2 geometric library"
+homepage = "https://github.com/yjh0502/rust-s2"
+repository = "https://github.com/yjh0502/rust-s2"
+documentation = "https://docs.rs/rust-s2"
+
+keywords = ["geo", "s2"]
 
 [dependencies]
 lazy_static = "0.2"
