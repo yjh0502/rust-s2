@@ -1,4 +1,4 @@
-### float-extras
+### rust-s2
 
 Rust port of Google S2 geometry library.
 
