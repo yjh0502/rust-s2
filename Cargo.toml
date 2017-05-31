@@ -1,0 +1,9 @@
+[package]
+name = "s2"
+version = "0.0.1"
+authors = ["Jihyun Yu <yjh0502@gmail.com>"]
+
+[dependencies]
+lazy_static = "0.2"
+rand = "0.3"
+float_extras = "0.1"
