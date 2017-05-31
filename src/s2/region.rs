@@ -114,13 +114,13 @@ pub trait Region {
 #[derive(Clone)]
 pub struct RegionCoverer {
     /// the minimum cell level to be used.
-    min_level: u8,
+    pub min_level: u8,
     /// the maximum cell level to be used.
-    max_level: u8,
+    pub max_level: u8,
     /// the level_mod to be used.
-    level_mod: u8,
+    pub level_mod: u8,
     /// the maximum desired number of cells in the approximation.
-    max_cells: usize,
+    pub max_cells: usize,
 }
 
 struct Coverer<'a, R>
@@ -243,7 +243,8 @@ impl<'a, R> Coverer<'a, R>
             return;
         }
 
-        if !self.interior_covering && num_terminals == (1 << max_children_shift) && level >= self.constraint.min_level {
+        if !self.interior_covering && num_terminals == (1 << max_children_shift) &&
+           level >= self.constraint.min_level {
             // Optimization: add the parent cell rather than all of its children.
             // We can't do this for interior coverings, since the children just
             // intersect the region, but may not be contained by it - we need to
@@ -260,7 +261,8 @@ impl<'a, R> Coverer<'a, R>
         // Finally, among cells with equal numbers of children we prefer those
         // with the smallest number of children that cannot be refined further.
         cand.priority = -((((((level as usize) << max_children_shift) + cand.children.len()) <<
-                            max_children_shift) + num_terminals) as isize);
+                            max_children_shift) + num_terminals) as
+                          isize);
         self.pq.push(cand)
     }
 
@@ -354,9 +356,11 @@ impl<'a, R> Coverer<'a, R>
                     // Subdividing of the candidate with one child does no harm in this case.
                     if self.interior_covering || cand.cell.level() < self.constraint.min_level ||
                        cand.num_children == 1 ||
-                       self.result.len() + self.pq.len() + cand.num_children <= self.constraint.max_cells {
+                       self.result.len() + self.pq.len() + cand.num_children <=
+                       self.constraint.max_cells {
                         for child in cand.children.into_iter() {
-                            if !self.interior_covering || self.result.len() < self.constraint.max_cells {
+                            if !self.interior_covering ||
+                               self.result.len() < self.constraint.max_cells {
                                 self.add_candidate(child)
                             }
                         }
@@ -699,7 +703,8 @@ mod tests {
                 max_cells,
             };
 
-            let max_area = (4. * PI).min((3. * (max_cells as f64) + 1.) * AVG_AREAMETRIC.value(min_level));
+            let max_area =
+                (4. * PI).min((3. * (max_cells as f64) + 1.) * AVG_AREAMETRIC.value(min_level));
 
             let r = random_cap(&mut rng, 0.1 * AVG_AREAMETRIC.value(max_level), max_area);
             let mut covering = rc.covering(&r);
