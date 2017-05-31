@@ -1,8 +1,27 @@
+/*
+Copyright 2014 Google Inc. All rights reserved.
+Copyright 2017 Jihyun Yu. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+
 use std;
 
 use consts::EPSILON;
 use s1::angle::Angle;
 
+/// Vector represents a point in ℝ³.
 #[derive(Clone,PartialEq,PartialOrd,Debug)]
 pub struct Vector {
     pub x: f64,
@@ -18,6 +37,7 @@ impl std::ops::Add<Vector> for Vector {
 }
 impl<'a, 'b> std::ops::Add<&'b Vector> for &'a Vector {
     type Output = Vector;
+    /// add returns the standard vector sum of v and ov.
     fn add(self, other: &'b Vector) -> Self::Output {
         Vector {
             x: self.x + other.x,
@@ -29,6 +49,7 @@ impl<'a, 'b> std::ops::Add<&'b Vector> for &'a Vector {
 
 impl std::ops::Sub<Vector> for Vector {
     type Output = Vector;
+    /// sub returns the standard vector difference of v and ov.
     fn sub(self, other: Vector) -> Self::Output {
         &self - &other
     }
@@ -57,6 +78,7 @@ impl std::ops::Mul<Vector> for Vector {
 
 impl<'a> std::ops::Mul<f64> for &'a Vector {
     type Output = Vector;
+    /// mul returns the standard scalar product of v and m.
     fn mul(self, m: f64) -> Self::Output {
         Vector {
             x: self.x * m,
@@ -77,18 +99,22 @@ impl Vector {
         Vector { x: x, y: y, z: z }
     }
 
+    /// approx_eq reports whether v and ov are equal within a small epsilon.
     pub fn approx_eq(&self, other: &Vector) -> bool {
         (self.x - other.x).abs() < EPSILON && (self.y - other.y).abs() < EPSILON && (self.z - other.z).abs() < EPSILON
     }
 
+    /// norm returns the vector's norm.
     pub fn norm(&self) -> f64 {
         self.norm2().sqrt()
     }
 
+    /// norm2 returns the square of the norm.
     pub fn norm2(&self) -> f64 {
         self.dot(self)
     }
 
+    /// normalize returns a unit vector in the same direction as v.
     pub fn normalize(&self) -> Self {
         if self.x == 0. && self.y == 0. && self.z == 0. {
             self.clone()
@@ -97,15 +123,18 @@ impl Vector {
         }
     }
 
+    /// dot returns the standard dot product of v and ov.
     pub fn dot(&self, other: &Self) -> f64 {
         self.x * other.x + self.y * other.y + self.z * other.z
     }
 
+    /// is_unit returns whether this vector is of approximately unit length.
     pub fn is_unit(&self) -> bool {
         const EPSILON2: f64 = 5e-14;
         (self.norm2() - 1.).abs() < EPSILON2
     }
 
+    /// abs returns the vector with nonnegative components.
     pub fn abs(&self) -> Self {
         Vector {
             x: self.x.abs(),
@@ -114,6 +143,7 @@ impl Vector {
         }
     }
 
+    /// cross returns the standard cross product of v and ov.
     pub fn cross(&self, other: &Self) -> Self {
         Vector {
             x: self.y * other.z - self.z * other.y,
@@ -122,14 +152,18 @@ impl Vector {
         }
     }
 
+    /// distance returns the Euclidean distance between v and ov.
     pub fn distance(&self, other: &Self) -> f64 {
         (self - other).norm()
     }
 
+    /// angle returns the angle between v and ov.
     pub fn angle(&self, other: &Self) -> Angle {
         Angle(self.cross(other).norm().atan2(self.dot(other)))
     }
 
+    /// ortho returns a unit vector that is orthogonal to v.
+    /// ortho(-v) = -ortho(v) for all v.
     pub fn ortho(&self) -> Self {
         let mut ov = Self {
             x: 0.012,
@@ -144,6 +178,7 @@ impl Vector {
         self.cross(&ov).normalize()
     }
 
+    /// largest_component returns the axis that represents the largest component in this vector.
     pub fn largest_component(&self) -> Axis {
         let a = self.abs();
         if a.x > a.y {
@@ -153,7 +188,7 @@ impl Vector {
         }
     }
 
-    // smallest_component returns the axis that represents the smallest component in this vector.
+    /// smallest_component returns the axis that represents the smallest component in this vector.
     pub fn smallest_component(&self) -> Axis {
         let t = self.abs();
         if t.x < t.y {
@@ -164,13 +199,13 @@ impl Vector {
     }
 }
 
+/// Axis enumerates the 3 axes of ℝ³.
 #[derive(PartialEq,Eq,Debug)]
 pub enum Axis {
     X,
     Y,
     Z,
 }
-
 
 #[cfg(test)]
 mod tests {
