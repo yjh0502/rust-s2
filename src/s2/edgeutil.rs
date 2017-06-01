@@ -189,10 +189,10 @@ use s2::point::Point;
 pub fn interpolate_at_distance(ax: &Angle, a: &Point, b: &Point) -> Point {
     // aRad := ax.Radians()
 
-    // Use point_cross to compute the tangent vector at A towards B. The
+    // Use cross to compute the tangent vector at A towards B. The
     // result is always perpendicular to A, even if A=B or A=-B, but it is not
     // necessarily unit length. (We effectively normalize it below.)
-    let normal = a.point_cross(&b);
+    let normal = a.cross(&b);
     let tangent = normal.0.cross(&a.0);
 
     // Now compute the appropriate linear combination of A and "tangent". With

@@ -84,12 +84,12 @@ impl Point {
         ORIGIN
     }
 
-    /// point_cross returns a Point that is orthogonal to both p and op. This is similar to
+    /// cross returns a Point that is orthogonal to both p and op. This is similar to
     /// p.Cross(op) (the true cross product) except that it does a better job of
     /// ensuring orthogonality when the Point is nearly parallel to op, it returns
     /// a non-zero result even when p == op or p == -op and the result is a Point.
     ///
-    /// It satisfies the following properties (f == point_cross):
+    /// It satisfies the following properties (f == cross):
     ///
     /// ```text
     /// (1) f(p, op) != 0 for all p, op
@@ -97,13 +97,13 @@ impl Point {
     /// (3) f(-p,op) == -f(p,op) unless p == op or p == -op
     /// (4) f(p,-op) == -f(p,op) unless p == op or p == -op
     /// ```
-    pub fn point_cross(&self, other: &Self) -> Self {
+    pub fn cross(&self, other: &Self) -> Self {
         // NOTE(dnadasi): In the C++ API the equivalent method here was known as "RobustCrossProd",
         // but point_cross more accurately describes how this method is used.
         let v = (&self.0 + &other.0).cross(&(&other.0 - &self.0));
 
         // Compare exactly to the 0 vector.
-        if v.x == 0. || v.y == 0. || v.z == 0. {
+        if v.x == 0. && v.y == 0. && v.z == 0. {
             // The only result that makes sense mathematically is to return zero, but
             // we find it more convenient to return an arbitrary orthogonal vector.
             Point(self.0.ortho())
@@ -120,6 +120,11 @@ impl Point {
     /// approx_eq reports whether the two points are similar enough to be equal.
     pub fn approx_eq(&self, other: &Self) -> bool {
         self.0.angle(&other.0) <= s1::angle::Angle(EPSILON)
+    }
+
+    /// norm returns the point's norm.
+    pub fn norm(&self) -> f64 {
+        self.0.norm()
     }
 }
 
@@ -192,9 +197,9 @@ pub fn point_area(a: &Point, b: &Point, c: &Point) -> f64 {
         let dmin = s - sa.max(sb.max(sc));
         if dmin < 1e-2 * s * s * s * s * s {
             // This triangle is skinny enough to use Girard's formula.
-            let ab = a.point_cross(b);
-            let bc = b.point_cross(c);
-            let ac = a.point_cross(c);
+            let ab = a.cross(b);
+            let bc = b.cross(c);
+            let ac = a.cross(c);
             let area = (ab.0.angle(&ac.0).0 - ab.0.angle(&bc.0).0 + bc.0.angle(&ac.0).0).max(0.0);
 
             if dmin < s * 0.1 * area {
@@ -361,12 +366,14 @@ impl Point {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use consts::EPSILON;
+
+    use std::f64::consts::PI;
+    use consts::*;
     use s2::stuv::st_to_uv;
 
     #[test]
     fn test_origin_point() {
-        assert!((Point::origin().0.norm() - 1.).abs() <= EPSILON);
+        assert!((Point::origin().norm() - 1.).abs() <= EPSILON);
 
         // The point chosen below is about 66km from the north pole towards the East
         // Siberian Sea. The purpose of the stToUV(2/3) calculation is to keep the
@@ -382,58 +389,50 @@ mod tests {
         const EARTH_RADIUS_KM: f64 = 6371.01;
         assert!(Point::origin().0.z.acos() * EARTH_RADIUS_KM > 50.);
     }
+
+    fn test_point_cross_case(expected: f64, v1: Vector, v2: Vector) {
+        let p1 = Point(v1);
+        let p2 = Point(v2);
+
+        let result = p1.cross(&p2);
+        assert!(f64_eq(expected, result.norm()),
+                "{} != {}",
+                expected,
+                result.norm());
+        assert!(f64_eq(0., result.0.dot(&p1.0)));
+        assert!(f64_eq(0., result.0.dot(&p2.0)));
+    }
+
+    #[test]
+    fn test_point_cross() {
+        test_point_cross_case(1., Vector::xyz(1., 0., 0.), Vector::xyz(1., 0., 0.));
+        test_point_cross_case(2., Vector::xyz(1., 0., 0.), Vector::xyz(0., 1., 0.));
+        test_point_cross_case(2., Vector::xyz(0., 1., 0.), Vector::xyz(1., 0., 0.));
+        test_point_cross_case(2. * 934f64.sqrt(),
+                              Vector::xyz(1., 2., 3.),
+                              Vector::xyz(-4., 5., -6.));
+    }
+
+    fn test_point_distance_case(expected: f64, v1: Vector, v2: Vector) {
+        let p1 = Point(v1);
+        let p2 = Point(v2);
+
+        assert!(f64_eq(expected, p1.distance(&p2).0));
+        assert!(f64_eq(expected, p2.distance(&p1).0));
+    }
+
+    #[test]
+    fn test_point_distance() {
+        test_point_distance_case(0., Vector::xyz(1., 0., 0.), Vector::xyz(1., 0., 0.));
+        test_point_distance_case(PI / 2., Vector::xyz(1., 0., 0.), Vector::xyz(0., 1., 0.));
+        test_point_distance_case(PI / 2., Vector::xyz(1., 0., 0.), Vector::xyz(0., 1., 1.));
+        test_point_distance_case(1.2055891055045298,
+                                 Vector::xyz(1., 2., 3.),
+                                 Vector::xyz(2., 3., -1.));
+    }
 }
 
 /*
-
-func TestPointCross(t *testing.T) {
-	tests := []struct {
-		p1x, p1y, p1z, p2x, p2y, p2z, norm float64
-	}{
-		{1, 0, 0, 1, 0, 0, 1},
-		{1, 0, 0, 0, 1, 0, 2},
-		{0, 1, 0, 1, 0, 0, 2},
-		{1, 2, 3, -4, 5, -6, 2 * math.Sqrt(934)},
-	}
-	for _, test := range tests {
-		p1 := Point{r3.Vector{test.p1x, test.p1y, test.p1z}}
-		p2 := Point{r3.Vector{test.p2x, test.p2y, test.p2z}}
-		result := p1.PointCross(p2)
-		if !float64Eq(result.Norm(), test.norm) {
-			t.Errorf("|%v ⨯ %v| = %v, want %v", p1, p2, result.Norm(), test.norm)
-		}
-		if x := result.Dot(p1.Vector); !float64Eq(x, 0) {
-			t.Errorf("|(%v ⨯ %v) · %v| = %v, want 0", p1, p2, p1, x)
-		}
-		if x := result.Dot(p2.Vector); !float64Eq(x, 0) {
-			t.Errorf("|(%v ⨯ %v) · %v| = %v, want 0", p1, p2, p2, x)
-		}
-	}
-}
-
-func TestPointDistance(t *testing.T) {
-	tests := []struct {
-		x1, y1, z1 float64
-		x2, y2, z2 float64
-		want       float64 // radians
-	}{
-		{1, 0, 0, 1, 0, 0, 0},
-		{1, 0, 0, 0, 1, 0, math.Pi / 2},
-		{1, 0, 0, 0, 1, 1, math.Pi / 2},
-		{1, 0, 0, -1, 0, 0, math.Pi},
-		{1, 2, 3, 2, 3, -1, 1.2055891055045298},
-	}
-	for _, test := range tests {
-		p1 := Point{r3.Vector{test.x1, test.y1, test.z1}}
-		p2 := Point{r3.Vector{test.x2, test.y2, test.z2}}
-		if a := p1.Distance(p2).Radians(); !float64Eq(a, test.want) {
-			t.Errorf("%v.Distance(%v) = %v, want %v", p1, p2, a, test.want)
-		}
-		if a := p2.Distance(p1).Radians(); !float64Eq(a, test.want) {
-			t.Errorf("%v.Distance(%v) = %v, want %v", p2, p1, a, test.want)
-		}
-	}
-}
 
 func TestChordAngleBetweenPoints(t *testing.T) {
 	for iter := 0; iter < 10; iter++ {
