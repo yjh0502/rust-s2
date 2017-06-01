@@ -68,10 +68,18 @@ const CENTER_POINT: Point = Point(Vector {
 /// ```
 ///
 /// The zero value of Cap is an invalid cap. Use EmptyCap to get a valid empty cap.
-#[derive(Clone,Debug)]
+#[derive(Clone)]
 pub struct Cap {
     pub center: Point,
     pub radius: ChordAngle,
+}
+impl std::fmt::Debug for Cap {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f,
+               "[center={:?}, radius={:?}]",
+               self.center.0,
+               Deg::from(self.radius()).0)
+    }
 }
 
 impl<'a> From<&'a Point> for Cap {
