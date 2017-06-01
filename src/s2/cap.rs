@@ -220,7 +220,7 @@ impl Cap {
             Self::full()
         } else {
             Cap::from_center_chordangle(&(self.center.clone() * -1.),
-                                        &(chordangle::STRAIGHT - self.radius.clone()))
+                                        &(chordangle::STRAIGHT - self.radius))
         }
     }
 
@@ -240,7 +240,8 @@ impl Cap {
         if self.is_empty() {
             Self::empty()
         } else {
-            Self::from_center_chordangle(&self.center, &(&self.radius + &ChordAngle::from(distance)))
+            Self::from_center_chordangle(&self.center,
+                                         &(&self.radius + &ChordAngle::from(distance)))
         }
     }
 }
@@ -434,7 +435,8 @@ impl Cap {
             a.clone()
         } else {
             let res_radius = 0.5 * (distance + a_radius + b_radius);
-            let res_center = interpolate_at_distance(&Angle(0.5 * (distance - a_radius + b_radius)),
+            let res_center = interpolate_at_distance(&Angle(0.5 *
+                                                            (distance - a_radius + b_radius)),
                                                      &self.center,
                                                      &other.center);
             Cap::from_center_chordangle(&res_center, &ChordAngle(res_radius))
@@ -444,8 +446,8 @@ impl Cap {
 
 impl std::cmp::PartialEq for Cap {
     fn eq(&self, other: &Self) -> bool {
-        (self.radius == other.radius && self.center == other.center) || (self.is_empty() && other.is_empty()) ||
-        (self.is_full() && other.is_full())
+        (self.radius == other.radius && self.center == other.center) ||
+        (self.is_empty() && other.is_empty()) || (self.is_full() && other.is_full())
     }
 }
 
