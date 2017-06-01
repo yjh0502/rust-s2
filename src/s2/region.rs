@@ -111,7 +111,7 @@ pub trait Region {
 /// interior coverings - otherwise for regions with small or zero area, the
 /// algorithm may spend a lot of time subdividing cells all the way to leaf
 /// level to try to find contained cells.
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct RegionCoverer {
     /// the minimum cell level to be used.
     pub min_level: u8,
@@ -274,22 +274,27 @@ impl<'a, R> Coverer<'a, R>
         if self.constraint.level_mod == 1 {
             return;
         }
-        let mut out = Vec::new();
-        let mut last = CellID(0);
+        let mut out: Vec<CellID> = Vec::new();
 
-        for ci in cells.iter() {
+        for &ci in cells.iter() {
             let level = ci.level() as u8;
             let new_level = self.constraint.adjust_level(level);
             let cur = if new_level != level {
                 ci.parent(new_level.into())
             } else {
-                ci.clone()
+                ci
             };
-            if out.len() > 0 && last.contains(&cur) {
-                continue;
+
+            let mut pop_last = false;
+            if let Some(last) = out.last() {
+                if last.contains(&cur) {
+                    continue;
+                }
+                if cur.contains(&last) {
+                    pop_last = true;
+                }
             }
-            if out.len() > 0 && cur.contains(&last) {
-                last = cur.clone();
+            if pop_last {
                 out.pop();
             }
             out.push(cur);
@@ -300,13 +305,6 @@ impl<'a, R> Coverer<'a, R>
 
     /// initial_candidates computes a set of initial candidates that cover the given region.
     fn initial_candidates(&mut self) {
-        for face in 0..6 {
-            if let Some(cand) = self.new_candidate(Cell::from(&CellID::from_face(face))) {
-                self.add_candidate(cand);
-            }
-        }
-        /*
-
         // Optimization: start with a small (usually 4 cell) covering of the region's bounding cap.
         let temp = RegionCoverer {
             min_level: 0,
@@ -323,7 +321,6 @@ impl<'a, R> Coverer<'a, R>
                 self.add_candidate(cand);
             }
         }
-        */
     }
 
     /// covering_internal generates a covering and stores it in result.
@@ -342,33 +339,29 @@ impl<'a, R> Coverer<'a, R>
     /// (fewest children first).
     fn covering_internal(&mut self) {
         self.initial_candidates();
-        while !self.interior_covering && self.result.len() < self.constraint.max_cells {
-            match self.pq.pop() {
-                None => break,
-                Some(mut cand) => {
-                    // For interior covering we keep subdividing no matter how many children
-                    // candidate has. If we reach MaxCells before expanding all children,
-                    // we will just use some of them.
-                    // For exterior covering we cannot do this, because result has to cover the
-                    // whole region, so all children have to be used.
-                    // candidate.numChildren == 1 case takes care of the situation when we
-                    // already have more then MaxCells in result (minLevel is too high).
-                    // Subdividing of the candidate with one child does no harm in this case.
-                    if self.interior_covering || cand.cell.level() < self.constraint.min_level ||
-                       cand.num_children == 1 ||
-                       self.result.len() + self.pq.len() + cand.num_children <=
-                       self.constraint.max_cells {
-                        for child in cand.children.into_iter() {
-                            if !self.interior_covering ||
-                               self.result.len() < self.constraint.max_cells {
-                                self.add_candidate(child)
-                            }
-                        }
-                    } else {
-                        cand.terminal = true;
-                        self.add_candidate(cand)
+        while !self.pq.is_empty() &&
+              (!self.interior_covering || self.result.len() < self.constraint.max_cells) {
+            let mut cand = self.pq.pop().unwrap();
+
+            // For interior covering we keep subdividing no matter how many children
+            // candidate has. If we reach MaxCells before expanding all children,
+            // we will just use some of them.
+            // For exterior covering we cannot do this, because result has to cover the
+            // whole region, so all children have to be used.
+            // candidate.numChildren == 1 case takes care of the situation when we
+            // already have more then MaxCells in result (minLevel is too high).
+            // Subdividing of the candidate with one child does no harm in this case.
+            if self.interior_covering || cand.cell.level() < self.constraint.min_level ||
+               cand.num_children == 1 ||
+               self.result.len() + self.pq.len() + cand.num_children <= self.constraint.max_cells {
+                for child in cand.children.into_iter() {
+                    if !self.interior_covering || self.result.len() < self.constraint.max_cells {
+                        self.add_candidate(child)
                     }
                 }
+            } else {
+                cand.terminal = true;
+                self.add_candidate(cand)
             }
         }
 
@@ -488,7 +481,7 @@ impl RegionCoverer {
     /// are not affected (since cells at these levels are eventually expanded).
     fn adjust_level(&self, level: u8) -> u8 {
         if self.level_mod > 1 && level > self.min_level {
-            (level - self.min_level) % self.level_mod
+            level - ((level - self.min_level) % self.level_mod)
         } else {
             level
         }
@@ -504,7 +497,7 @@ impl RegionCoverer {
     /// all of the code in this function is skipped.
     fn normalize_covering(&self, covering: &mut CellUnion) {
         // If any cells are too small, or don't satisfy level_mod, then replace them with ancestors.
-        if self.max_level < (MAX_LEVEL as u8) && self.level_mod > 1 {
+        if self.max_level < (MAX_LEVEL as u8) || self.level_mod > 1 {
             for ci in covering.0.iter_mut() {
                 let level = ci.level() as u8;
                 let new_level = self.adjust_level(min(level, self.max_level));
@@ -516,30 +509,30 @@ impl RegionCoverer {
 
         // If there are still too many cells, then repeatedly replace two adjacent
         // cells in CellID order by their lowest common ancestor.
-        loop {
-            covering.normalize();
+        covering.normalize();
+        while covering.0.len() > self.max_cells {
+            {
+                let mut best_index = -1isize;
+                let mut best_level = -1isize;
 
-            let mut v = &mut covering.0;
-            if v.len() > self.max_cells {
-                break;
-            }
-
-            let mut best_index = 0;
-            let mut best_level = MAX_LEVEL as u8;
-            for i in 0..(v.len() - 1) {
-                if let Some(level) = v[i].common_ancestor_level(&v[i + 1]) {
-                    let level = self.adjust_level(level as u8);
-                    if level > best_level {
-                        best_level = level;
-                        best_index = i;
+                let mut v = &mut covering.0;
+                for i in 0..(v.len() - 1) {
+                    if let Some(level) = v[i].common_ancestor_level(&v[i + 1]) {
+                        let level = self.adjust_level(level as u8) as isize;
+                        if level > best_level {
+                            best_level = level;
+                            best_index = i as isize;
+                        }
                     }
                 }
+
+                if best_level < self.min_level as isize {
+                    break;
+                }
+                v[best_index as usize] = v[best_index as usize].parent(best_level as u64);
             }
 
-            if best_level < self.min_level {
-                break;
-            }
-            v[best_index] = v[best_index].parent(best_level.into());
+            covering.normalize();
         }
 
         // Make sure that the covering satisfies minLevel and levelMod,
@@ -687,12 +680,18 @@ mod tests {
 
     //TODO: fix
     #[test]
-    #[ignore]
     fn test_coverer_random_caps() {
         let mut rng = rand::StdRng::new().expect("failed to get rng");
         for _ in 0..1000 {
-            let min_level = rng.gen_range(0, (MAX_LEVEL + 1) as u8);
-            let max_level = rng.gen_range(min_level, (MAX_LEVEL + 1) as u8);
+            let mut min_level = rng.gen_range(0, (MAX_LEVEL + 1) as u8);
+            let mut max_level = rng.gen_range(0, (MAX_LEVEL + 1) as u8);
+            if min_level > max_level {
+                let tmp = max_level;
+                max_level = min_level;
+                min_level = tmp;
+            }
+            assert!(min_level <= max_level);
+
             let level_mod = rng.gen_range(1, 4);
             let max_cells = skewed_int(&mut rng, 10);
 
@@ -707,8 +706,8 @@ mod tests {
                 (4. * PI).min((3. * (max_cells as f64) + 1.) * AVG_AREAMETRIC.value(min_level));
 
             let r = random_cap(&mut rng, 0.1 * AVG_AREAMETRIC.value(max_level), max_area);
+
             let mut covering = rc.covering(&r);
-            println!("covering: {:?}", covering);
             check_covering(&rc, &r, &covering, false);
 
             let interior = rc.interior_covering(&r);
@@ -723,7 +722,7 @@ mod tests {
             // s2.RegionCoverer does not guarantee that it will not output all four
             // children of the same parent.
             covering.denormalize(min_level as u64, level_mod as u64);
-            check_covering(&rc, &r, &covering, false)
+            check_covering(&rc, &r, &covering, false);
         }
     }
 }

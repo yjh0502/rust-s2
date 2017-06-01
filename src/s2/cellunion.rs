@@ -879,6 +879,7 @@ func BenchmarkCellUnionFromRange(b *testing.B) {
 	}
 }
 */
+
 // BUG: Differences from C++:
 //  Contains(CellUnion)/Intersects(CellUnion)
 //  Union(CellUnion)/Intersection(CellUnion)/Difference(CellUnion)
