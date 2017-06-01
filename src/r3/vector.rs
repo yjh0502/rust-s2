@@ -22,11 +22,16 @@ use consts::EPSILON;
 use s1::angle::Angle;
 
 /// Vector represents a point in ℝ³.
-#[derive(Clone,PartialEq,PartialOrd,Debug)]
+#[derive(Clone,PartialEq,PartialOrd)]
 pub struct Vector {
     pub x: f64,
     pub y: f64,
     pub z: f64,
+}
+impl std::fmt::Debug for Vector {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "({:0.24}, {:0.24}, {:0.24})", self.x, self.y, self.z)
+    }
 }
 
 impl std::ops::Add<Vector> for Vector {
@@ -101,7 +106,8 @@ impl Vector {
 
     /// approx_eq reports whether v and ov are equal within a small epsilon.
     pub fn approx_eq(&self, other: &Vector) -> bool {
-        (self.x - other.x).abs() < EPSILON && (self.y - other.y).abs() < EPSILON && (self.z - other.z).abs() < EPSILON
+        (self.x - other.x).abs() < EPSILON && (self.y - other.y).abs() < EPSILON &&
+        (self.z - other.z).abs() < EPSILON
     }
 
     /// norm returns the vector's norm.
