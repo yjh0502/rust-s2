@@ -16,9 +16,10 @@ limitations under the License.
 */
 
 use std;
+use std::f64::consts::PI;
 
 use consts::*;
-use s1::angle::Angle;
+use s1::angle::*;
 
 /// ChordAngle represents the angle subtended by a chord (i.e., the straight
 /// line segment connecting two points on the sphere). Its representation
@@ -36,7 +37,7 @@ use s1::angle::Angle;
 ///
 /// ChordAngles are represented by the squared chord length, which can
 /// range from 0 to 4. Positive infinity represents an infinite squared length.
-#[derive(Clone,Copy,PartialEq,PartialOrd,Debug)]
+#[derive(Clone,Copy,PartialEq,PartialOrd,Debug, Default)]
 pub struct ChordAngle(pub f64);
 
 /// NEGATIVE represents a chord angle smaller than the zero angle.
@@ -59,7 +60,7 @@ impl<'a> From<&'a Angle> for ChordAngle {
         } else if a.is_infinite() {
             ChordAngle::inf()
         } else {
-            let l = 2. * (0.5 * a.rad().min(std::f64::consts::PI)).sin();
+            let l = 2. * (0.5 * a.rad().min(PI)).sin();
             ChordAngle(l * l)
         }
     }
@@ -71,6 +72,17 @@ impl From<Angle> for ChordAngle {
     }
 }
 
+impl<'a> From<&'a Deg> for ChordAngle {
+    fn from(a: &'a Deg) -> Self {
+        Angle::from(a).into()
+    }
+}
+impl From<Deg> for ChordAngle {
+    fn from(a: Deg) -> Self {
+        Angle::from(&a).into()
+    }
+}
+
 impl<'a> From<&'a ChordAngle> for Angle {
     /// converts this ChordAngle to an Angle.
     fn from(ca: &'a ChordAngle) -> Self {
@@ -79,7 +91,7 @@ impl<'a> From<&'a ChordAngle> for Angle {
         } else if ca.is_infinite() {
             Angle::inf()
         } else {
-            Angle(2f64 * (0.5 * ca.0.sqrt()).asin())
+            Angle(2. * (0.5 * ca.0.sqrt()).asin())
         }
 
     }
@@ -238,215 +250,149 @@ impl ChordAngle {
     }
 }
 
-/*
-package s1
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-import (
-	"math"
-	"testing"
-)
+    fn test_chordangle_basics_case(ca1: ChordAngle,
+                                   ca2: ChordAngle,
+                                   less_than: bool,
+                                   equal: bool) {
+        assert_eq!(less_than, ca1 < ca2);
+        assert_eq!(equal, ca1 == ca2);
+    }
 
-func TestChordAngleBasics(t *testing.T) {
-	var zeroChord ChordAngle
-	tests := []struct {
-		a, b     ChordAngle
-		lessThan bool
-		equal    bool
-	}{
-		{NegativeChordAngle, NegativeChordAngle, false, true},
-		{NegativeChordAngle, zeroChord, true, false},
-		{NegativeChordAngle, StraightChordAngle, true, false},
-		{NegativeChordAngle, InfChordAngle(), true, false},
+    #[test]
+    fn test_chordangle_basics() {
+        let zero = ChordAngle::default();
 
-		{zeroChord, zeroChord, false, true},
-		{zeroChord, StraightChordAngle, true, false},
-		{zeroChord, InfChordAngle(), true, false},
+        test_chordangle_basics_case(NEGATIVE, NEGATIVE, false, true);
+        test_chordangle_basics_case(NEGATIVE, zero, true, false);
+        test_chordangle_basics_case(NEGATIVE, STRAIGHT, true, false);
+        test_chordangle_basics_case(NEGATIVE, ChordAngle::inf(), true, false);
 
-		{StraightChordAngle, StraightChordAngle, false, true},
-		{StraightChordAngle, InfChordAngle(), true, false},
+        test_chordangle_basics_case(zero, zero, false, true);
+        test_chordangle_basics_case(zero, STRAIGHT, true, false);
+        test_chordangle_basics_case(zero, ChordAngle::inf(), true, false);
 
-		{InfChordAngle(), InfChordAngle(), false, true},
-		{InfChordAngle(), InfChordAngle(), false, true},
-	}
+        test_chordangle_basics_case(STRAIGHT, STRAIGHT, false, true);
+        test_chordangle_basics_case(STRAIGHT, ChordAngle::inf(), true, false);
 
-	for _, test := range tests {
-		if got := test.a < test.b; got != test.lessThan {
-			t.Errorf("%v should be less than %v", test.a, test.b)
-		}
-		if got := test.a == test.b; got != test.equal {
-			t.Errorf("%v should be equal to %v", test.a, test.b)
-		}
-	}
+        test_chordangle_basics_case(ChordAngle::inf(), ChordAngle::inf(), false, true);
+        test_chordangle_basics_case(ChordAngle::inf(), ChordAngle::inf(), false, true);
+    }
+
+    fn test_chordangle_is_functions_case(ca: ChordAngle,
+                                         is_neg: bool,
+                                         is_zero: bool,
+                                         is_inf: bool,
+                                         is_special: bool) {
+        assert_eq!(is_neg, ca.0 < 0.);
+        assert_eq!(is_zero, ca.0 == 0.);
+        assert_eq!(is_inf, ca.is_infinite());
+        assert_eq!(is_special, ca.is_special());
+    }
+
+    #[test]
+    fn test_chordangle_is_functions() {
+        let zero: ChordAngle = Default::default();
+        test_chordangle_is_functions_case(zero, false, true, false, false);
+        test_chordangle_is_functions_case(NEGATIVE, true, false, false, true);
+        test_chordangle_is_functions_case(zero, false, true, false, false);
+        test_chordangle_is_functions_case(STRAIGHT, false, false, false, false);
+        test_chordangle_is_functions_case(ChordAngle::inf(), false, false, true, true);
+    }
+
+    #[test]
+    fn test_chordangle_from_angle() {
+        let angles = vec![Angle(0.), Angle(1.), Angle(-1.), Angle(PI)];
+
+        for angle in angles.into_iter() {
+            let ca = ChordAngle::from(angle);
+            let got = Angle::from(ca);
+            assert_eq!(got, angle);
+        }
+
+        assert_eq!(STRAIGHT, ChordAngle::from(Angle(PI)));
+        assert_eq!(Angle::inf(), Angle::from(ChordAngle::from(Angle::inf())));
+    }
+
+    fn chordangle_eq(a: ChordAngle, b: ChordAngle) {
+        assert!(f64_eq(a.0, b.0));
+    }
+
+    #[test]
+    fn test_chordangle_arithmetic() {
+        let zero = ChordAngle::default();
+        let deg_30 = ChordAngle::from(Deg(30.));
+        let deg_60 = ChordAngle::from(Deg(60.));
+        let deg_90 = ChordAngle::from(Deg(90.));
+        let deg_120 = ChordAngle::from(Deg(120.));
+        let deg_180 = STRAIGHT;
+
+
+        chordangle_eq(zero + zero, zero);
+        chordangle_eq(deg_60 + zero, deg_60);
+        chordangle_eq(zero + deg_60, deg_60);
+        chordangle_eq(deg_30 + deg_60, deg_90);
+        chordangle_eq(deg_60 + deg_30, deg_90);
+        chordangle_eq(deg_180 + zero, deg_180);
+        chordangle_eq(deg_60 + deg_30, deg_90);
+        chordangle_eq(deg_90 + deg_90, deg_180);
+        chordangle_eq(deg_120 + deg_90, deg_180);
+        chordangle_eq(deg_120 + deg_120, deg_180);
+        chordangle_eq(deg_30 + deg_180, deg_180);
+        chordangle_eq(deg_180 + deg_180, deg_180);
+
+        chordangle_eq(zero - zero, zero);
+        chordangle_eq(deg_60 - deg_60, zero);
+        chordangle_eq(deg_180 - deg_180, zero);
+        chordangle_eq(zero - deg_60, zero);
+        chordangle_eq(deg_30 - deg_90, zero);
+        chordangle_eq(deg_90 - deg_30, deg_60);
+        chordangle_eq(deg_90 - deg_60, deg_30);
+        chordangle_eq(deg_180 - zero, deg_180);
+    }
+
+    #[test]
+    fn test_chordangle_trigonometry() {
+
+        let iters = 40usize;
+        for i in 0..(iters + 1) {
+            let radians = PI * (i as f64) / (iters as f64);
+            let chordangle = ChordAngle::from(Angle(radians));
+
+            assert!(f64_eq(radians.sin(), chordangle.sin()));
+            assert!(f64_eq(radians.cos(), chordangle.cos()));
+
+            // Since tan(x) is unbounded near pi/4, we map the result back to an
+            // angle before comparing. The assertion is that the result is equal to
+            // the tangent of a nearby angle.
+            assert!(f64_eq(radians.tan().atan(), chordangle.tan().atan()));
+        }
+
+        let angle_90 = ChordAngle::from_squared_length(2.);
+        let angle_180 = ChordAngle::from_squared_length(4.);
+
+        assert!(f64_eq(1., angle_90.sin()));
+        assert!(f64_eq(0., angle_90.cos()));
+        assert!(angle_90.tan().is_infinite());
+
+        assert!(f64_eq(0., angle_180.sin()));
+        assert!(f64_eq(-1., angle_180.cos()));
+        assert!(f64_eq(0., angle_180.tan()));
+
+    }
+
+    #[test]
+    fn test_chordangle_expanded() {
+        let zero = ChordAngle::default();
+        assert_eq!(NEGATIVE.expanded(5.), NEGATIVE.expanded(5.));
+        assert_eq!(ChordAngle::inf().expanded(-5.), ChordAngle::inf());
+        assert_eq!(zero.expanded(-5.), zero);
+        assert_eq!(ChordAngle::from_squared_length(1.25).expanded(0.25),
+                   ChordAngle::from_squared_length(1.5));
+        assert_eq!(ChordAngle::from_squared_length(0.75).expanded(0.25),
+                   ChordAngle::from_squared_length(1.));
+    }
 }
-
-func TestChordAngleIsFunctions(t *testing.T) {
-	var zeroChord ChordAngle
-	tests := []struct {
-		have       ChordAngle
-		isNegative bool
-		isZero     bool
-		isInf      bool
-		isSpecial  bool
-	}{
-		{zeroChord, false, true, false, false},
-		{NegativeChordAngle, true, false, false, true},
-		{zeroChord, false, true, false, false},
-		{StraightChordAngle, false, false, false, false},
-		{InfChordAngle(), false, false, true, true},
-	}
-
-	for _, test := range tests {
-		if got := test.have < 0; got != test.isNegative {
-			t.Errorf("%v.isNegative() = %t, want %t", test.have, got, test.isNegative)
-		}
-		if got := test.have == 0; got != test.isZero {
-			t.Errorf("%v.isZero() = %t, want %t", test.have, got, test.isZero)
-		}
-		if got := test.have.isInf(); got != test.isInf {
-			t.Errorf("%v.isInf() = %t, want %t", test.have, got, test.isInf)
-		}
-		if got := test.have.isSpecial(); got != test.isSpecial {
-			t.Errorf("%v.isSpecial() = %t, want %t", test.have, got, test.isSpecial)
-		}
-	}
-}
-
-func TestChordAngleFromAngle(t *testing.T) {
-	for _, angle := range []float64{0, 1, -1, math.Pi} {
-		if got := ChordAngleFromAngle(Angle(angle)).Angle().Radians(); got != angle {
-			t.Errorf("ChordAngleFromAngle(Angle(%v)) = %v, want %v", angle, got, angle)
-		}
-	}
-
-	if got := ChordAngleFromAngle(Angle(math.Pi)); got != StraightChordAngle {
-		t.Errorf("a ChordAngle from an Angle of π = %v, want %v", got, StraightChordAngle)
-	}
-
-	if InfAngle() != ChordAngleFromAngle(InfAngle()).Angle() {
-		t.Errorf("converting infinite Angle to ChordAngle should yield infinite Angle")
-	}
-}
-
-func TestChordAngleArithmetic(t *testing.T) {
-	var (
-		zero      ChordAngle
-		degree30  = ChordAngleFromAngle(30 * Degree)
-		degree60  = ChordAngleFromAngle(60 * Degree)
-		degree90  = ChordAngleFromAngle(90 * Degree)
-		degree120 = ChordAngleFromAngle(120 * Degree)
-		degree180 = StraightChordAngle
-	)
-
-	addTests := []struct {
-		a, b ChordAngle
-		want ChordAngle
-	}{
-		{zero, zero, zero},
-		{degree60, zero, degree60},
-		{zero, degree60, degree60},
-		{degree30, degree60, degree90},
-		{degree60, degree30, degree90},
-		{degree180, zero, degree180},
-		{degree60, degree30, degree90},
-		{degree90, degree90, degree180},
-		{degree120, degree90, degree180},
-		{degree120, degree120, degree180},
-		{degree30, degree180, degree180},
-		{degree180, degree180, degree180},
-	}
-
-	subTests := []struct {
-		a, b ChordAngle
-		want ChordAngle
-	}{
-		{zero, zero, zero},
-		{degree60, degree60, zero},
-		{degree180, degree180, zero},
-		{zero, degree60, zero},
-		{degree30, degree90, zero},
-		{degree90, degree30, degree60},
-		{degree90, degree60, degree30},
-		{degree180, zero, degree180},
-	}
-
-	for _, test := range addTests {
-		if got := float64(test.a.Add(test.b)); !float64Eq(got, float64(test.want)) {
-			t.Errorf("%v.Add(%v) = %0.24f, want %0.24f", test.a.Angle().Degrees(), test.b.Angle().Degrees(), got, test.want)
-		}
-	}
-	for _, test := range subTests {
-		if got := float64(test.a.Sub(test.b)); !float64Eq(got, float64(test.want)) {
-			t.Errorf("%v.Sub(%v) = %0.24f, want %0.24f", test.a.Angle().Degrees(), test.b.Angle().Degrees(), got, test.want)
-		}
-	}
-}
-
-func TestChordAngleTrigonometry(t *testing.T) {
-	// Because of the way the math works out, the 9/10th's case has slightly more
-	// difference than all the other computations, so this gets a more generous
-	// epsilon to deal with that.
-	const epsilon = 1e-14
-	const iters = 40
-	for iter := 0; iter <= iters; iter++ {
-		radians := math.Pi * float64(iter) / float64(iters)
-		angle := ChordAngleFromAngle(Angle(radians))
-		if !float64Near(math.Sin(radians), angle.Sin(), epsilon) {
-			t.Errorf("(%d/%d)*π. %v.Sin() = %v, want %v", iter, iters, angle, angle.Sin(), math.Sin(radians))
-		}
-		if !float64Near(math.Cos(radians), angle.Cos(), epsilon) {
-			t.Errorf("(%d/%d)*π. %v.Cos() = %v, want %v", iter, iters, angle, angle.Cos(), math.Cos(radians))
-		}
-		// Since tan(x) is unbounded near pi/4, we map the result back to an
-		// angle before comparing. The assertion is that the result is equal to
-		// the tangent of a nearby angle.
-		if !float64Near(math.Atan(math.Tan(radians)), math.Atan(angle.Tan()), 1e-14) {
-			t.Errorf("(%d/%d)*π. %v.Tan() = %v, want %v", iter, iters, angle, angle.Tan(), math.Tan(radians))
-		}
-	}
-
-	// Unlike Angle, ChordAngle can represent 90 and 180 degrees exactly.
-	angle90 := ChordAngleFromSquaredLength(2)
-	angle180 := ChordAngleFromSquaredLength(4)
-	if !float64Eq(1, angle90.Sin()) {
-		t.Errorf("%v.Sin() = %v, want 1", angle90, angle90.Sin())
-	}
-	if !float64Eq(0, angle90.Cos()) {
-		t.Errorf("%v.Cos() = %v, want 0", angle90, angle90.Cos())
-	}
-	if !math.IsInf(angle90.Tan(), 0) {
-		t.Errorf("%v.Tan() should be infinite, but was not.", angle90)
-	}
-	if !float64Eq(0, angle180.Sin()) {
-		t.Errorf("%v.Sin() = %v, want 0", angle180, angle180.Sin())
-	}
-	if !float64Eq(-1, angle180.Cos()) {
-		t.Errorf("%v.Cos() = %v, want -1", angle180, angle180.Cos())
-	}
-	if !float64Eq(0, angle180.Tan()) {
-		t.Errorf("%v.Tan() = %v, want 0", angle180, angle180.Tan())
-	}
-}
-
-func TestChordAngleExpanded(t *testing.T) {
-	var zero ChordAngle
-
-	tests := []struct {
-		have ChordAngle
-		add  float64
-		want ChordAngle
-	}{
-		{NegativeChordAngle, 5, NegativeChordAngle.Expanded(5)},
-		{InfChordAngle(), -5, InfChordAngle()},
-		{StraightChordAngle, 5, ChordAngleFromSquaredLength(5)},
-		{zero, -5, zero},
-		{ChordAngleFromSquaredLength(1.25), 0.25, ChordAngleFromSquaredLength(1.5)},
-		{ChordAngleFromSquaredLength(0.75), 0.25, ChordAngleFromSquaredLength(1)},
-	}
-
-	for _, test := range tests {
-		if got := test.have.Expanded(test.add); got != test.want {
-			t.Errorf("%v.Expanded(%v) = %v, want %v", test.have, test.add, got, test.want)
-		}
-	}
-}
-*/
