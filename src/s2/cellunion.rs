@@ -95,8 +95,8 @@ impl CellUnion {
                     let mut mask = ci.lsb() << 1;
                     mask = !(mask + (mask << 1));
                     let should = ci.0 & mask;
-                    if (fin[0].0 & mask != should) || (fin[1].0 & mask != should) || (fin[2].0 & mask != should) ||
-                       ci.is_face() {
+                    if (fin[0].0 & mask != should) || (fin[1].0 & mask != should) ||
+                       (fin[2].0 & mask != should) || ci.is_face() {
                         break;
                     }
                 }
@@ -149,10 +149,10 @@ impl CellUnion {
     /// maximum level is reached.
     pub fn denormalize(&mut self, min_level: u64, level_mod: u64) {
         let mut v: Vec<CellID> = Vec::new();
-        for id in self.0.iter() {
+        for &id in self.0.iter() {
             let level = id.level();
             let mut new_level = level;
-            if new_level < level {
+            if new_level < min_level {
                 new_level = min_level;
             }
             if level_mod > 1 {
@@ -162,10 +162,10 @@ impl CellUnion {
                 }
             }
             if new_level == level {
-                v.push(id.clone());
+                v.push(id);
             } else {
                 for id in id.child_iter_at_level(new_level) {
-                    v.push(id.clone());
+                    v.push(id);
                 }
             }
         }
@@ -301,7 +301,10 @@ mod tests {
         assert_eq!(false, face1_union.contains_cell(&face2_cell));
     }
 
-    fn test_cellunion_case(cells: &[CellID], contained: &[CellID], overlaps: &[CellID], disjoint: &[CellID]) {
+    fn test_cellunion_case(cells: &[CellID],
+                           contained: &[CellID],
+                           overlaps: &[CellID],
+                           disjoint: &[CellID]) {
         let mut v = Vec::with_capacity(cells.len());
         v.extend_from_slice(cells);
         let mut union = CellUnion(v);
@@ -334,31 +337,23 @@ mod tests {
 
     #[test]
     fn test_cellunion() {
-        test_cellunion_case(&[
-            // Single cell around NYC, and some simple nearby probes
-            CellID(0x89c25c0000000000),
-        ],
-                            &[
-            CellID(0x89c25c0000000000).child_begin(),
-            CellID(0x89c25c0000000000).child_begin_at_level(28),
-        ],
-                            &[
-            CellID(0x89c25c0000000000).immediate_parent(),
-            // the whole face
-            CellID::from_face(CellID(0x89c25c0000000000).face() as u64),
-        ],
-                            &[
-            // Cell next to this one at same level
-            CellID(0x89c25c0000000000).next(),
-            // Cell next to this one at deep level
-            CellID(0x89c25c0000000000).next().child_begin_at_level(28),
-            // Big(er) neighbor cell
-            CellID(0x89c2700000000000),
-            // Very big next door cell.
-            CellID(0x89e9000000000000),
-            // Very big cell, smaller value than probe
-            CellID(0x89c1000000000000),
-        ]);
+        test_cellunion_case(&[// Single cell around NYC, and some simple nearby probes
+                              CellID(0x89c25c0000000000)],
+                            &[CellID(0x89c25c0000000000).child_begin(),
+                              CellID(0x89c25c0000000000).child_begin_at_level(28)],
+                            &[CellID(0x89c25c0000000000).immediate_parent(),
+                              // the whole face
+                              CellID::from_face(CellID(0x89c25c0000000000).face() as u64)],
+                            &[// Cell next to this one at same level
+                              CellID(0x89c25c0000000000).next(),
+                              // Cell next to this one at deep level
+                              CellID(0x89c25c0000000000).next().child_begin_at_level(28),
+                              // Big(er) neighbor cell
+                              CellID(0x89c2700000000000),
+                              // Very big next door cell.
+                              CellID(0x89e9000000000000),
+                              // Very big cell, smaller value than probe
+                              CellID(0x89c1000000000000)]);
 
         test_cellunion_case(&[
 			// NYC and SFO:
@@ -413,38 +408,31 @@ mod tests {
 				CellID(0x87fffffff9000000),
 				CellID(0x87ffffffff400000), // to a very small cell in Wisconsin
         ],
-                            &[
-            CellID(0x808f400000000000),
-            CellID(0x80eb118b00000000),
-            CellID(0x8136a7a11d000000),
-            CellID(0x8136a7a11dac0000),
-            CellID(0x876c7c0000000000),
-            CellID(0x87f96d0000000000),
-            CellID(0x87ffffffff400000),
-        ],
-                            &[
-            CellID(0x8100000000000000).immediate_parent(),
-            CellID(0x8740000000000000).immediate_parent(),
-        ],
-                            &[
-            CellID(0x52aaaaaaab300000),
-            CellID(0x52aaaaaaacd00000),
-            CellID(0x87fffffffa100000),
-            CellID(0x87ffffffed500000),
-            CellID(0x87ffffffa0100000),
-            CellID(0x87fffffed5540000),
-            CellID(0x87fffffed6240000),
-            CellID(0x52aaaacccb340000),
-            CellID(0x87a0000400000000),
-            CellID(0x87a000001f000000),
-            CellID(0x87a0000029d00000),
-            CellID(0x9500000000000000),
-        ]);
+                            &[CellID(0x808f400000000000),
+                              CellID(0x80eb118b00000000),
+                              CellID(0x8136a7a11d000000),
+                              CellID(0x8136a7a11dac0000),
+                              CellID(0x876c7c0000000000),
+                              CellID(0x87f96d0000000000),
+                              CellID(0x87ffffffff400000)],
+                            &[CellID(0x8100000000000000).immediate_parent(),
+                              CellID(0x8740000000000000).immediate_parent()],
+                            &[CellID(0x52aaaaaaab300000),
+                              CellID(0x52aaaaaaacd00000),
+                              CellID(0x87fffffffa100000),
+                              CellID(0x87ffffffed500000),
+                              CellID(0x87ffffffa0100000),
+                              CellID(0x87fffffed5540000),
+                              CellID(0x87fffffed6240000),
+                              CellID(0x52aaaacccb340000),
+                              CellID(0x87a0000400000000),
+                              CellID(0x87a000001f000000),
+                              CellID(0x87a0000029d00000),
+                              CellID(0x9500000000000000)]);
 
     }
-}
 
-/*
+    /*
 func addCells(id CellID, selected bool, input *[]CellID, expected *[]CellID, t *testing.T) {
 	// Decides whether to add "id" and/or some of its descendants to the test case.  If "selected"
 	// is true, then the region covered by "id" *must* be added to the test case (either by adding
@@ -633,102 +621,73 @@ func TestCellUnionNormalizePseudoRandom(t *testing.T) {
 	}
 	t.Logf("avg in %.2f, avg out %.2f\n", (float64)(inSum)/(float64)(iters), (float64)(outSum)/(float64)(iters))
 }
+*/
 
-func TestCellUnionDenormalize(t *testing.T) {
-	tests := []struct {
-		name string
-		minL int
-		lMod int
-		cu   *CellUnion
-		exp  *CellUnion
-	}{
-		{
-			"not expanded, level mod == 1",
-			10,
-			1,
-			&CellUnion{
-				CellIDFromFace(2).ChildBeginAtLevel(11),
-				CellIDFromFace(2).ChildBeginAtLevel(11),
-				CellIDFromFace(3).ChildBeginAtLevel(14),
-				CellIDFromFace(0).ChildBeginAtLevel(10),
-			},
-			&CellUnion{
-				CellIDFromFace(2).ChildBeginAtLevel(11),
-				CellIDFromFace(2).ChildBeginAtLevel(11),
-				CellIDFromFace(3).ChildBeginAtLevel(14),
-				CellIDFromFace(0).ChildBeginAtLevel(10),
-			},
-		},
-		{
-			"not expanded, level mod > 1",
-			10,
-			2,
-			&CellUnion{
-				CellIDFromFace(2).ChildBeginAtLevel(12),
-				CellIDFromFace(2).ChildBeginAtLevel(12),
-				CellIDFromFace(3).ChildBeginAtLevel(14),
-				CellIDFromFace(0).ChildBeginAtLevel(10),
-			},
-			&CellUnion{
-				CellIDFromFace(2).ChildBeginAtLevel(12),
-				CellIDFromFace(2).ChildBeginAtLevel(12),
-				CellIDFromFace(3).ChildBeginAtLevel(14),
-				CellIDFromFace(0).ChildBeginAtLevel(10),
-			},
-		},
-		{
-			"expended, (level - min_level) is not multiple of level mod",
-			10,
-			3,
-			&CellUnion{
-				CellIDFromFace(2).ChildBeginAtLevel(12),
-				CellIDFromFace(5).ChildBeginAtLevel(11),
-			},
-			&CellUnion{
-				CellIDFromFace(2).ChildBeginAtLevel(12).Children()[0],
-				CellIDFromFace(2).ChildBeginAtLevel(12).Children()[1],
-				CellIDFromFace(2).ChildBeginAtLevel(12).Children()[2],
-				CellIDFromFace(2).ChildBeginAtLevel(12).Children()[3],
-				CellIDFromFace(5).ChildBeginAtLevel(11).Children()[0].Children()[0],
-				CellIDFromFace(5).ChildBeginAtLevel(11).Children()[0].Children()[1],
-				CellIDFromFace(5).ChildBeginAtLevel(11).Children()[0].Children()[2],
-				CellIDFromFace(5).ChildBeginAtLevel(11).Children()[0].Children()[3],
-				CellIDFromFace(5).ChildBeginAtLevel(11).Children()[1].Children()[0],
-				CellIDFromFace(5).ChildBeginAtLevel(11).Children()[1].Children()[1],
-				CellIDFromFace(5).ChildBeginAtLevel(11).Children()[1].Children()[2],
-				CellIDFromFace(5).ChildBeginAtLevel(11).Children()[1].Children()[3],
-				CellIDFromFace(5).ChildBeginAtLevel(11).Children()[2].Children()[0],
-				CellIDFromFace(5).ChildBeginAtLevel(11).Children()[2].Children()[1],
-				CellIDFromFace(5).ChildBeginAtLevel(11).Children()[2].Children()[2],
-				CellIDFromFace(5).ChildBeginAtLevel(11).Children()[2].Children()[3],
-				CellIDFromFace(5).ChildBeginAtLevel(11).Children()[3].Children()[0],
-				CellIDFromFace(5).ChildBeginAtLevel(11).Children()[3].Children()[1],
-				CellIDFromFace(5).ChildBeginAtLevel(11).Children()[3].Children()[2],
-				CellIDFromFace(5).ChildBeginAtLevel(11).Children()[3].Children()[3],
-			},
-		},
-		{
-			"expended, level < min_level",
-			10,
-			3,
-			&CellUnion{
-				CellIDFromFace(2).ChildBeginAtLevel(9),
-			},
-			&CellUnion{
-				CellIDFromFace(2).ChildBeginAtLevel(9).Children()[0],
-				CellIDFromFace(2).ChildBeginAtLevel(9).Children()[1],
-				CellIDFromFace(2).ChildBeginAtLevel(9).Children()[2],
-				CellIDFromFace(2).ChildBeginAtLevel(9).Children()[3],
-			},
-		},
-	}
-	for _, test := range tests {
-		if test.cu.Denormalize(test.minL, test.lMod); !reflect.DeepEqual(test.cu, test.exp) {
-			t.Errorf("test: %s; got %v, want %v", test.name, test.cu, test.exp)
-		}
-	}
+    fn test_denorm_case(name: &str,
+                        min_level: u64,
+                        level_mod: u64,
+                        mut cu: CellUnion,
+                        exp: CellUnion) {
+        cu.denormalize(min_level, level_mod);
+        assert_eq!(exp, cu, "{}", name);
+    }
+
+    fn cfbl(face: u64, level: u64) -> CellID {
+        CellID::from_face(face).child_begin_at_level(level)
+    }
+
+    #[test]
+    fn test_cellunion_denormalize() {
+        test_denorm_case("not expanded, level mod == 1",
+                         10,
+                         1,
+                         CellUnion(vec![cfbl(2, 11), cfbl(2, 11), cfbl(3, 14), cfbl(0, 10)]),
+                         CellUnion(vec![cfbl(2, 11), cfbl(2, 11), cfbl(3, 14), cfbl(0, 10)]));
+
+        test_denorm_case("not expanded, level mod > 1",
+                         10,
+                         2,
+                         CellUnion(vec![cfbl(2, 12), cfbl(2, 12), cfbl(3, 14), cfbl(0, 10)]),
+                         CellUnion(vec![cfbl(2, 12), cfbl(2, 12), cfbl(3, 14), cfbl(0, 10)]));
+
+        test_denorm_case("expended, (level - min_level) is not multiple of level mod",
+                         10,
+                         3,
+                         CellUnion(vec![cfbl(2, 12), cfbl(5, 11)]),
+                         CellUnion(vec![cfbl(2, 12).children()[0],
+                                        cfbl(2, 12).children()[1],
+                                        cfbl(2, 12).children()[2],
+                                        cfbl(2, 12).children()[3],
+                                        cfbl(5, 11).children()[0].children()[0],
+                                        cfbl(5, 11).children()[0].children()[1],
+                                        cfbl(5, 11).children()[0].children()[2],
+                                        cfbl(5, 11).children()[0].children()[3],
+                                        cfbl(5, 11).children()[1].children()[0],
+                                        cfbl(5, 11).children()[1].children()[1],
+                                        cfbl(5, 11).children()[1].children()[2],
+                                        cfbl(5, 11).children()[1].children()[3],
+                                        cfbl(5, 11).children()[2].children()[0],
+                                        cfbl(5, 11).children()[2].children()[1],
+                                        cfbl(5, 11).children()[2].children()[2],
+                                        cfbl(5, 11).children()[2].children()[3],
+                                        cfbl(5, 11).children()[3].children()[0],
+                                        cfbl(5, 11).children()[3].children()[1],
+                                        cfbl(5, 11).children()[3].children()[2],
+                                        cfbl(5, 11).children()[3].children()[3]]));
+
+        test_denorm_case("expended, level < min_level",
+                         10,
+                         3,
+                         CellUnion(vec![cfbl(2, 9)]),
+                         CellUnion(vec![cfbl(2, 9).children()[0],
+                                        cfbl(2, 9).children()[1],
+                                        cfbl(2, 9).children()[2],
+                                        cfbl(2, 9).children()[3]]));
+
+    }
 }
 
+/*
 func TestCellUnionRectBound(t *testing.T) {
 	tests := []struct {
 		cu   *CellUnion
