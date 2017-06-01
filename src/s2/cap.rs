@@ -308,7 +308,7 @@ impl Region for Cap {
         // If the cap does not contain all cell vertices, return false.
         let vertices = cell.vertices();
         for vert in &vertices {
-            if self.contains_point(vert) {
+            if !self.contains_point(vert) {
                 return false;
             }
         }
