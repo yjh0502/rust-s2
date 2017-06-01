@@ -12,6 +12,8 @@ use s2::rect::Rect;
 use s2::cap::Cap;
 use s2::cell::Cell;
 
+/// Point represents a point on the unit sphere as a normalized 3D vector.
+/// Fields should be treated as read-only. Use one of the factory methods for creation.
 #[derive(Clone,PartialEq,Debug)]
 pub struct Point(pub Vector);
 
@@ -109,12 +111,13 @@ impl Point {
             Point(v)
         }
     }
-    // distance returns the angle between two points.
+
+    /// distance returns the angle between two points.
     pub fn distance(&self, b: &Point) -> s1::angle::Angle {
         self.0.angle(&b.0)
     }
 
-    // ApproxEqual reports whether the two points are similar enough to be equal.
+    /// approx_eq reports whether the two points are similar enough to be equal.
     pub fn approx_eq(&self, other: &Self) -> bool {
         self.0.angle(&other.0) <= s1::angle::Angle(EPSILON)
     }
@@ -147,38 +150,38 @@ pub fn ordered_ccw(a: &Point, b: &Point, c: &Point, o: &Point) -> bool {
     return sum >= 2;
 }
 
-// point_area returns the area on the unit sphere for the triangle defined by the
-// given points.
-//
-// This method is based on l'Huilier's theorem,
-//
-//   tan(E/4) = sqrt(tan(s/2) tan((s-a)/2) tan((s-b)/2) tan((s-c)/2))
-//
-// where E is the spherical excess of the triangle (i.e. its area),
-//       a, b, c are the side lengths, and
-//       s is the semiperimeter (a + b + c) / 2.
-//
-// The only significant source of error using l'Huilier's method is the
-// cancellation error of the terms (s-a), (s-b), (s-c). This leads to a
-// *relative* error of about 1e-16 * s / min(s-a, s-b, s-c). This compares
-// to a relative error of about 1e-15 / E using Girard's formula, where E is
-// the true area of the triangle. Girard's formula can be even worse than
-// this for very small triangles, e.g. a triangle with a true area of 1e-30
-// might evaluate to 1e-5.
-//
-// So, we prefer l'Huilier's formula unless dmin < s * (0.1 * E), where
-// dmin = min(s-a, s-b, s-c). This basically includes all triangles
-// except for extremely long and skinny ones.
-//
-// Since we don't know E, we would like a conservative upper bound on
-// the triangle area in terms of s and dmin. It's possible to show that
-// E <= k1 * s * sqrt(s * dmin), where k1 = 2*sqrt(3)/Pi (about 1).
-// Using this, it's easy to show that we should always use l'Huilier's
-// method if dmin >= k2 * s^5, where k2 is about 1e-2. Furthermore,
-// if dmin < k2 * s^5, the triangle area is at most k3 * s^4, where
-// k3 is about 0.1. Since the best case error using Girard's formula
-// is about 1e-15, this means that we shouldn't even consider it unless
-// s >= 3e-4 or so.
+/// point_area returns the area on the unit sphere for the triangle defined by the
+/// given points.
+///
+/// This method is based on l'Huilier's theorem,
+///
+///   tan(E/4) = sqrt(tan(s/2) tan((s-a)/2) tan((s-b)/2) tan((s-c)/2))
+///
+/// where E is the spherical excess of the triangle (i.e. its area),
+///       a, b, c are the side lengths, and
+///       s is the semiperimeter (a + b + c) / 2.
+///
+/// The only significant source of error using l'Huilier's method is the
+/// cancellation error of the terms (s-a), (s-b), (s-c). This leads to a
+/// *relative* error of about 1e-16 * s / min(s-a, s-b, s-c). This compares
+/// to a relative error of about 1e-15 / E using Girard's formula, where E is
+/// the true area of the triangle. Girard's formula can be even worse than
+/// this for very small triangles, e.g. a triangle with a true area of 1e-30
+/// might evaluate to 1e-5.
+///
+/// So, we prefer l'Huilier's formula unless dmin < s * (0.1 * E), where
+/// dmin = min(s-a, s-b, s-c). This basically includes all triangles
+/// except for extremely long and skinny ones.
+///
+/// Since we don't know E, we would like a conservative upper bound on
+/// the triangle area in terms of s and dmin. It's possible to show that
+/// E <= k1 * s * sqrt(s * dmin), where k1 = 2*sqrt(3)/Pi (about 1).
+/// Using this, it's easy to show that we should always use l'Huilier's
+/// method if dmin >= k2 * s^5, where k2 is about 1e-2. Furthermore,
+/// if dmin < k2 * s^5, the triangle area is at most k3 * s^4, where
+/// k3 is about 0.1. Since the best case error using Girard's formula
+/// is about 1e-15, this means that we shouldn't even consider it unless
+/// s >= 3e-4 or so.
 pub fn point_area(a: &Point, b: &Point, c: &Point) -> f64 {
     let sa = b.0.angle(&c.0).0;
     let sb = c.0.angle(&a.0).0;
@@ -262,28 +265,28 @@ func TrueCentroid(a, b, c Point) Point {
 }
 */
 
-// PlanarCentroid returns the centroid of the planar triangle ABC, which is not normalized.
-// It can be normalized to unit length to obtain the "surface centroid" of the corresponding
-// spherical triangle, i.e. the intersection of the three medians. However,
-// note that for large spherical triangles the surface centroid may be
-// nowhere near the intuitive "center" (see example in TrueCentroid comments).
-//
-// Note that the surface centroid may be nowhere near the intuitive
-// "center" of a spherical triangle. For example, consider the triangle
-// with vertices A=(1,eps,0), B=(0,0,1), C=(-1,eps,0) (a quarter-sphere).
-// The surface centroid of this triangle is at S=(0, 2*eps, 1), which is
-// within a distance of 2*eps of the vertex B. Note that the median from A
-// (the segment connecting A to the midpoint of BC) passes through S, since
-// this is the shortest path connecting the two endpoints. On the other
-// hand, the true centroid is at M=(0, 0.5, 0.5), which when projected onto
-// the surface is a much more reasonable interpretation of the "center" of
-// this triangle.
+/// planar_centroid returns the centroid of the planar triangle ABC, which is not normalized.
+/// It can be normalized to unit length to obtain the "surface centroid" of the corresponding
+/// spherical triangle, i.e. the intersection of the three medians. However,
+/// note that for large spherical triangles the surface centroid may be
+/// nowhere near the intuitive "center" (see example in TrueCentroid comments).
+///
+/// Note that the surface centroid may be nowhere near the intuitive
+/// "center" of a spherical triangle. For example, consider the triangle
+/// with vertices A=(1,eps,0), B=(0,0,1), C=(-1,eps,0) (a quarter-sphere).
+/// The surface centroid of this triangle is at S=(0, 2*eps, 1), which is
+/// within a distance of 2*eps of the vertex B. Note that the median from A
+/// (the segment connecting A to the midpoint of BC) passes through S, since
+/// this is the shortest path connecting the two endpoints. On the other
+/// hand, the true centroid is at M=(0, 0.5, 0.5), which when projected onto
+/// the surface is a much more reasonable interpretation of the "center" of
+/// this triangle.
 pub fn planar_centroid(a: &Point, b: &Point, c: &Point) -> Point {
     Point((&(&a.0 + &b.0) + &c.0) * (1. / 3.))
 }
 
 impl Point {
-    /// ChordAngleBetweenPoints constructs a ChordAngle corresponding to the distance
+    /// chordangle constructs a ChordAngle corresponding to the distance
     /// between the two given points. The points must be unit length.
     pub fn chordangle(&self, other: &Point) -> ChordAngle {
         ChordAngle(4f64.min((&self.0 - &other.0).norm2()))
@@ -322,22 +325,22 @@ func regularPointsForFrame(frame matrix3x3, radius s1.Angle, numVertices int) []
 */
 
 impl Region for Point {
-    // cap_bound returns a bounding cap for this point.
+    /// cap_bound returns a bounding cap for this point.
     fn cap_bound(&self) -> Cap {
         Cap::from(self)
     }
 
-    // rect_bound returns a bounding latitude-longitude rectangle from this point.
+    /// rect_bound returns a bounding latitude-longitude rectangle from this point.
     fn rect_bound(&self) -> Rect {
         Rect::from(LatLng::from(self))
     }
 
-    // contains_cell returns false as Points do not contain any other S2 types.
+    /// contains_cell returns false as Points do not contain any other S2 types.
     fn contains_cell(&self, _: &Cell) -> bool {
         false
     }
 
-    // intersects_cell reports whether this Point intersects the given cell.
+    /// intersects_cell reports whether this Point intersects the given cell.
     fn intersects_cell(&self, c: &Cell) -> bool {
         c.contains_point(self)
     }
@@ -349,15 +352,11 @@ impl Point {
     }
 }
 
-/*
-
 // TODO: Differences from C++
 // Rotate
 // Angle
 // TurnAngle
 // SignedArea
-
-*/
 
 #[cfg(test)]
 mod tests {
