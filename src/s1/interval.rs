@@ -25,7 +25,7 @@ use consts::*;
 /// Zero-length intervals (where Lo == Hi) represent single points.
 /// If Lo > Hi then the interval is "inverted".
 /// The point at (-1, 0) on the unit circle has two valid representations,
-/// [π,π] and [-π,-π]. We normalize the latter to the former in IntervalFromEndpoints.
+/// [π,π] and [-π,-π]. We normalize the latter to the former in Interval::from_endpoints.
 /// There are two special intervals that take advantage of that:
 ///   - the full interval, [-π,π], and
 ///   - the empty interval, [π,-π].
@@ -180,14 +180,14 @@ impl Interval {
             p = PI
         }
         if self.is_inverted() {
-            p > self.lo && p < self.hi
+            p > self.lo || p < self.hi
         } else {
             (p > self.lo && p < self.hi) || self.is_full()
         }
     }
 
     /// interior_contains_interval returns true iff the interior of the interval contains oi.
-    pub fn interior_contains_interval(&self, other: Self) -> bool {
+    pub fn interior_contains_interval(&self, other: &Self) -> bool {
         if self.is_inverted() {
             if other.is_inverted() {
                 (other.lo > self.lo && other.hi < self.hi) || other.is_empty()
@@ -216,7 +216,7 @@ impl Interval {
 
     /// interior_intersects returns true iff the interior of the interval contains any points in
     /// common with other, including the latter's boundary.
-    pub fn interior_intersects(&self, other: Self) -> bool {
+    pub fn interior_intersects(&self, other: &Self) -> bool {
         if self.is_empty() || other.is_empty() || self.lo == self.hi {
             false
         } else if self.is_inverted() {
@@ -386,447 +386,479 @@ impl From<r1::Interval> for Interval {
 //   - no validity checking on construction, etc. (not a bug?)
 //   - a few operations
 
-/*
-package s1
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-import (
-	"math"
-	"testing"
-)
+    // Some standard intervals for use throughout the tests.
+    lazy_static! {
+        static ref full: Interval = FULL;
+        static ref empty: Interval = EMPTY;
+	    // Single-point intervals:
+        static ref zero: Interval = Interval::default();
+        static ref pi2: Interval = Interval::from_endpoints(PI/2., PI/2.);
+        static ref pi: Interval = Interval::from_endpoints(PI, PI);
+        static ref mipi  :Interval = Interval::from_endpoints(-PI, -PI); // same as pi after normalization
+        static ref mipi2 :Interval = Interval::from_endpoints(-PI/2., -PI/2.);
+        // Single quadrants:
+        static ref quad1 :Interval = Interval::from_endpoints(0., PI/2.);
+        static ref quad2 :Interval = Interval::from_endpoints(PI/2., -PI); // equivalent to (pi/2., pi)
+        static ref quad3 :Interval = Interval::from_endpoints(PI, -PI/2.);
+        static ref quad4 :Interval = Interval::from_endpoints(-PI/2., 0.);
+        // Quadrant pairs:
+        static ref quad12 :Interval = Interval::from_endpoints(0., -PI);
+        static ref quad23 :Interval = Interval::from_endpoints(PI/2., -PI/2.);
+        static ref quad34 :Interval = Interval::from_endpoints(-PI, 0.);
+        static ref quad41 :Interval = Interval::from_endpoints(-PI/2., PI/2.);
+        // Quadrant triples:
+        static ref quad123 :Interval = Interval::from_endpoints(0., -PI/2.);
+        static ref quad234 :Interval = Interval::from_endpoints(PI/2., 0.);
+        static ref quad341 :Interval = Interval::from_endpoints(PI, PI/2.);
+        static ref quad412 :Interval = Interval::from_endpoints(-PI/2., -PI);
+        // Small intervals around the midpoints between quadrants,
+        // such that the center of each interval is offset slightly CCW from the midpoint.
+        static ref mid12 :Interval = Interval::from_endpoints(PI/2.-0.01, PI/2.+0.02);
+        static ref mid23 :Interval = Interval::from_endpoints(PI-0.01, -PI+0.02);
+        static ref mid34 :Interval = Interval::from_endpoints(-PI/2.-0.01, -PI/2.+0.02);
+        static ref mid41 :Interval = Interval::from_endpoints(-0.01, 0.02);
+    }
 
-// Some standard intervals for use throughout the tests.
-var (
-	empty = EmptyInterval()
-	full  = FullInterval()
-	// Single-point intervals:
-	zero  = IntervalFromEndpoints(0, 0)
-	pi2   = IntervalFromEndpoints(math.Pi/2, math.Pi/2)
-	pi    = IntervalFromEndpoints(math.Pi, math.Pi)
-	mipi  = IntervalFromEndpoints(-math.Pi, -math.Pi) // same as pi after normalization
-	mipi2 = IntervalFromEndpoints(-math.Pi/2, -math.Pi/2)
-	// Single quadrants:
-	quad1 = IntervalFromEndpoints(0, math.Pi/2)
-	quad2 = IntervalFromEndpoints(math.Pi/2, -math.Pi) // equivalent to (pi/2, pi)
-	quad3 = IntervalFromEndpoints(math.Pi, -math.Pi/2)
-	quad4 = IntervalFromEndpoints(-math.Pi/2, 0)
-	// Quadrant pairs:
-	quad12 = IntervalFromEndpoints(0, -math.Pi)
-	quad23 = IntervalFromEndpoints(math.Pi/2, -math.Pi/2)
-	quad34 = IntervalFromEndpoints(-math.Pi, 0)
-	quad41 = IntervalFromEndpoints(-math.Pi/2, math.Pi/2)
-	// Quadrant triples:
-	quad123 = IntervalFromEndpoints(0, -math.Pi/2)
-	quad234 = IntervalFromEndpoints(math.Pi/2, 0)
-	quad341 = IntervalFromEndpoints(math.Pi, math.Pi/2)
-	quad412 = IntervalFromEndpoints(-math.Pi/2, -math.Pi)
-	// Small intervals around the midpoints between quadrants,
-	// such that the center of each interval is offset slightly CCW from the midpoint.
-	mid12 = IntervalFromEndpoints(math.Pi/2-0.01, math.Pi/2+0.02)
-	mid23 = IntervalFromEndpoints(math.Pi-0.01, -math.Pi+0.02)
-	mid34 = IntervalFromEndpoints(-math.Pi/2-0.01, -math.Pi/2+0.02)
-	mid41 = IntervalFromEndpoints(-0.01, 0.02)
-)
+    #[test]
+    fn test_interval_constructors() {
+        // Check that [-π,-π] is normalized to [π,π].
+        assert_eq!(mipi.lo, PI);
+        assert_eq!(mipi.hi, PI);
 
-func TestConstructors(t *testing.T) {
-	// Check that [-π,-π] is normalized to [π,π].
-	if mipi.Lo != math.Pi {
-		t.Errorf("mipi.Lo = %v, want π", mipi.Lo)
-	}
-	if mipi.Hi != math.Pi {
-		t.Errorf("mipi.Hi = %v, want π", mipi.Lo)
-	}
+        let i = Interval::default();
+        assert!(i.is_valid(), "default interval is not valid");
+    }
 
-	var i Interval
-	if !i.IsValid() {
-		t.Errorf("Zero value Interval is not valid")
-	}
+    #[test]
+    fn test_interval_from_point_pair() {
+        assert_eq!(*pi, Interval::from_point_pair(-PI, PI));
+        assert_eq!(*pi, Interval::from_point_pair(PI, -PI));
+        assert_eq!(*mid34, Interval::from_point_pair(mid34.hi, mid34.lo));
+        assert_eq!(*mid23, Interval::from_point_pair(mid23.lo, mid23.hi));
+    }
+
+    #[test]
+    fn test_interval_simple_predicates() {
+        assert!(zero.is_valid() && !zero.is_empty() && !zero.is_full());
+        assert!(empty.is_valid() && empty.is_empty() && !empty.is_full());
+        assert!(empty.is_inverted());
+
+        assert!(full.is_valid() && !full.is_empty() && full.is_full());
+        assert!(pi.is_valid() && !pi.is_empty() && !pi.is_inverted());
+        assert!(mipi.is_valid() && !mipi.is_empty() && !mipi.is_inverted());
+    }
+
+    #[test]
+    fn test_interval_almost_full_or_empty() {
+        // Test that rounding errors don't cause intervals that are almost empty or
+        // full to be considered empty or full.  The following value is the greatest
+        // representable value less than Pi.
+        let almost_pi = PI - 2. * DBL_EPSILON;
+
+        assert!(!Interval::from_endpoints(-almost_pi, almost_pi).is_full());
+        assert!(!Interval::from_endpoints(-PI, almost_pi).is_full());
+        assert!(!Interval::from_endpoints(PI, -almost_pi).is_full());
+        assert!(!Interval::from_endpoints(almost_pi, -PI).is_full());
+    }
+
+    fn test_center_case(expected: f64, i: Interval) {
+        assert!(f64_eq(expected, i.center()));
+    }
+
+    #[test]
+    fn test_interval_center() {
+        test_center_case(PI / 2., *quad12);
+        test_center_case(3. - PI, Interval::from_endpoints(3.1, 2.9));
+        test_center_case(PI - 3., Interval::from_endpoints(-2.9, -3.1));
+        test_center_case(PI, Interval::from_endpoints(2.1, -2.1));
+
+        test_center_case(PI, *pi);
+        test_center_case(PI, *mipi);
+        test_center_case(PI, *quad23);
+        test_center_case(0.75 * PI, *quad123);
+    }
+
+    #[test]
+    fn test_interval_len() {
+        assert!(empty.len() < 0.);
+
+        assert!(f64_eq(PI, quad12.len()));
+        assert!(f64_eq(0., pi.len()));
+        assert!(f64_eq(0., mipi.len()));
+        assert!(f64_eq(1.5 * PI, quad123.len()));
+        assert!(f64_eq(PI, quad23.len()));
+        assert!(f64_eq(2. * PI, full.len()));
+    }
+
+    fn test_contains_case(i: Interval,
+                          p_in: &[f64],
+                          p_out: &[f64],
+                          p_i_in: &[f64],
+                          p_i_out: &[f64]) {
+        for &p in p_in {
+            assert!(i.contains(p));
+        }
+        for &p in p_out {
+            assert!(!i.contains(p));
+        }
+
+        for &p in p_i_in {
+            assert!(i.interior_contains(p));
+        }
+        for &p in p_i_out {
+            assert!(!i.interior_contains(p));
+        }
+    }
+
+    #[test]
+    fn test_interval_contains() {
+        test_contains_case(*empty, &[], &[0., PI, -PI], &[], &[PI, -PI]);
+        test_contains_case(*full, &[0., PI, -PI], &[], &[PI, -PI], &[]);
+        test_contains_case(*quad12, &[0., PI, -PI], &[], &[PI / 2.], &[0., PI, -PI]);
+        test_contains_case(*quad23,
+                           &[PI / 2., -PI / 2., PI, -PI],
+                           &[0.],
+                           &[PI, -PI],
+                           &[PI / 2., -PI / 2., 0.]);
+        test_contains_case(*pi, &[PI, -PI], &[0.], &[], &[PI, -PI]);
+        test_contains_case(*mipi, &[PI, -PI], &[0.], &[], &[PI, -PI]);
+        test_contains_case(*zero, &[0.], &[], &[], &[0.]);
+    }
+
+    fn iops_case(x: &Interval,
+                 y: &Interval,
+                 x_contains_y: bool,
+                 x_interior_contains_y: bool,
+                 x_intersects_y: bool,
+                 x_interior_intersects_y: bool,
+                 want_union: &Interval,
+                 want_intersection: &Interval) {
+        assert_eq!(x_contains_y, x.contains_interval(&y));
+        assert_eq!(x_interior_contains_y, x.interior_contains_interval(&y));
+
+        assert_eq!(x_intersects_y, x.intersects(&y));
+        assert_eq!(x_interior_intersects_y, x.interior_intersects(&y));
+
+        assert_eq!(*want_intersection, x.intersection(&y));
+        assert_eq!(*want_union, x.union(&y));
+    }
+
+    #[test]
+    fn test_interval_operations() {
+        let quad12eps = Interval::from_endpoints(quad12.lo, mid23.hi);
+        let quad2hi = Interval::from_endpoints(mid23.lo, quad12.hi);
+        let quad412eps = Interval::from_endpoints(mid34.lo, quad12.hi);
+        let quadeps12 = Interval::from_endpoints(mid41.lo, quad12.hi);
+        let quad1lo = Interval::from_endpoints(quad12.lo, mid41.hi);
+        let quad2lo = Interval::from_endpoints(quad23.lo, mid12.hi);
+        let quad3hi = Interval::from_endpoints(mid34.lo, quad23.hi);
+        let quadeps23 = Interval::from_endpoints(mid12.lo, quad23.hi);
+        let quad23eps = Interval::from_endpoints(quad23.lo, mid34.hi);
+        let quadeps123 = Interval::from_endpoints(mid41.lo, quad23.hi);
+
+        iops_case(&empty, &empty, true, true, false, false, &empty, &empty);
+        iops_case(&empty, &full, false, false, false, false, &full, &empty);
+        iops_case(&empty, &zero, false, false, false, false, &zero, &empty);
+        iops_case(&empty, &pi, false, false, false, false, &pi, &empty);
+        iops_case(&empty, &mipi, false, false, false, false, &mipi, &empty);
+
+        // 5
+        iops_case(&full, &empty, true, true, false, false, &full, &empty);
+        iops_case(&full, &full, true, true, true, true, &full, &full);
+        iops_case(&full, &zero, true, true, true, true, &full, &zero);
+        iops_case(&full, &pi, true, true, true, true, &full, &pi);
+        iops_case(&full, &mipi, true, true, true, true, &full, &mipi);
+        iops_case(&full, &quad12, true, true, true, true, &full, &quad12);
+        iops_case(&full, &quad23, true, true, true, true, &full, &quad23);
+
+        // 12
+        iops_case(&zero, &empty, true, true, false, false, &zero, &empty);
+        iops_case(&zero, &full, false, false, true, false, &full, &zero);
+        iops_case(&zero, &zero, true, false, true, false, &zero, &zero);
+        iops_case(&zero,
+                  &pi,
+                  false,
+                  false,
+                  false,
+                  false,
+                  &Interval::from_endpoints(0., PI),
+                  &empty);
+        iops_case(&zero, &pi2, false, false, false, false, &quad1, &empty);
+        iops_case(&zero, &mipi, false, false, false, false, &quad12, &empty);
+        iops_case(&zero, &mipi2, false, false, false, false, &quad4, &empty);
+        iops_case(&zero, &quad12, false, false, true, false, &quad12, &zero);
+        iops_case(&zero, &quad23, false, false, false, false, &quad123, &empty);
+
+        // 21
+        iops_case(&pi2, &empty, true, true, false, false, &pi2, &empty);
+        iops_case(&pi2, &full, false, false, true, false, &full, &pi2);
+        iops_case(&pi2, &zero, false, false, false, false, &quad1, &empty);
+        iops_case(&pi2,
+                  &pi,
+                  false,
+                  false,
+                  false,
+                  false,
+                  &Interval::from_endpoints(PI / 2., PI),
+                  &empty);
+        iops_case(&pi2, &pi2, true, false, true, false, &pi2, &pi2);
+        iops_case(&pi2, &mipi, false, false, false, false, &quad2, &empty);
+        iops_case(&pi2, &mipi2, false, false, false, false, &quad23, &empty);
+        iops_case(&pi2, &quad12, false, false, true, false, &quad12, &pi2);
+        iops_case(&pi2, &quad23, false, false, true, false, &quad23, &pi2);
+
+        // 30
+        iops_case(&pi, &empty, true, true, false, false, &pi, &empty);
+        iops_case(&pi, &full, false, false, true, false, &full, &pi);
+        iops_case(&pi,
+                  &zero,
+                  false,
+                  false,
+                  false,
+                  false,
+                  &Interval::from_endpoints(PI, 0.),
+                  &empty);
+        iops_case(&pi, &pi, true, false, true, false, &pi, &pi);
+        iops_case(&pi,
+                  &pi2,
+                  false,
+                  false,
+                  false,
+                  false,
+                  &Interval::from_endpoints(PI / 2., PI),
+                  &empty);
+        iops_case(&pi, &mipi, true, false, true, false, &pi, &pi);
+        iops_case(&pi, &mipi2, false, false, false, false, &quad3, &empty);
+        iops_case(&pi,
+                  &quad12,
+                  false,
+                  false,
+                  true,
+                  false,
+                  &Interval::from_endpoints(0., PI),
+                  &pi);
+        iops_case(&pi, &quad23, false, false, true, false, &quad23, &pi);
+
+        // 39
+        iops_case(&mipi, &empty, true, true, false, false, &mipi, &empty);
+        iops_case(&mipi, &full, false, false, true, false, &full, &mipi);
+        iops_case(&mipi, &zero, false, false, false, false, &quad34, &empty);
+        iops_case(&mipi, &pi, true, false, true, false, &mipi, &mipi);
+        iops_case(&mipi, &pi2, false, false, false, false, &quad2, &empty);
+        iops_case(&mipi, &mipi, true, false, true, false, &mipi, &mipi);
+        iops_case(&mipi,
+                  &mipi2,
+                  false,
+                  false,
+                  false,
+                  false,
+                  &Interval::from_endpoints(-PI, -PI / 2.),
+                  &empty);
+        iops_case(&mipi, &quad12, false, false, true, false, &quad12, &mipi);
+        iops_case(&mipi, &quad23, false, false, true, false, &quad23, &mipi);
+
+        // 48
+        iops_case(&quad12, &empty, true, true, false, false, &quad12, &empty);
+        iops_case(&quad12, &full, false, false, true, true, &full, &quad12);
+        iops_case(&quad12, &zero, true, false, true, false, &quad12, &zero);
+        iops_case(&quad12, &pi, true, false, true, false, &quad12, &pi);
+        iops_case(&quad12, &mipi, true, false, true, false, &quad12, &mipi);
+        iops_case(&quad12, &quad12, true, false, true, true, &quad12, &quad12);
+        iops_case(&quad12, &quad23, false, false, true, true, &quad123, &quad2);
+        iops_case(&quad12, &quad34, false, false, true, false, &full, &quad12);
+
+        // 56
+        iops_case(&quad23, &empty, true, true, false, false, &quad23, &empty);
+        iops_case(&quad23, &full, false, false, true, true, &full, &quad23);
+        iops_case(&quad23, &zero, false, false, false, false, &quad234, &empty);
+        iops_case(&quad23, &pi, true, true, true, true, &quad23, &pi);
+        iops_case(&quad23, &mipi, true, true, true, true, &quad23, &mipi);
+        iops_case(&quad23, &quad12, false, false, true, true, &quad123, &quad2);
+        iops_case(&quad23, &quad23, true, false, true, true, &quad23, &quad23);
+        iops_case(&quad23,
+                  &quad34,
+                  false,
+                  false,
+                  true,
+                  true,
+                  &quad234,
+                  &Interval::from_endpoints(-PI, -PI / 2.));
+
+        // 64
+        iops_case(&quad1,
+                  &quad23,
+                  false,
+                  false,
+                  true,
+                  false,
+                  &quad123,
+                  &Interval::from_endpoints(PI / 2., PI / 2.));
+        iops_case(&quad2, &quad3, false, false, true, false, &quad23, &mipi);
+        iops_case(&quad3, &quad2, false, false, true, false, &quad23, &pi);
+        iops_case(&quad2, &pi, true, false, true, false, &quad2, &pi);
+        iops_case(&quad2, &mipi, true, false, true, false, &quad2, &mipi);
+        iops_case(&quad3, &pi, true, false, true, false, &quad3, &pi);
+        iops_case(&quad3, &mipi, true, false, true, false, &quad3, &mipi);
+
+        // 71
+        iops_case(&quad12, &mid12, true, true, true, true, &quad12, &mid12);
+        iops_case(&mid12, &quad12, false, false, true, true, &quad12, &mid12);
+
+        // 73
+        iops_case(&quad12,
+                  &mid23,
+                  false,
+                  false,
+                  true,
+                  true,
+                  &quad12eps,
+                  &quad2hi);
+        iops_case(&mid23,
+                  &quad12,
+                  false,
+                  false,
+                  true,
+                  true,
+                  &quad12eps,
+                  &quad2hi);
+
+        // This test checks that the union of two disjoint intervals is the smallest
+        // interval that contains both of them.  Note that the center of "mid34"
+        // slightly CCW of -Pi/2 so that there is no ambiguity about the result.
+        // 75
+        iops_case(&quad12,
+                  &mid34,
+                  false,
+                  false,
+                  false,
+                  false,
+                  &quad412eps,
+                  &empty);
+        iops_case(&mid34,
+                  &quad12,
+                  false,
+                  false,
+                  false,
+                  false,
+                  &quad412eps,
+                  &empty);
+
+        // 77
+        iops_case(&quad12,
+                  &mid41,
+                  false,
+                  false,
+                  true,
+                  true,
+                  &quadeps12,
+                  &quad1lo);
+        iops_case(&mid41,
+                  &quad12,
+                  false,
+                  false,
+                  true,
+                  true,
+                  &quadeps12,
+                  &quad1lo);
+
+        // 79
+        iops_case(&quad23,
+                  &mid12,
+                  false,
+                  false,
+                  true,
+                  true,
+                  &quadeps23,
+                  &quad2lo);
+        iops_case(&mid12,
+                  &quad23,
+                  false,
+                  false,
+                  true,
+                  true,
+                  &quadeps23,
+                  &quad2lo);
+        iops_case(&quad23, &mid23, true, true, true, true, &quad23, &mid23);
+        iops_case(&mid23, &quad23, false, false, true, true, &quad23, &mid23);
+        iops_case(&quad23,
+                  &mid34,
+                  false,
+                  false,
+                  true,
+                  true,
+                  &quad23eps,
+                  &quad3hi);
+        iops_case(&mid34,
+                  &quad23,
+                  false,
+                  false,
+                  true,
+                  true,
+                  &quad23eps,
+                  &quad3hi);
+        iops_case(&quad23,
+                  &mid41,
+                  false,
+                  false,
+                  false,
+                  false,
+                  &quadeps123,
+                  &empty);
+        iops_case(&mid41,
+                  &quad23,
+                  false,
+                  false,
+                  false,
+                  false,
+                  &quadeps123,
+                  &empty);
+    }
+
+    fn test_interval_add_point_case(want: Interval, mut i: Interval, points: &[f64]) {
+        for &p in points {
+            i = i + p;
+        }
+        assert_eq!(want, i);
+    }
+
+    #[test]
+    fn test_interval_add_point() {
+        test_interval_add_point_case(*zero, *empty, &[0.]);
+        test_interval_add_point_case(*pi, *empty, &[PI]);
+        test_interval_add_point_case(*mipi, *empty, &[-PI]);
+        test_interval_add_point_case(*pi, *empty, &[PI, -PI]);
+        test_interval_add_point_case(*mipi, *empty, &[-PI, PI]);
+        test_interval_add_point_case(*mid12, *empty, &[mid12.lo, mid12.hi]);
+        test_interval_add_point_case(*mid23, *empty, &[mid23.lo, mid23.hi]);
+
+        test_interval_add_point_case(*quad123, *quad1, &[-0.9 * PI, -PI / 2.]);
+        test_interval_add_point_case(*full, *full, &[0.]);
+        test_interval_add_point_case(*full, *full, &[PI]);
+        test_interval_add_point_case(*full, *full, &[-PI]);
+    }
+
+    #[test]
+    fn test_interval_expanded() {
+        assert_eq!(*empty, empty.expanded(1.));
+        assert_eq!(*full, full.expanded(1.));
+        assert_eq!(Interval::from_endpoints(-1., 1.), zero.expanded(1.));
+        assert_eq!(Interval::from_endpoints(PI - 0.01, -PI + 0.01),
+                   mipi.expanded(0.01));
+        assert_eq!(*full, pi.expanded(27.));
+        assert_eq!(*quad23, pi.expanded(PI / 2.));
+        assert_eq!(*quad12, pi2.expanded(PI / 2.));
+        assert_eq!(*quad34, mipi2.expanded(PI / 2.));
+
+        assert_eq!(*empty, empty.expanded(-1.));
+        assert_eq!(*full, full.expanded(-1.));
+        assert_eq!(*empty, quad123.expanded(-27.));
+        assert_eq!(*empty, quad234.expanded(-27.));
+        assert_eq!(*quad2, quad123.expanded(-PI / 2.));
+        assert_eq!(*quad4, quad341.expanded(-PI / 2.));
+        assert_eq!(*quad1, quad412.expanded(-PI / 2.));
+    }
 }
-
-func TestIntervalFromPointPair(t *testing.T) {
-	tests := []struct {
-		a, b float64
-		want Interval
-	}{
-		{-math.Pi, math.Pi, pi},
-		{math.Pi, -math.Pi, pi},
-		{mid34.Hi, mid34.Lo, mid34},
-		{mid23.Lo, mid23.Hi, mid23},
-	}
-	for _, test := range tests {
-		got := IntervalFromPointPair(test.a, test.b)
-		if got != test.want {
-			t.Errorf("IntervalFromPointPair(%f, %f) = %v, want %v", test.a, test.b, got, test.want)
-		}
-	}
-}
-
-func TestSimplePredicates(t *testing.T) {
-	if !zero.IsValid() || zero.IsEmpty() || zero.IsFull() {
-		t.Errorf("Zero interval is invalid or empty or full")
-	}
-	if !empty.IsValid() || !empty.IsEmpty() || empty.IsFull() {
-		t.Errorf("Empty interval is invalid or not empty or full")
-	}
-	if !empty.IsInverted() {
-		t.Errorf("Empty interval is not inverted")
-	}
-	if !full.IsValid() || full.IsEmpty() || !full.IsFull() {
-		t.Errorf("Full interval is invalid or empty or not full")
-	}
-	if !pi.IsValid() || pi.IsEmpty() || pi.IsInverted() {
-		t.Errorf("pi is invalid or empty or inverted")
-	}
-	if !mipi.IsValid() || mipi.IsEmpty() || mipi.IsInverted() {
-		t.Errorf("mipi is invalid or empty or inverted")
-	}
-}
-
-func TestAlmostFullOrEmpty(t *testing.T) {
-	// Test that rounding errors don't cause intervals that are almost empty or
-	// full to be considered empty or full.  The following value is the greatest
-	// representable value less than Pi.
-	almostPi := math.Pi - 2*dblEpsilon
-
-	i := Interval{-almostPi, math.Pi}
-	if i.IsFull() {
-		t.Errorf("%v.IsFull should not be true", i)
-	}
-
-	i = Interval{-math.Pi, almostPi}
-	if i.IsFull() {
-		t.Errorf("%v.IsFull should not be true", i)
-	}
-
-	i = Interval{math.Pi, -almostPi}
-	if i.IsEmpty() {
-		t.Errorf("%v.IsEmpty should not be true", i)
-	}
-
-	i = Interval{almostPi, -math.Pi}
-	if i.IsEmpty() {
-		t.Errorf("%v.IsEmpty should not be true", i)
-	}
-}
-
-func TestCenter(t *testing.T) {
-	tests := []struct {
-		interval Interval
-		want     float64
-	}{
-		{quad12, math.Pi / 2},
-		{IntervalFromEndpoints(3.1, 2.9), 3 - math.Pi},
-		{IntervalFromEndpoints(-2.9, -3.1), math.Pi - 3},
-		{IntervalFromEndpoints(2.1, -2.1), math.Pi},
-		{pi, math.Pi},
-		{mipi, math.Pi},
-		// TODO(dsymonds): The C++ test for quad23 uses fabs. Why?
-		{quad23, math.Pi},
-		// TODO(dsymonds): The C++ test for quad123 uses EXPECT_DOUBLE_EQ. Why?
-		{quad123, 0.75 * math.Pi},
-	}
-	for _, test := range tests {
-		got := test.interval.Center()
-		// TODO(dsymonds): Some are inaccurate in the 16th decimal place. Track it down.
-		if math.Abs(got-test.want) > 1e-15 {
-			t.Errorf("%v.Center() = %v, want %v", test.interval, got, test.want)
-		}
-	}
-}
-
-func TestLength(t *testing.T) {
-	tests := []struct {
-		interval Interval
-		want     float64
-	}{
-		{quad12, math.Pi},
-		{pi, 0},
-		{mipi, 0},
-		// TODO(dsymonds): The C++ test for quad123 uses DOUBLE_EQ. Why?
-		{quad123, 1.5 * math.Pi},
-		// TODO(dsymonds): The C++ test for quad23 uses fabs. Why?
-		{quad23, math.Pi},
-		{full, 2 * math.Pi},
-	}
-	for _, test := range tests {
-		if l := test.interval.Length(); l != test.want {
-			t.Errorf("%v.Length() got %v, want %v", test.interval, l, test.want)
-		}
-	}
-	if l := empty.Length(); l >= 0 {
-		t.Errorf("empty interval has non-negative length %v", l)
-	}
-}
-
-func TestContains(t *testing.T) {
-	tests := []struct {
-		interval  Interval
-		in, out   []float64 // points that should be inside/outside the interval
-		iIn, iOut []float64 // points that should be inside/outside the interior
-	}{
-		{empty, nil, []float64{0, math.Pi, -math.Pi}, nil, []float64{math.Pi, -math.Pi}},
-		{full, []float64{0, math.Pi, -math.Pi}, nil, []float64{math.Pi, -math.Pi}, nil},
-		{quad12, []float64{0, math.Pi, -math.Pi}, nil,
-			[]float64{math.Pi / 2}, []float64{0, math.Pi, -math.Pi}},
-		{quad23, []float64{math.Pi / 2, -math.Pi / 2, math.Pi, -math.Pi}, []float64{0},
-			[]float64{math.Pi, -math.Pi}, []float64{math.Pi / 2, -math.Pi / 2, 0}},
-		{pi, []float64{math.Pi, -math.Pi}, []float64{0}, nil, []float64{math.Pi, -math.Pi}},
-		{mipi, []float64{math.Pi, -math.Pi}, []float64{0}, nil, []float64{math.Pi, -math.Pi}},
-		{zero, []float64{0}, nil, nil, []float64{0}},
-	}
-	for _, test := range tests {
-		for _, p := range test.in {
-			if !test.interval.Contains(p) {
-				t.Errorf("%v should contain %v", test.interval, p)
-			}
-		}
-		for _, p := range test.out {
-			if test.interval.Contains(p) {
-				t.Errorf("%v should not contain %v", test.interval, p)
-			}
-		}
-		for _, p := range test.iIn {
-			if !test.interval.InteriorContains(p) {
-				t.Errorf("interior of %v should contain %v", test.interval, p)
-			}
-		}
-		for _, p := range test.iOut {
-			if test.interval.InteriorContains(p) {
-				t.Errorf("interior %v should not contain %v", test.interval, p)
-			}
-		}
-	}
-}
-
-func TestIntervalOperations(t *testing.T) {
-	quad12eps := IntervalFromEndpoints(quad12.Lo, mid23.Hi)
-	quad2hi := IntervalFromEndpoints(mid23.Lo, quad12.Hi)
-	quad412eps := IntervalFromEndpoints(mid34.Lo, quad12.Hi)
-	quadeps12 := IntervalFromEndpoints(mid41.Lo, quad12.Hi)
-	quad1lo := IntervalFromEndpoints(quad12.Lo, mid41.Hi)
-	quad2lo := IntervalFromEndpoints(quad23.Lo, mid12.Hi)
-	quad3hi := IntervalFromEndpoints(mid34.Lo, quad23.Hi)
-	quadeps23 := IntervalFromEndpoints(mid12.Lo, quad23.Hi)
-	quad23eps := IntervalFromEndpoints(quad23.Lo, mid34.Hi)
-	quadeps123 := IntervalFromEndpoints(mid41.Lo, quad23.Hi)
-
-	// This massive list of test cases is ported directly from the C++ test case.
-	tests := []struct {
-		x, y                               Interval
-		xContainsY, xInteriorContainsY     bool
-		xIntersectsY, xInteriorIntersectsY bool
-		wantUnion, wantIntersection        Interval
-	}{
-		// 0
-		{empty, empty, true, true, false, false, empty, empty},
-		{empty, full, false, false, false, false, full, empty},
-		{empty, zero, false, false, false, false, zero, empty},
-		{empty, pi, false, false, false, false, pi, empty},
-		{empty, mipi, false, false, false, false, mipi, empty},
-
-		// 5
-		{full, empty, true, true, false, false, full, empty},
-		{full, full, true, true, true, true, full, full},
-		{full, zero, true, true, true, true, full, zero},
-		{full, pi, true, true, true, true, full, pi},
-		{full, mipi, true, true, true, true, full, mipi},
-		{full, quad12, true, true, true, true, full, quad12},
-		{full, quad23, true, true, true, true, full, quad23},
-
-		// 12
-		{zero, empty, true, true, false, false, zero, empty},
-		{zero, full, false, false, true, false, full, zero},
-		{zero, zero, true, false, true, false, zero, zero},
-		{zero, pi, false, false, false, false, IntervalFromEndpoints(0, math.Pi), empty},
-		{zero, pi2, false, false, false, false, quad1, empty},
-		{zero, mipi, false, false, false, false, quad12, empty},
-		{zero, mipi2, false, false, false, false, quad4, empty},
-		{zero, quad12, false, false, true, false, quad12, zero},
-		{zero, quad23, false, false, false, false, quad123, empty},
-
-		// 21
-		{pi2, empty, true, true, false, false, pi2, empty},
-		{pi2, full, false, false, true, false, full, pi2},
-		{pi2, zero, false, false, false, false, quad1, empty},
-		{pi2, pi, false, false, false, false, IntervalFromEndpoints(math.Pi/2, math.Pi), empty},
-		{pi2, pi2, true, false, true, false, pi2, pi2},
-		{pi2, mipi, false, false, false, false, quad2, empty},
-		{pi2, mipi2, false, false, false, false, quad23, empty},
-		{pi2, quad12, false, false, true, false, quad12, pi2},
-		{pi2, quad23, false, false, true, false, quad23, pi2},
-
-		// 30
-		{pi, empty, true, true, false, false, pi, empty},
-		{pi, full, false, false, true, false, full, pi},
-		{pi, zero, false, false, false, false, IntervalFromEndpoints(math.Pi, 0), empty},
-		{pi, pi, true, false, true, false, pi, pi},
-		{pi, pi2, false, false, false, false, IntervalFromEndpoints(math.Pi/2, math.Pi), empty},
-		{pi, mipi, true, false, true, false, pi, pi},
-		{pi, mipi2, false, false, false, false, quad3, empty},
-		{pi, quad12, false, false, true, false, IntervalFromEndpoints(0, math.Pi), pi},
-		{pi, quad23, false, false, true, false, quad23, pi},
-
-		// 39
-		{mipi, empty, true, true, false, false, mipi, empty},
-		{mipi, full, false, false, true, false, full, mipi},
-		{mipi, zero, false, false, false, false, quad34, empty},
-		{mipi, pi, true, false, true, false, mipi, mipi},
-		{mipi, pi2, false, false, false, false, quad2, empty},
-		{mipi, mipi, true, false, true, false, mipi, mipi},
-		{mipi, mipi2, false, false, false, false, IntervalFromEndpoints(-math.Pi, -math.Pi/2), empty},
-		{mipi, quad12, false, false, true, false, quad12, mipi},
-		{mipi, quad23, false, false, true, false, quad23, mipi},
-
-		// 48
-		{quad12, empty, true, true, false, false, quad12, empty},
-		{quad12, full, false, false, true, true, full, quad12},
-		{quad12, zero, true, false, true, false, quad12, zero},
-		{quad12, pi, true, false, true, false, quad12, pi},
-		{quad12, mipi, true, false, true, false, quad12, mipi},
-		{quad12, quad12, true, false, true, true, quad12, quad12},
-		{quad12, quad23, false, false, true, true, quad123, quad2},
-		{quad12, quad34, false, false, true, false, full, quad12},
-
-		// 56
-		{quad23, empty, true, true, false, false, quad23, empty},
-		{quad23, full, false, false, true, true, full, quad23},
-		{quad23, zero, false, false, false, false, quad234, empty},
-		{quad23, pi, true, true, true, true, quad23, pi},
-		{quad23, mipi, true, true, true, true, quad23, mipi},
-		{quad23, quad12, false, false, true, true, quad123, quad2},
-		{quad23, quad23, true, false, true, true, quad23, quad23},
-		{quad23, quad34, false, false, true, true, quad234, IntervalFromEndpoints(-math.Pi, -math.Pi/2)},
-
-		// 64
-		{quad1, quad23, false, false, true, false, quad123, IntervalFromEndpoints(math.Pi/2, math.Pi/2)},
-		{quad2, quad3, false, false, true, false, quad23, mipi},
-		{quad3, quad2, false, false, true, false, quad23, pi},
-		{quad2, pi, true, false, true, false, quad2, pi},
-		{quad2, mipi, true, false, true, false, quad2, mipi},
-		{quad3, pi, true, false, true, false, quad3, pi},
-		{quad3, mipi, true, false, true, false, quad3, mipi},
-
-		// 71
-		{quad12, mid12, true, true, true, true, quad12, mid12},
-		{mid12, quad12, false, false, true, true, quad12, mid12},
-
-		// 73
-		{quad12, mid23, false, false, true, true, quad12eps, quad2hi},
-		{mid23, quad12, false, false, true, true, quad12eps, quad2hi},
-
-		// This test checks that the union of two disjoint intervals is the smallest
-		// interval that contains both of them.  Note that the center of "mid34"
-		// slightly CCW of -Pi/2 so that there is no ambiguity about the result.
-		// 75
-		{quad12, mid34, false, false, false, false, quad412eps, empty},
-		{mid34, quad12, false, false, false, false, quad412eps, empty},
-
-		// 77
-		{quad12, mid41, false, false, true, true, quadeps12, quad1lo},
-		{mid41, quad12, false, false, true, true, quadeps12, quad1lo},
-
-		// 79
-		{quad23, mid12, false, false, true, true, quadeps23, quad2lo},
-		{mid12, quad23, false, false, true, true, quadeps23, quad2lo},
-		{quad23, mid23, true, true, true, true, quad23, mid23},
-		{mid23, quad23, false, false, true, true, quad23, mid23},
-		{quad23, mid34, false, false, true, true, quad23eps, quad3hi},
-		{mid34, quad23, false, false, true, true, quad23eps, quad3hi},
-		{quad23, mid41, false, false, false, false, quadeps123, empty},
-		{mid41, quad23, false, false, false, false, quadeps123, empty},
-	}
-	should := func(b bool) string {
-		if b {
-			return "should"
-		}
-		return "should not"
-	}
-	for _, test := range tests {
-		if test.x.ContainsInterval(test.y) != test.xContainsY {
-			t.Errorf("%v %s contain %v", test.x, should(test.xContainsY), test.y)
-		}
-		if test.x.InteriorContainsInterval(test.y) != test.xInteriorContainsY {
-			t.Errorf("interior of %v %s contain %v", test.x, should(test.xInteriorContainsY), test.y)
-		}
-		if test.x.Intersects(test.y) != test.xIntersectsY {
-			t.Errorf("%v %s intersect %v", test.x, should(test.xIntersectsY), test.y)
-		}
-		if test.x.InteriorIntersects(test.y) != test.xInteriorIntersectsY {
-			t.Errorf("interior of %v %s intersect %v", test.x, should(test.xInteriorIntersectsY), test.y)
-		}
-		if u := test.x.Union(test.y); u != test.wantUnion {
-			t.Errorf("%v ∪ %v was %v, want %v", test.x, test.y, u, test.wantUnion)
-		}
-		if u := test.x.Intersection(test.y); u != test.wantIntersection {
-			t.Errorf("%v ∩ %v was %v, want %v", test.x, test.y, u, test.wantIntersection)
-		}
-	}
-}
-
-func TestAddPoint(t *testing.T) {
-	tests := []struct {
-		interval Interval
-		points   []float64
-		want     Interval
-	}{
-		{empty, []float64{0}, zero},
-		{empty, []float64{math.Pi}, pi},
-		{empty, []float64{-math.Pi}, mipi},
-		{empty, []float64{math.Pi, -math.Pi}, pi},
-		{empty, []float64{-math.Pi, math.Pi}, mipi},
-		{empty, []float64{mid12.Lo, mid12.Hi}, mid12},
-		{empty, []float64{mid23.Lo, mid23.Hi}, mid23},
-
-		{quad1, []float64{-0.9 * math.Pi, -math.Pi / 2}, quad123},
-		{full, []float64{0}, full},
-		{full, []float64{math.Pi}, full},
-		{full, []float64{-math.Pi}, full},
-	}
-	for _, test := range tests {
-		got := test.interval
-		for _, point := range test.points {
-			got = got.AddPoint(point)
-		}
-		want := test.want
-		if math.Abs(got.Lo-want.Lo) > 1e-15 || math.Abs(got.Hi-want.Hi) > 1e-15 {
-			t.Errorf("%v.AddPoint(%v) = %v, want %v", test.interval, test.points, got, want)
-		}
-	}
-}
-
-func TestExpanded(t *testing.T) {
-	tests := []struct {
-		interval Interval
-		margin   float64
-		want     Interval
-	}{
-		{empty, 1, empty},
-		{full, 1, full},
-		{zero, 1, Interval{-1, 1}},
-		{mipi, 0.01, Interval{math.Pi - 0.01, -math.Pi + 0.01}},
-		{pi, 27, full},
-		{pi, math.Pi / 2, quad23},
-		{pi2, math.Pi / 2, quad12},
-		{mipi2, math.Pi / 2, quad34},
-
-		{empty, -1, empty},
-		{full, -1, full},
-		{quad123, -27, empty},
-		{quad234, -27, empty},
-		{quad123, -math.Pi / 2, quad2},
-		{quad341, -math.Pi / 2, quad4},
-		{quad412, -math.Pi / 2, quad1},
-	}
-	for _, test := range tests {
-        if got, want := test.interval.Expanded(test.margin), test.want; math.Abs(got.Lo-want.Lo) >
-            1e-15 || math.Abs(got.Hi-want.Hi) > 1e-15 {
-			t.Errorf("%v.Expanded(%v) = %v, want %v", test.interval, test.margin, got, want)
-		}
-	}
-}
-
-func TestIntervalString(t *testing.T) {
-	if s, exp := pi.String(), "[3.1415927, 3.1415927]"; s != exp {
-		t.Errorf("pi.String() = %q, want %q", s, exp)
-	}
-}
-*/

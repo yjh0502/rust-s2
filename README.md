@@ -25,14 +25,7 @@ Full parity with Go.
 
 ## [S¹](https://docs.rs/s2/~0/s2/s1/) - Circular Geometry
 
-**Complete**
-
- - Angle, ChordAngle
-
-**Mostly complete**
-
- - Interval: missing tests
-
+Full parity with Go.
 
 ## [S²](https://docs.rs/s2/~0/s2/s2/) - Spherical Geometry
 
