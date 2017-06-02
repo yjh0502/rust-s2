@@ -8,7 +8,7 @@ Rust port of Google S2 geometry library.
 # Status of the Go Library
 
 This library is principally a port of [the Golang S2
-library](github.com/golang/geo), adapting to Rust idioms where it makes sense.
+library](https://github.com/golang/geo), adapting to Rust idioms where it makes sense.
 We detail the progress of this port below relative to that Go library.
 
 ## [ℝ¹](https://docs.rs/s2/~0/s2/r1/) - One-dimensional Cartesian coordinates
