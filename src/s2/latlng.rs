@@ -184,7 +184,9 @@ mod tests {
         test_latlng_point_conversion_case(ll!(-90., 180.), p!(-6.12323e-17, 7.4988e-33, -1));
         test_latlng_point_conversion_case(ll!(-90., -180.), p!(-6.12323e-17, -7.4988e-33, -1));
         test_latlng_point_conversion_case(ll!(-81.82750430354997, 151.19796752929685),
-                                          p!(-0.12456788151479525, 0.0684875268284729, -0.989844584550441));
+                                          p!(-0.12456788151479525,
+                                             0.0684875268284729,
+                                             -0.989844584550441));
     }
 
     fn test_latlng_distance_case(ll1: LatLng, ll2: LatLng, want: f64, tolerance: f64) {

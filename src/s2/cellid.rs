@@ -250,7 +250,8 @@ impl CellID {
 
         let mut k = 7;
         loop {
-            orientation += (((self.0 >> (k * 2 * LOOKUP_BITS + 1)) & ((1 << (2 * nbits)) - 1)) as u64) << 2;
+            orientation += (((self.0 >> (k * 2 * LOOKUP_BITS + 1)) &
+                             ((1 << (2 * nbits)) - 1)) as u64) << 2;
 
             orientation = LOOKUP_IJ[orientation as usize] as u64;
             i += ((orientation as i32) >> (LOOKUP_BITS + 2)) << (k * LOOKUP_BITS);
@@ -278,12 +279,10 @@ impl CellID {
         let size = size_ij(level) as i32;
         let (f, i, j, _) = self.face_ij_orientation();
 
-        [
-            CellID::from_face_ij_wrap(f, i, j - size).parent(level),
-            CellID::from_face_ij_wrap(f, i + size, j).parent(level),
-            CellID::from_face_ij_wrap(f, i, j + size).parent(level),
-            CellID::from_face_ij_wrap(f, i - size, j).parent(level),
-        ]
+        [CellID::from_face_ij_wrap(f, i, j - size).parent(level),
+         CellID::from_face_ij_wrap(f, i + size, j).parent(level),
+         CellID::from_face_ij_wrap(f, i, j + size).parent(level),
+         CellID::from_face_ij_wrap(f, i - size, j).parent(level)]
     }
 
     /// vertex_neighbors returns the neighboring cellIDs with vertex closest to this cell at the given level.
@@ -310,7 +309,8 @@ impl CellID {
         results.push(CellID::from_face_ij_same(f, i + ioffset, j, isame).parent(level));
         results.push(CellID::from_face_ij_same(f, i, j + joffset, jsame).parent(level));
         if isame || jsame {
-            results.push(CellID::from_face_ij_same(f, i + ioffset, j + joffset, isame && jsame).parent(level));
+            results.push(CellID::from_face_ij_same(f, i + ioffset, j + joffset, isame && jsame)
+                             .parent(level));
         }
         results
     }
@@ -341,15 +341,26 @@ impl CellID {
             } else if k >= size {
                 (j + k) < MAX_SIZE_I32
             } else {
-                neighbors.push(CellID::from_face_ij_same(face, i + k, j - nbr_size, j - size >= 0).parent(level));
-                neighbors.push(CellID::from_face_ij_same(face, i + k, j + size, j + size < MAX_SIZE_I32).parent(level));
+                neighbors.push(CellID::from_face_ij_same(face, i + k, j - nbr_size, j - size >= 0)
+                                   .parent(level));
+                neighbors.push(CellID::from_face_ij_same(face,
+                                                         i + k,
+                                                         j + size,
+                                                         j + size < MAX_SIZE_I32)
+                                       .parent(level));
                 true
             };
 
-            neighbors
-                .push(CellID::from_face_ij_same(face, i - nbr_size, j + k, same_face && i - size >= 0).parent(level));
-            neighbors.push(CellID::from_face_ij_same(face, i + size, j + k, same_face && i + size < MAX_SIZE_I32)
-                               .parent(level));
+            neighbors.push(CellID::from_face_ij_same(face,
+                                                     i - nbr_size,
+                                                     j + k,
+                                                     same_face && i - size >= 0)
+                                   .parent(level));
+            neighbors.push(CellID::from_face_ij_same(face,
+                                                     i + size,
+                                                     j + k,
+                                                     same_face && i + size < MAX_SIZE_I32)
+                                   .parent(level));
 
             if k >= size {
                 break;
@@ -1023,12 +1034,10 @@ pub mod tests {
         for level in 1..(MAX_LEVEL + 1) {
             let id = CellID::from_face_ij(1, 0, 0).parent(level);
             let level_size_ij = size_ij(level) as i32;
-            let want = [
-                CellID::from_face_ij(5, max_ij, max_ij).parent(level),
-                CellID::from_face_ij(1, level_size_ij, 0).parent(level),
-                CellID::from_face_ij(1, 0, level_size_ij).parent(level),
-                CellID::from_face_ij(0, max_ij, 0).parent(level),
-            ];
+            let want = [CellID::from_face_ij(5, max_ij, max_ij).parent(level),
+                        CellID::from_face_ij(1, level_size_ij, 0).parent(level),
+                        CellID::from_face_ij(1, 0, level_size_ij).parent(level),
+                        CellID::from_face_ij(0, max_ij, 0).parent(level)];
 
             assert_eq!(want, id.edge_neighbors());
         }
@@ -1188,7 +1197,8 @@ pub mod tests {
         test_ij_level_to_bound_uv_case(-1,
                                        -1,
                                        MAX_LEVEL,
-                                       &[P!(-1.0000000024835267, -1.0000000024835267), P!(-1., -1.)]);
+                                       &[P!(-1.0000000024835267, -1.0000000024835267),
+                                         P!(-1., -1.)]);
 
         //XXX
         // test_ij_level_to_bound_uv_case(0, 0, MAX_LEVEL + 1, &[P!(-1., -1.), P!(-1., -1.)]);
@@ -1198,37 +1208,40 @@ pub mod tests {
         test_ij_level_to_bound_uv_case(0,
                                        0,
                                        MAX_LEVEL / 2,
-                                       &[P!(-1, -1), P!(-0.999918621033430099, -0.999918621033430099)]);
+                                       &[P!(-1, -1),
+                                         P!(-0.999918621033430099, -0.999918621033430099)]);
         test_ij_level_to_bound_uv_case(0,
                                        0,
                                        MAX_LEVEL,
-                                       &[P!(-1, -1), P!(-0.999999997516473060, -0.999999997516473060)]);
+                                       &[P!(-1, -1),
+                                         P!(-0.999999997516473060, -0.999999997516473060)]);
         test_ij_level_to_bound_uv_case(1, 1, 0, &[P!(-1., -1.), P!(1., 1.)]);
         test_ij_level_to_bound_uv_case(1,
                                        1,
                                        MAX_LEVEL / 2,
-                                       &[P!(-1, -1), P!(-0.999918621033430099, -0.999918621033430099)]);
+                                       &[P!(-1, -1),
+                                         P!(-0.999918621033430099, -0.999918621033430099)]);
 
         // Just a hair off the outer bounds at different levels.
         test_ij_level_to_bound_uv_case(1,
                                        1,
                                        MAX_LEVEL,
-                                       &[
-            P!(-0.9999999975164731, -0.9999999975164731),
-            P!(-0.9999999950329462, -0.9999999950329462),
-        ]);
+                                       &[P!(-0.9999999975164731, -0.9999999975164731),
+                                         P!(-0.9999999950329462, -0.9999999950329462)]);
 
         test_ij_level_to_bound_uv_case(MAX_IJ / 2, MAX_IJ / 2, 0, &[P!(-1, -1), P!(1, 1)]);
 
         test_ij_level_to_bound_uv_case(MAX_IJ / 2,
                                        MAX_IJ / 2,
                                        MAX_LEVEL / 2,
-                                       &[P!(-0.000040691345930099, -0.000040691345930099), P!(0., 0.)]);
+                                       &[P!(-0.000040691345930099, -0.000040691345930099),
+                                         P!(0., 0.)]);
 
         test_ij_level_to_bound_uv_case(MAX_IJ / 2,
                                        MAX_IJ / 2,
                                        MAX_LEVEL,
-                                       &[P!(-0.000000001241763433, -0.000000001241763433), P!(0., 0.)]);
+                                       &[P!(-0.000000001241763433, -0.000000001241763433),
+                                         P!(0., 0.)]);
 
         // Maximum i, j at different levels.
         test_ij_level_to_bound_uv_case(MAX_IJ, MAX_IJ, 0, &[P!(-1., -1.), P!(1., 1.)]);
@@ -1237,12 +1250,14 @@ pub mod tests {
         test_ij_level_to_bound_uv_case(MAX_IJ,
                                        MAX_IJ,
                                        MAX_LEVEL / 2,
-                                       &[P!(0.999918621033430099, 0.999918621033430099), P!(1., 1.)]);
+                                       &[P!(0.999918621033430099, 0.999918621033430099),
+                                         P!(1., 1.)]);
 
         test_ij_level_to_bound_uv_case(MAX_IJ,
                                        MAX_IJ,
                                        MAX_LEVEL,
-                                       &[P!(0.999999997516473060, 0.999999997516473060), P!(1., 1.)]);
+                                       &[P!(0.999999997516473060, 0.999999997516473060),
+                                         P!(1., 1.)]);
     }
 
     fn test_common_ancestor_case(expected: Option<u64>, c1: CellID, c2: CellID) {

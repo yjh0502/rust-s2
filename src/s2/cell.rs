@@ -110,12 +110,10 @@ impl Cell {
 
     pub fn vertices(&self) -> [Point; 4] {
         let verts = self.uv.vertices();
-        [
-            Point(face_uv_to_xyz(self.face, verts[0].x, verts[0].y).normalize()),
-            Point(face_uv_to_xyz(self.face, verts[1].x, verts[1].y).normalize()),
-            Point(face_uv_to_xyz(self.face, verts[2].x, verts[2].y).normalize()),
-            Point(face_uv_to_xyz(self.face, verts[3].x, verts[3].y).normalize()),
-        ]
+        [Point(face_uv_to_xyz(self.face, verts[0].x, verts[0].y).normalize()),
+         Point(face_uv_to_xyz(self.face, verts[1].x, verts[1].y).normalize()),
+         Point(face_uv_to_xyz(self.face, verts[2].x, verts[2].y).normalize()),
+         Point(face_uv_to_xyz(self.face, verts[3].x, verts[3].y).normalize())]
     }
 
     /// edge returns the inward-facing normal of the great circle passing through
@@ -784,16 +782,22 @@ mod tests {
         let id = CellID::from_face(0);
 
         test_cell_contains_point_case(&Cell::from(id.child_begin_at_level(2)),
-                                      &Cell::from(id.child_begin_at_level(2).child_begin_at_level(5)).vertices()[1],
+                                      &Cell::from(id.child_begin_at_level(2)
+                                                      .child_begin_at_level(5))
+                                               .vertices()
+                                           [1],
                                       true);
 
         test_cell_contains_point_case(&Cell::from(id.child_begin_at_level(2)),
                                       &Cell::from(id.child_begin_at_level(2)).vertices()[1],
                                       true);
 
-        test_cell_contains_point_case(&Cell::from(id.child_begin_at_level(2).child_begin_at_level(5)),
-                                      &Cell::from(id.child_begin_at_level(2).next().child_begin_at_level(5))
-                                           .vertices()
+        test_cell_contains_point_case(&Cell::from(id.child_begin_at_level(2)
+                                                      .child_begin_at_level(5)),
+                                      &Cell::from(id.child_begin_at_level(2)
+                                                      .next()
+                                                      .child_begin_at_level(5))
+                                               .vertices()
                                            [1],
                                       false);
     }

@@ -205,14 +205,17 @@ impl Region for Rect {
             (1., PI / 2. - self.lat.lo)
         };
 
-        let pole_cap = Cap::from_center_angle(&Point::from_coords(0., 0., pole_z), &Angle(pole_angle));
+        let pole_cap = Cap::from_center_angle(&Point::from_coords(0., 0., pole_z),
+                                              &Angle(pole_angle));
 
         // For bounding rectangles that span 180 degrees or less in longitude, the
         // maximum cap size is achieved at one of the rectangle vertices.  For
         // rectangles that are larger than 180 degrees, we punt and always return a
         // bounding cap centered at one of the two poles.
-        if remainder(self.lng.hi - self.lng.lo, 2. * PI) >= 0. && self.lng.hi - self.lng.lo < 2. * PI {
-            let mid_cap = Cap::from(&(Point::from(self.center()) + Point::from(self.lo()) + Point::from(self.hi())));
+        if remainder(self.lng.hi - self.lng.lo, 2. * PI) >= 0. &&
+           self.lng.hi - self.lng.lo < 2. * PI {
+            let mid_cap = Cap::from(&(Point::from(self.center()) + Point::from(self.lo()) +
+                                      Point::from(self.hi())));
             if mid_cap.height() < pole_cap.height() {
                 return mid_cap;
             }
