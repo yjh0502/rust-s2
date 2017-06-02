@@ -678,7 +678,6 @@ mod tests {
 
     use std::f64::consts::PI;
 
-    //TODO: fix
     #[test]
     fn test_coverer_random_caps() {
         let mut rng = rand::StdRng::new().expect("failed to get rng");

@@ -29,4 +29,10 @@ Full parity with Go.
 
 ## [S²](https://docs.rs/s2/~0/s2/s2/) - Spherical Geometry
 
+** complete **
+
+ - Cell, LatLng, Region, stuv
+
+** partial **
+
 TBD
