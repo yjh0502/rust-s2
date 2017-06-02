@@ -416,7 +416,6 @@ mod tests {
     use super::*;
 
     use std::f64::consts::PI;
-    use consts::*;
     use s2::stuv::st_to_uv;
 
     #[test]

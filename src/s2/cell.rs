@@ -470,7 +470,6 @@ mod tests {
     use rand::Rng;
     use super::*;
 
-    use consts::*;
     use std::collections::{btree_map, BTreeMap};
     use s2::random;
 

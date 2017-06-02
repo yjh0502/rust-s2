@@ -744,9 +744,13 @@ impl<'a> From<&'a CellID> for LatLng {
     }
 }
 
-
 impl From<LatLng> for CellID {
     fn from(ll: LatLng) -> Self {
+        Self::from(&ll)
+    }
+}
+impl<'a> From<&'a LatLng> for CellID {
+    fn from(ll: &'a LatLng) -> Self {
         let p: Point = ll.into();
         Self::from(p)
     }

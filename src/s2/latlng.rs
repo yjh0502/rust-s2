@@ -70,8 +70,8 @@ impl Point {
     }
 }
 
-impl From<LatLng> for Point {
-    fn from(ll: LatLng) -> Self {
+impl<'a> From<&'a LatLng> for Point {
+    fn from(ll: &'a LatLng) -> Self {
         let phi = ll.lat.0;
         let theta = ll.lng.0;
         let cosphi = phi.cos();
@@ -80,6 +80,11 @@ impl From<LatLng> for Point {
                   y: theta.sin() * cosphi,
                   z: phi.sin(),
               })
+    }
+}
+impl From<LatLng> for Point {
+    fn from(ll: LatLng) -> Self {
+        Self::from(&ll)
     }
 }
 
