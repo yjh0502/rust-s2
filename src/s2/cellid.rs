@@ -59,7 +59,7 @@ pub struct CellID(pub u64);
 const FACE_BITS: u64 = 3;
 pub const NUM_FACES: u8 = 6;
 pub const MAX_LEVEL: u64 = 30;
-const POS_BITS: u64 = (2 * MAX_LEVEL) + 1;
+pub const POS_BITS: u64 = (2 * MAX_LEVEL) + 1;
 pub const MAX_SIZE: u64 = 1 << MAX_LEVEL;
 const WRAP_OFFSET: u64 = (NUM_FACES as u64) << POS_BITS;
 
@@ -888,31 +888,10 @@ pub fn find_lsb_set_nonzero64(bits: u64) -> u32 {
 
 #[cfg(test)]
 pub mod tests {
-    extern crate rand;
-
     use super::*;
+    use rand::Rng;
     use s1;
-    use self::rand::Rng;
-
-    pub fn random_cellid<R>(rng: &mut R) -> CellID
-        where R: rand::Rng
-    {
-        let level = rng.gen_range(0, MAX_LEVEL + 1);
-        random_cellid_for_level(rng, level)
-    }
-
-    pub fn random_cellid_for_level<R>(rng: &mut R, level: u64) -> CellID
-        where R: rand::Rng
-    {
-        let face = rng.gen_range(0, NUM_FACES as u64);
-        let pos = rng.next_u64() & ((1 << POS_BITS) - 1);
-        let cellid = CellID::from_face_pos_level(face, pos, level);
-        assert_eq!(face, cellid.face() as u64);
-        assert_eq!(level, cellid.level());
-
-        cellid
-    }
-
+    use s2::random;
 
     #[test]
     fn test_cellid_from_face() {
@@ -1077,10 +1056,10 @@ pub mod tests {
 
     #[test]
     fn test_cellid_all_neighbors() {
-        let mut rng = rand::StdRng::new().expect("failed to get rng");
+        let mut rng = random::rng();
         //XXX TODO FIX to 1000
         for _ in 0..10 {
-            let mut id = random_cellid(&mut rng);
+            let mut id = random::cellid(&mut rng);
             if id.is_leaf() {
                 id = id.immediate_parent();
             }

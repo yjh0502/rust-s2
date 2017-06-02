@@ -230,6 +230,7 @@ mod tests {
     use self::rand::Rng;
     use super::*;
     use r3::vector::Axis;
+    use s2::random;
 
     #[test]
     fn st_uv() {
@@ -390,16 +391,14 @@ mod tests {
         }
     }
 
-    use s2::cellid::tests::*;
-
     #[test]
     fn test_xyz_to_face_siti() {
-        let mut rng = rand::StdRng::new().expect("failed to get rng");
+        let mut rng = random::rng();
         let shift = Point(Vector::xyz(1e-13, 1e-13, 1e-13));
 
         for level in 0..MAX_LEVEL {
             for _ in 0..1000 {
-                let ci = random_cellid_for_level(&mut rng, level);
+                let ci = random::cellid_for_level(&mut rng, level);
 
                 let (f, si, ti, gotlevel) = xyz_to_face_siti(&Point::from(&ci));
                 assert_eq!(gotlevel, level as i8);
@@ -451,11 +450,11 @@ mod tests {
 
     #[test]
     fn test_xyz_face_siti_roundtrip() {
-        let mut rng = rand::StdRng::new().expect("failed to get rng");
+        let mut rng = random::rng();
 
         for level in 0..MAX_LEVEL {
             for _ in 0..1000 {
-                let ci = random_cellid_for_level(&mut rng, level);
+                let ci = random::cellid_for_level(&mut rng, level);
                 let p = Point::from(&ci);
                 let (f, si, ti, _) = xyz_to_face_siti(&p);
                 let op = face_siti_to_xyz(f, si, ti);

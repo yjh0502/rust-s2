@@ -467,12 +467,12 @@ mod tests {
     extern crate rand;
 
     use std;
+    use rand::Rng;
     use super::*;
 
     use consts::*;
     use std::collections::{btree_map, BTreeMap};
-
-    use self::rand::Rng;
+    use s2::random;
 
     // maxCellSize is the upper bounds on the number of bytes we want the Cell object to ever be.
     const MAX_CELL_SIZE: usize = 48;
@@ -823,16 +823,14 @@ mod tests {
     }
     */
 
-    use s2::cellid::tests::*;
-
     #[test]
     fn test_cell_contains_point_consistent_will_s2_cellid_from_point() {
         // Construct many points that are nearly on a Cell edge, and verify that
         // CellFromCellID(cellIDFromPoint(p)).Contains(p) is always true.
-        let mut rng = rand::StdRng::new().expect("failed to get rng");
+        let mut rng = random::rng();
 
         for _ in 0..1000 {
-            let cell = Cell::from(&random_cellid(&mut rng));
+            let cell = Cell::from(&random::cellid(&mut rng));
             let i1 = rng.gen_range(0, 4);
             let i2 = (i1 + 1) & 3;
             let v1 = &cell.vertices()[i1];

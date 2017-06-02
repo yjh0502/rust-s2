@@ -14,3 +14,6 @@ pub mod region;
 pub mod predicates;
 pub mod metric;
 pub mod edgeutil;
+
+//TODO: should be private?
+pub mod random;

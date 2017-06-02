@@ -547,18 +547,15 @@ impl RegionCoverer {
 
 #[cfg(test)]
 mod tests {
-    extern crate rand;
-
-    use self::rand::Rng;
-
     use super::*;
+    use std::f64::consts::PI;
     use s2::cell::*;
-    use s2::point::Point;
-    use s2::cellid::tests::*;
+    use s2::random;
+    use rand::Rng;
 
     #[test]
     fn test_coverer_random_cells() {
-        let mut rng = rand::StdRng::new().expect("failed to get rng");
+        let mut rng = random::rng();
         let rc = RegionCoverer {
             min_level: 0,
             max_level: 30,
@@ -567,7 +564,7 @@ mod tests {
         };
 
         for _ in 0..10000 {
-            let id = random_cellid(&mut rng);
+            let id = random::cellid(&mut rng);
 
             let covering = rc.covering(&Cell::from(&id));
             assert_eq!(covering.0.len(), 1);
@@ -649,38 +646,9 @@ mod tests {
         }
     }
 
-    /// skewed_int returns a number in the range [0,2^max_log-1] with bias towards smaller numbers.
-    fn skewed_int<R>(rng: &mut R, max_log: usize) -> usize
-        where R: rand::Rng
-    {
-        let base = rng.gen_range(0, max_log + 1);
-        rng.gen_range(0, 1 << 31) & ((1 << base) - 1)
-    }
-
-    /// random_cap returns a cap with a random axis such that the log of its area is
-    /// uniformly distributed between the logs of the two given values. The log of
-    /// the cap angle is also approximately uniformly distributed.
-    fn random_cap<R>(rng: &mut R, min_area: f64, max_area: f64) -> Cap
-        where R: rand::Rng
-    {
-        let cap_area = max_area * (min_area / max_area).powf(rng.gen_range(0., 1.));
-        Cap::from_center_area(&random_point(rng), cap_area)
-    }
-
-    /// random_point returns a random unit-length vector.
-    fn random_point<R>(rng: &mut R) -> Point
-        where R: rand::Rng
-    {
-        Point::from_coords(rng.gen_range(-1., 1.),
-                           rng.gen_range(-1., 1.),
-                           rng.gen_range(-1., 1.))
-    }
-
-    use std::f64::consts::PI;
-
     #[test]
     fn test_coverer_random_caps() {
-        let mut rng = rand::StdRng::new().expect("failed to get rng");
+        let mut rng = random::rng();
         for _ in 0..1000 {
             let mut min_level = rng.gen_range(0, (MAX_LEVEL + 1) as u8);
             let mut max_level = rng.gen_range(0, (MAX_LEVEL + 1) as u8);
@@ -692,7 +660,7 @@ mod tests {
             assert!(min_level <= max_level);
 
             let level_mod = rng.gen_range(1, 4);
-            let max_cells = skewed_int(&mut rng, 10);
+            let max_cells = random::skewed_int(&mut rng, 10);
 
             let rc = RegionCoverer {
                 min_level,
@@ -704,7 +672,7 @@ mod tests {
             let max_area =
                 (4. * PI).min((3. * (max_cells as f64) + 1.) * AVG_AREAMETRIC.value(min_level));
 
-            let r = random_cap(&mut rng, 0.1 * AVG_AREAMETRIC.value(max_level), max_area);
+            let r = random::cap(&mut rng, 0.1 * AVG_AREAMETRIC.value(max_level), max_area);
 
             let mut covering = rc.covering(&r);
             check_covering(&rc, &r, &covering, false);

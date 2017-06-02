@@ -1,6 +1,8 @@
 
 use std;
 
+use cgmath;
+
 use consts::*;
 use r3::vector::Vector;
 use s1;
@@ -20,7 +22,13 @@ pub struct Point(pub Vector);
 impl std::ops::Add<Point> for Point {
     type Output = Point;
     fn add(self, other: Point) -> Self::Output {
-        Point(self.0 + other.0)
+        &self + &other
+    }
+}
+impl<'a, 'b> std::ops::Add<&'b Point> for &'a Point {
+    type Output = Point;
+    fn add(self, other: &'b Point) -> Self::Output {
+        Point(&self.0 + &other.0)
     }
 }
 
@@ -40,13 +48,37 @@ impl<'a, 'b> std::ops::Sub<&'b Point> for &'a Point {
 impl std::ops::Mul<Point> for Point {
     type Output = Point;
     fn mul(self, other: Point) -> Self::Output {
-        Point(self.0 * other.0)
+        &self * &other
     }
 }
+impl<'a, 'b> std::ops::Mul<&'b Point> for &'a Point {
+    type Output = Point;
+    fn mul(self, other: &'b Point) -> Self::Output {
+        Point(&self.0 * &other.0)
+    }
+}
+
 impl std::ops::Mul<f64> for Point {
     type Output = Point;
     fn mul(self, m: f64) -> Self::Output {
         Point(self.0 * m)
+    }
+}
+impl<'a> std::ops::Mul<f64> for &'a Point {
+    type Output = Point;
+    fn mul(self, m: f64) -> Self::Output {
+        Point(&self.0 * m)
+    }
+}
+
+impl From<Point> for cgmath::Vector3<f64> {
+    fn from(p: Point) -> Self {
+        cgmath::Vector3::new(p.0.x, p.0.y, p.0.z)
+    }
+}
+impl From<cgmath::Vector3<f64>> for Point {
+    fn from(p: cgmath::Vector3<f64>) -> Self {
+        Point(Vector::xyz(p.x, p.y, p.z))
     }
 }
 
@@ -125,6 +157,22 @@ impl Point {
     /// norm returns the point's norm.
     pub fn norm(&self) -> f64 {
         self.0.norm()
+    }
+
+    pub fn normalize(&self) -> Self {
+        Point(self.0.normalize())
+    }
+
+    pub fn ortho(&self) -> Self {
+        Point(self.0.ortho())
+    }
+
+    fn frame(&self) -> cgmath::Matrix3<f64> {
+        let c2 = self.clone();
+        let c1 = self.ortho();
+        let c0 = c1.cross(self);
+
+        cgmath::Matrix3::from_cols(c0.into(), c1.into(), c2.into())
     }
 }
 
@@ -430,33 +478,37 @@ mod tests {
                                  Vector::xyz(1., 2., 3.),
                                  Vector::xyz(2., 3., -1.));
     }
+
+    use s2::random;
+    use s1::angle::Angle;
+
+    #[test]
+    fn test_chordangle_between_points() {
+        let mut rng = random::rng();
+        for _ in 0..10 {
+            let m = random::frame(&mut rng);
+
+            let x: Point = m.x.into();
+            let y: Point = m.y.into();
+            let z: Point = m.z.into();
+
+            assert_eq!(0., Angle::from(z.chordangle(&z)).rad());
+            assert!(f64_near(PI, Angle::from((&z * -1.).chordangle(&z)).rad(), 1e-7),
+                    "{} != {}",
+                    PI,
+                    Angle::from((&z * -1.).chordangle(&z)).rad());
+            assert!(f64_eq(PI / 2., Angle::from(x.chordangle(&z)).0),
+                    "{} != {}",
+                    PI / 2.,
+                    Angle::from(x.chordangle(&z)).0);
+
+            let w = (&y + &z).normalize();
+            assert!(f64_eq(PI / 4., Angle::from(w.chordangle(&z)).0));
+        }
+    }
 }
 
 /*
-
-func TestChordAngleBetweenPoints(t *testing.T) {
-	for iter := 0; iter < 10; iter++ {
-		m := randomFrame()
-		x := m.col(0)
-		y := m.col(1)
-		z := m.col(2)
-
-		if got := ChordAngleBetweenPoints(z, z).Angle(); got != 0 {
-			t.Errorf("ChordAngleBetweenPoints(%v, %v) = %v, want 0", z, z, got)
-		}
-        if got, want := ChordAngleBetweenPoints(Point{z.Mul(-1)}, z).Angle().Radians(), math.Pi;
-        !float64Near(got, want, 1e-7) {
-			t.Errorf("ChordAngleBetweenPoints(%v, %v) = %v, want %v", z.Mul(-1), z, got, want)
-		}
-		if got, want := ChordAngleBetweenPoints(x, z).Angle().Radians(), math.Pi/2; !float64Eq(got, want) {
-			t.Errorf("ChordAngleBetweenPoints(%v, %v) = %v, want %v", x, z, got, want)
-		}
-		w := Point{y.Add(z.Vector).Normalize()}
-		if got, want := ChordAngleBetweenPoints(w, z).Angle().Radians(), math.Pi/4; !float64Eq(got, want) {
-			t.Errorf("ChordAngleBetweenPoints(%v, %v) = %v, want %v", w, z, got, want)
-		}
-	}
-}
 
 func TestPointApproxEqual(t *testing.T) {
 	tests := []struct {

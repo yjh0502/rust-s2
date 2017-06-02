@@ -73,6 +73,12 @@ impl<'a, 'b> std::ops::Sub<&'b Vector> for &'a Vector {
 impl std::ops::Mul<Vector> for Vector {
     type Output = Vector;
     fn mul(self, other: Vector) -> Self::Output {
+        &self * &other
+    }
+}
+impl<'a, 'b> std::ops::Mul<&'a Vector> for &'b Vector {
+    type Output = Vector;
+    fn mul(self, other: &'a Vector) -> Self::Output {
         Vector {
             x: self.x * other.x,
             y: self.y * other.y,
