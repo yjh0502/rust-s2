@@ -22,7 +22,7 @@ use consts::EPSILON;
 use s1::angle::Angle;
 
 /// Vector represents a point in ℝ³.
-#[derive(Clone,PartialEq,PartialOrd)]
+#[derive(Clone,Copy,PartialEq,PartialOrd)]
 pub struct Vector {
     pub x: f64,
     pub y: f64,
