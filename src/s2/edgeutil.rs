@@ -163,29 +163,29 @@ func DistanceFraction(x, a, b Point) float64 {
 	d1 := x.Angle(b.Vector)
 	return float64(d0 / (d0 + d1))
 }
-
-// Interpolate returns the point X along the line segment AB whose distance from A
-// is the given fraction "t" of the distance AB. Does NOT require that "t" be
-// between 0 and 1. Note that all distances are measured on the surface of
-// the sphere, so this is more complicated than just computing (1-t)*a + t*b
-// and normalizing the result.
-func Interpolate(t float64, a, b Point) Point {
-	if t == 0 {
-		return a
-	}
-	if t == 1 {
-		return b
-	}
-	ab := a.Angle(b.Vector)
-	return InterpolateAtDistance(s1.Angle(t)*ab, a, b)
-}
 */
 
 use s1::angle::Angle;
 use s2::point::Point;
 
-// interpolate_at_distance returns the point X along the line segment AB whose
-// distance from A is the angle ax.
+/// interpolate returns the point X along the line segment AB whose distance from A
+/// is the given fraction "t" of the distance AB. Does NOT require that "t" be
+/// between 0 and 1. Note that all distances are measured on the surface of
+/// the sphere, so this is more complicated than just computing (1-t)*a + t*b
+/// and normalizing the result.
+pub fn interpolate(t: f64, a: &Point, b: &Point) -> Point {
+    if t == 0. {
+        return a.clone();
+    }
+    if t == 1. {
+        return b.clone();
+    }
+    let ab = a.0.angle(&b.0);
+    return interpolate_at_distance(&Angle(t * ab.0), &a, &b);
+}
+
+/// interpolate_at_distance returns the point X along the line segment AB whose
+/// distance from A is the angle ax.
 pub fn interpolate_at_distance(ax: &Angle, a: &Point, b: &Point) -> Point {
     // aRad := ax.Radians()
 

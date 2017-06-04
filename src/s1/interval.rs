@@ -388,6 +388,7 @@ impl From<r1::Interval> for Interval {
 
 #[cfg(test)]
 #[allow(non_upper_case_globals)]
+#[allow(dead_code)]
 mod tests {
     use super::*;
 
