@@ -483,7 +483,7 @@ impl CellID {
     /// position wraps between the first and last faces as necessary.
     pub fn advance_wrap(&self, mut steps: i64) -> Self {
         if steps == 0 {
-            return self.clone();
+            return *self;
         }
 
         let shift = 2 * (MAX_LEVEL - self.level()) + 1;
@@ -544,7 +544,7 @@ impl CellID {
     /// position is never advanced past End() or before Begin().
     pub fn advance(&self, mut steps: i64) -> Self {
         if steps == 0 {
-            return self.clone();
+            return *self;
         }
 
         let step_shift = (2 * (MAX_LEVEL - self.level()) + 1) as u64;
@@ -812,7 +812,7 @@ impl Iterator for CellIDIter {
         if self.cur == self.end {
             None
         } else {
-            let res = Some(self.cur.clone());
+            let res = Some(self.cur);
             self.cur = self.cur.next();
             res
         }
@@ -1004,7 +1004,7 @@ pub mod tests {
             lng: s1::angle::Deg(lng).into(),
         };
         //TODO
-        let l2: LatLng = ci.clone().into();
+        let l2 = LatLng::from(ci);
 
         let distance = ll.distance(&l2);
         assert!(distance < s1::angle::Deg(1.0e-9).into());
