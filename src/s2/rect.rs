@@ -153,6 +153,12 @@ impl Rect {
     pub fn intersects(&self, other: &Rect) -> bool {
         self.lat.intersects(&other.lat) && self.lng.intersects(&other.lng)
     }
+
+    // extra functions
+    pub fn approx_eq(&self, other: &Self) -> bool {
+        f64_eq(self.lat.lo, other.lat.lo) && f64_eq(self.lat.hi, other.lat.hi) &&
+        f64_eq(self.lng.lo, other.lng.lo) && f64_eq(self.lng.hi, other.lng.hi)
+    }
 }
 
 impl<'a, 'b> std::ops::Add<&'a LatLng> for &'b Rect {
