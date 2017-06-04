@@ -62,25 +62,40 @@ impl<'a> From<&'a CellID> for Cell {
 }
 impl From<CellID> for Cell {
     fn from(id: CellID) -> Self {
-        Cell::from(&id)
+        Self::from(&id)
     }
 }
 
-impl From<Point> for Cell {
-    fn from(p: Point) -> Self {
+impl<'a> From<&'a Point> for Cell {
+    fn from(p: &'a Point) -> Self {
         Cell::from(CellID::from(p))
     }
 }
-
-impl From<LatLng> for Cell {
-    fn from(ll: LatLng) -> Self {
-        Cell::from(CellID::from(ll))
+impl From<Point> for Cell {
+    fn from(p: Point) -> Self {
+        Self::from(&p)
     }
 }
 
+impl<'a> From<&'a LatLng> for Cell {
+    fn from(ll: &'a LatLng) -> Self {
+        Self::from(CellID::from(ll))
+    }
+}
+impl From<LatLng> for Cell {
+    fn from(ll: LatLng) -> Self {
+        Self::from(&ll)
+    }
+}
+
+impl<'a> From<&'a Cell> for CellID {
+    fn from(c: &'a Cell) -> Self {
+        c.id
+    }
+}
 impl From<Cell> for CellID {
     fn from(c: Cell) -> Self {
-        c.id
+        Self::from(&c)
     }
 }
 
