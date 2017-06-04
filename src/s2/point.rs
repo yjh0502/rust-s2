@@ -73,11 +73,21 @@ impl<'a> std::ops::Mul<f64> for &'a Point {
 
 impl From<Point> for cgmath::Vector3<f64> {
     fn from(p: Point) -> Self {
+        (&p).into()
+    }
+}
+impl<'a> From<&'a Point> for cgmath::Vector3<f64> {
+    fn from(p: &'a Point) -> Self {
         cgmath::Vector3::new(p.0.x, p.0.y, p.0.z)
     }
 }
 impl From<cgmath::Vector3<f64>> for Point {
     fn from(p: cgmath::Vector3<f64>) -> Self {
+        (&p).into()
+    }
+}
+impl<'a> From<&'a cgmath::Vector3<f64>> for Point {
+    fn from(p: &'a cgmath::Vector3<f64>) -> Self {
         Point(Vector::xyz(p.x, p.y, p.z))
     }
 }
@@ -167,12 +177,20 @@ impl Point {
         Point(self.0.ortho())
     }
 
-    fn frame(&self) -> cgmath::Matrix3<f64> {
+    //struct for Frame and From<>/Into<>?
+    //TODO: private
+    pub fn frame(&self) -> cgmath::Matrix3<f64> {
         let c2 = self.clone();
         let c1 = self.ortho();
         let c0 = c1.cross(self);
 
         cgmath::Matrix3::from_cols(c0.into(), c1.into(), c2.into())
+    }
+
+    //TODO: private
+    pub fn from_frame(m: &cgmath::Matrix3<f64>, p: &Point) -> Self {
+        let v: cgmath::Vector3<f64> = p.into();
+        (m * v).into()
     }
 }
 

@@ -602,24 +602,6 @@ impl CellID {
         ij_level_to_bound_uv(i, j, self.level())
     }
 
-    //TODO private
-    pub fn expand_by_distance_uv(uv: r2::Rect, distance: Angle) -> r2::Rect {
-        let max_u = uv.x.lo.abs().max(uv.x.hi.abs());
-        let max_v = uv.y.lo.abs().max(uv.y.hi.abs());
-
-        let sin_dist = distance.0.sin();
-        r2::Rect {
-            x: r1::Interval {
-                lo: expand_endpoint(uv.x.lo, max_v, -sin_dist),
-                hi: expand_endpoint(uv.x.hi, max_v, sin_dist),
-            },
-            y: r1::Interval {
-                lo: expand_endpoint(uv.y.lo, max_u, -sin_dist),
-                hi: expand_endpoint(uv.y.hi, max_u, sin_dist),
-            },
-        }
-    }
-
     /// max_tile returns the largest cell with the same range_min such that
     /// range_max < limit.range_min. It returns limit if no such cell exists.
     /// This method can be used to generate a small set of CellIDs that covers
@@ -632,29 +614,35 @@ impl CellID {
     /// they gradually get larger (near the middle of the range) and then
     /// gradually get smaller as limit is approached.
     pub fn max_tile(&self, limit: &Self) -> Self {
-        let mut s = self.clone();
-        let start = s.range_min();
+        let mut ci = *self;
+        let start = ci.range_min();
         if start >= limit.range_min() {
-            return limit.clone();
+            return *limit;
         }
-        if s.range_max() > *limit {
+        if ci.range_max() >= *limit {
+            // The cell is too large, shrink it. Note that when generating coverings
+            // of CellID ranges, this loop usually executes only once. Also because
+            // ci.RangeMin() < limit.RangeMin(), we will always exit the loop by the
+            // time we reach a leaf cell.
             loop {
-                s = s.children()[0].clone();
-                if s.range_max() < *limit {
+                ci = ci.children()[0];
+                if ci.range_max() < *limit {
                     break;
                 }
             }
-            return s.clone();
+            return ci;
         }
 
-        while !s.is_face() {
-            let parent = self.immediate_parent();
+        // The cell may be too small. Grow it if necessary. Note that generally
+        // this loop only iterates once.
+        while !ci.is_face() {
+            let parent = ci.immediate_parent();
             if parent.range_min() != start || parent.range_max() >= *limit {
                 break;
             }
-            s = parent;
+            ci = parent;
         }
-        s.clone()
+        ci
     }
 
     //TODO private
@@ -684,6 +672,48 @@ fn expand_endpoint(u: f64, max_v: f64, sin_dist: f64) -> f64 {
     let cos_u_shift = (1. - sin_u_shift * sin_u_shift).sqrt();
     (cos_u_shift * u + sin_u_shift) / (cos_u_shift - sin_u_shift * u)
 }
+
+/// expanded_by_distance_uv returns a rectangle expanded in (u,v)-space so that it
+/// contains all points within the given distance of the boundary, and return the
+/// smallest such rectangle. If the distance is negative, then instead shrink this
+/// rectangle so that it excludes all points within the given absolute distance
+/// of the boundary.
+///
+/// Distances are measured *on the sphere*, not in (u,v)-space. For example,
+/// you can use this method to expand the (u,v)-bound of an CellID so that
+/// it contains all points within 5km of the original cell. You can then
+/// test whether a point lies within the expanded bounds like this:
+///
+///   if u, v, ok := faceXYZtoUV(face, point); ok && bound.ContainsPoint(r2.Point{u,v}) { ... }
+///
+/// Limitations:
+///
+///  - Because the rectangle is drawn on one of the six cube-face planes
+///    (i.e., {x,y,z} = +/-1), it can cover at most one hemisphere. This
+///    limits the maximum amount that a rectangle can be expanded. For
+///    example, CellID bounds can be expanded safely by at most 45 degrees
+///    (about 5000 km on the Earth's surface).
+///
+///  - The implementation is not exact for negative distances. The resulting
+///    rectangle will exclude all points within the given distance of the
+///    boundary but may be slightly smaller than necessary.
+pub fn expanded_by_distance_uv(uv: &r2::Rect, distance: &Angle) -> r2::Rect {
+    let max_u = uv.x.lo.abs().max(uv.x.hi.abs());
+    let max_v = uv.y.lo.abs().max(uv.y.hi.abs());
+
+    let sin_dist = distance.0.sin();
+    r2::Rect {
+        x: r1::Interval {
+            lo: expand_endpoint(uv.x.lo, max_v, -sin_dist),
+            hi: expand_endpoint(uv.x.hi, max_v, sin_dist),
+        },
+        y: r1::Interval {
+            lo: expand_endpoint(uv.y.lo, max_u, -sin_dist),
+            hi: expand_endpoint(uv.y.hi, max_u, sin_dist),
+        },
+    }
+}
+
 
 /// ij_tostmin converts the i- or j-index of a leaf cell to the minimum corresponding
 /// s- or t-value contained by that cell. The argument must be in the range
@@ -896,6 +926,7 @@ pub mod tests {
     use rand::Rng;
     use s1;
     use s2::random;
+    use consts::*;
 
     #[test]
     fn test_cellid_from_face() {
@@ -1486,256 +1517,207 @@ pub mod tests {
             assert_eq!(want, (ti as u64) & mask);
         }
     }
-}
 
+    use s2::metric::*;
 
-/*
-func TestCellIDContinuity(t *testing.T) {
-	const maxWalkLevel = 8
-	const cellSize = 1.0 / (1 << maxWalkLevel)
+    #[test]
+    fn test_cellid_continuity() {
+        const MAX_WALK_LEVEL: u64 = 8;
+        const CELL_SIZE: f64 = 1. / (1 << MAX_WALK_LEVEL) as f64;
 
-	// Make sure that sequentially increasing cell ids form a continuous
-	// path over the surface of the sphere, i.e. there are no
-	// discontinuous jumps from one region to another.
+        // Make sure that sequentially increasing cell ids form a continuous
+        // path over the surface of the sphere, i.e. there are no
+        // discontinuous jumps from one region to another.
 
-	maxDist := MaxWidthMetric.Value(maxWalkLevel)
-	end := CellID::from_face(5).child_end_at_level(maxWalkLevel)
-	id := CellID::from_face(0).child_begin_at_level(maxWalkLevel)
+        let max_dist = MAX_WIDTHMETRIC.value(MAX_WALK_LEVEL as u8);
+        let end = CellID::from_face(5).child_end_at_level(MAX_WALK_LEVEL);
+        let mut id = CellID::from_face(0).child_begin_at_level(MAX_WALK_LEVEL);
 
-	for ; id != end; id = id.next() {
+        while id != end {
+            let p = id.raw_point();
+            let next_id = id.next_wrap();
+            let next_p = next_id.raw_point();
 
-		if got := id.rawPoint().Angle(id.next_wrap().rawPoint()); float64(got) > maxDist {
-			t.Errorf("%v.rawPoint().Angle(%v.next_wrap().rawPoint()) = %v > %v", id, id, got, maxDist)
-		}
-		if id.next_wrap() != id.advance_wrap(1) {
-			t.Errorf("%v.next_wrap() != %v.advance_wrap(1) %v != %v)", id, id, id.next_wrap(), id.advance_wrap(1))
-		}
-		if id != id.next_wrap().advance_wrap(-1) {
-			t.Errorf("%v.next_wrap().advance_wrap(-1) = %v want %v)", id, id.next_wrap().advance_wrap(-1), id)
-		}
+            assert!(p.angle(&next_p).rad() < max_dist);
+            assert_eq!(next_id, id.advance_wrap(1));
+            assert_eq!(id, next_id.advance_wrap(-1));
 
-		// Check that the rawPoint() returns the center of each cell
-		// in (s,t) coordinates.
-		_, u, v := xyzToFaceUV(id.rawPoint())
-		if !float64Eq(math.Remainder(uvToST(u), 0.5*cellSize), 0.0) {
-			t.Errorf("uvToST(%v) = %v, want %v", u, uvToST(u), 0.5*cellSize)
-		}
-		if !float64Eq(math.Remainder(uvToST(v), 0.5*cellSize), 0.0) {
-			t.Errorf("uvToST(%v) = %v, want %v", v, uvToST(v), 0.5*cellSize)
-		}
-	}
-}
+            // Check that the raw_point() returns the center of each cell
+            // in (s,t) coordinates.
+            let (_, u, v) = xyz_to_face_uv(&p);
+            assert!(f64_eq(remainder(uv_to_st(u), 0.5 * CELL_SIZE), 0.));
+            assert!(f64_eq(remainder(uv_to_st(v), 0.5 * CELL_SIZE), 0.));
 
-// sampleBoundary returns a random point on the boundary of the given rectangle.
-func sampleBoundary(rect r2.Rect) (u, v float64) {
-	if oneIn(2) {
-		v = randomUniformFloat64(rect.Y.Lo, rect.Y.Hi)
-		if oneIn(2) {
-			u = rect.X.Lo
-		} else {
-			u = rect.X.Hi
-		}
-	} else {
-		u = randomUniformFloat64(rect.X.Lo, rect.X.Hi)
-		if oneIn(2) {
-			v = rect.Y.Lo
-		} else {
-			v = rect.Y.Hi
-		}
-	}
-	return u, v
-}
+            id = id.next();
+        }
+    }
 
-// projectToBoundary returns the closest point to uv on the boundary of rect.
-func projectToBoundary(u, v float64, rect r2.Rect) r2.Point {
-	du0 := math.Abs(u - rect.X.Lo)
-	du1 := math.Abs(u - rect.X.Hi)
-	dv0 := math.Abs(v - rect.Y.Lo)
-	dv1 := math.Abs(v - rect.Y.Hi)
+    // sample_boundary returns a random point on the boundary of the given rectangle.
+    fn sample_boundary<R>(r: &mut R, rect: &r2::Rect) -> (f64, f64)
+        where R: Rng
+    {
+        if random::one_in(r, 2) {
+            let v = r.gen_range(rect.y.lo, rect.y.hi);
+            let u = if random::one_in(r, 2) {
+                rect.x.lo
+            } else {
+                rect.x.hi
+            };
+            (u, v)
+        } else {
+            let u = r.gen_range(rect.x.lo, rect.x.hi);
+            let v = if random::one_in(r, 2) {
+                rect.y.lo
+            } else {
+                rect.y.hi
+            };
+            (u, v)
+        }
+    }
 
-	dmin := math.Min(math.Min(du0, du1), math.Min(dv0, dv1))
-	if du0 == dmin {
-		return r2.Point{rect.X.Lo, rect.Y.ClampPoint(v)}
-	}
-	if du1 == dmin {
-		return r2.Point{rect.X.Hi, rect.Y.ClampPoint(v)}
-	}
-	if dv0 == dmin {
-		return r2.Point{rect.X.ClampPoint(u), rect.Y.Lo}
-	}
+    fn project_to_boundary(u: f64, v: f64, rect: &r2::Rect) -> r2::Point {
+        let du0 = (u - rect.x.lo).abs();
+        let du1 = (u - rect.x.hi).abs();
+        let dv0 = (v - rect.y.lo).abs();
+        let dv1 = (v - rect.y.hi).abs();
 
-	return r2.Point{rect.X.ClampPoint(u), rect.Y.Hi}
-}
+        let dmin = du0.min(du1).min(du0.min(dv1));
+        if du0 == dmin {
+            r2::Point::new(rect.x.lo, rect.y.clamp_point(v))
+        } else if du1 == dmin {
+            r2::Point::new(rect.x.hi, rect.y.clamp_point(v))
+        } else if dv0 == dmin {
+            r2::Point::new(rect.x.clamp_point(u), rect.y.lo)
+        } else {
+            r2::Point::new(rect.x.clamp_point(u), rect.y.hi)
+        }
+    }
 
-func TestCellIDExpandedByDistanceUV(t *testing.T) {
-	const maxDistDegrees = 10
-	for i := 0; i < 1000; i++ {
-		id := randomCellID()
-		distance := s1.Degree * s1.Angle(randomUniformFloat64(-maxDistDegrees, maxDistDegrees))
+    use s2::cap::Cap;
 
-		bound := id.boundUV()
-		expanded := expandedByDistanceUV(bound, distance)
-		for iter := 0; iter < 10; iter++ {
-			// Choose a point on the boundary of the rectangle.
-			face := randomUniformInt(6)
-			centerU, centerV := sampleBoundary(bound)
-			center := Point{faceUVToXYZ(face, centerU, centerV).Normalize()}
+    #[test]
+    fn test_cellid_expanded_by_distance_uv() {
+        const MAX_DIST_DEGREES: f64 = 10.;
 
-			// Now sample a point from a disc of radius (2 * distance).
-			p := samplePointFromCap(CapFromCenterHeight(center, 2*math.Abs(float64(distance))))
+        let mut rng = random::rng();
 
-			// Find the closest point on the boundary to the sampled point.
-			u, v, ok := faceXYZToUV(face, p)
-			if !ok {
-				continue
-			}
+        for _ in 0..1000 {
+            let id = random::cellid(&mut rng);
+            let distance: s1::angle::Angle =
+                s1::angle::Deg(rng.gen_range(-MAX_DIST_DEGREES, MAX_DIST_DEGREES)).into();
 
-			uv := r2.Point{u, v}
-			closestUV := projectToBoundary(u, v, bound)
-			closest := faceUVToXYZ(face, closestUV.X, closestUV.Y).Normalize()
-			actualDist := p.Distance(Point{closest})
+            let bound = id.bound_uv();
+            let expanded = expanded_by_distance_uv(&bound, &distance);
 
-			if distance >= 0 {
-				// expanded should contain all points in the original bound,
-				// and also all points within distance of the boundary.
-				if bound.ContainsPoint(uv) || actualDist < distance {
-					if !expanded.ContainsPoint(uv) {
-						t.Errorf("expandedByDistanceUV(%v, %v).ContainsPoint(%v) = false, want true", bound, distance, uv)
-					}
-				}
-			} else {
-				// expanded should not contain any points within distance
-				// of the original boundary.
-				if actualDist < -distance {
-					if expanded.ContainsPoint(uv) {
-						t.Errorf("negatively expandedByDistanceUV(%v, %v).ContainsPoint(%v) = true, want false", bound, distance, uv)
-					}
-				}
-			}
-		}
-	}
-}
+            for _ in 0..10 {
+                // Choose a point on the boundary of the rectangle.
+                let face = rng.gen_range(0, NUM_FACES);
+                let (center_u, center_v) = sample_boundary(&mut rng, &bound);
+                let center = Point(face_uv_to_xyz(face, center_u, center_v).normalize());
 
-func TestCellIDMaxTile(t *testing.T) {
-	// This method is also tested more thoroughly in s2cellunion_test.
-	for iter := 0; iter < 1000; iter++ {
-		id := randomCellIDForLevel(10)
+                // Now sample a point from a disc of radius (2 * distance).
+                let p =
+                    random::sample_point_from_cap(&mut rng,
+                                                  Cap::from_center_height(&center,
+                                                                          2. *
+                                                                          distance.rad().abs()));
 
-		// Check that limit is returned for tiles at or beyond limit.
-		if got, want := id, id.MaxTile(id); got != want {
-			t.Errorf("%v.MaxTile(%v) = %v, want %v", id, id, got, want)
-		}
-		if got, want := id, id.Children()[0].MaxTile(id); got != want {
-			t.Errorf("%v.Children()[0].MaxTile(%v) = %v, want %v", id, id, got, want)
-		}
-		if got, want := id, id.Children()[1].MaxTile(id); got != want {
-			t.Errorf("%v.Children()[1].MaxTile(%v) = %v, want %v", id, id, got, want)
-		}
-		if got, want := id, id.next().MaxTile(id); got != want {
-			t.Errorf("%v.next().MaxTile(%v) = %v, want %v", id, id, got, want)
-		}
-		if got, want := id.Children()[0], id.MaxTile(id.Children()[0]); got != want {
-			t.Errorf("%v.MaxTile(%v.Children()[0] = %v, want %v", id, id, got, want)
-		}
+                // Find the closest point on the boundary to the sampled point.
+                if let Some((u, v)) = face_xyz_to_uv(face, &p) {
+                    let uv = r2::Point::new(u, v);
+                    let closest_uv = project_to_boundary(u, v, &bound);
+                    let closest = face_uv_to_xyz(face, closest_uv.x, closest_uv.y).normalize();
+                    let actual_dist = p.distance(&Point(closest));
 
-		// Check that the tile size is increased when possible.
-		if got, want := id, id.Children()[0].MaxTile(id.next()); got != want {
-			t.Errorf("%v.Children()[0].MaxTile(%v.next()) = %v, want %v", id, id, got, want)
-		}
+                    if distance.0 >= 0. {
+                        // expanded should contain all points in the original bound,
+                        // and also all points within distance of the boundary.
+                        if bound.contains_point(&uv) || actual_dist < distance {
+                            assert!(expanded.contains_point(&uv));
+                        }
+                    } else {
+                        // expanded should not contain any points within distance
+                        // of the original boundary.
+                        if actual_dist.0 < -1. * distance.0 {
+                            assert!(!expanded.contains_point(&uv));
+                        }
+                    }
+                }
+            }
+        }
+    }
 
-		if got, want := id, id.Children()[0].MaxTile(id.next().Children()[0]); got != want {
-			t.Errorf("%v.Children()[0].MaxTile(%v.next()) = %v, want %v", id, id, got, want)
-		}
+    #[test]
+    fn test_cellid_max_tile() {
+        let mut rng = random::rng();
+        // This method is also tested more thoroughly in s2cellunion_test.
+        for _ in 0..1000 {
+            let id = random::cellid_for_level(&mut rng, 10);
 
-		if got, want := id, id.Children()[0].MaxTile(id.next().Children()[1].Children()[0]); got != want {
-			t.Errorf("%v.Children()[0].MaxTile(%v.next().Children()[1].Children()[0] = %v, want %v", id, id, got, want)
-		}
+            // Check that limit is returned for tiles at or beyond limit.
+            assert_eq!(id, id.max_tile(&id));
+            assert_eq!(id, id.children()[0].max_tile(&id));
+            assert_eq!(id, id.children()[1].max_tile(&id));
+            assert_eq!(id, id.next().max_tile(&id));
+            assert_eq!(id.children()[0], id.max_tile(&id.children()[0]));
 
-		if got, want := id, id.Children()[0].Children()[0].MaxTile(id.next()); got != want {
-			t.Errorf("%v.Children()[0].Children()[0].MaxTile(%v.next()) = %v, want %v", id, id, got, want)
-		}
+            // Check that the tile size is increased when possible.
+            assert_eq!(id, id.children()[0].max_tile(&id.next()));
+            assert_eq!(id, id.children()[0].max_tile(&id.next().children()[0]));
+            assert_eq!(id,
+                       id.children()[0].max_tile(&id.next().children()[1].children()[0]));
+            assert_eq!(id, id.children()[0].children()[0].max_tile(&id.next()));
+            assert_eq!(id,
+                       id.children()[0].children()[0].children()[0].max_tile(&id.next()));
 
-		if got, want := id, id.Children()[0].Children()[0].Children()[0].MaxTile(id.next()); got != want {
-			t.Errorf("%v.Children()[0].Children()[0].Children()[0].MaxTile(%v.next()) = %v, want %v", id, id, got, want)
-		}
+            // Check that the tile size is decreased when necessary.
+            assert_eq!(id.children()[0], id.max_tile(&id.children()[0].next()));
+            assert_eq!(id.children()[0],
+                       id.max_tile(&id.children()[0].next().children()[0]));
+            assert_eq!(id.children()[0],
+                       id.max_tile(&id.children()[0].next().children()[1]));
+            assert_eq!(id.children()[0].children()[0],
+                       id.max_tile(&id.children()[0].children()[0].next()));
+            assert_eq!(id.children()[0].children()[0].children()[0],
+                       id.max_tile(&id.children()[0].children()[0].children()[0].next()));
 
-		// Check that the tile size is decreased when necessary.
-		if got, want := id.Children()[0], id.MaxTile(id.Children()[0].next()); got != want {
-			t.Errorf("%v.Children()[0], id.MaxTile(%v.Children()[0].next()) = %v, want %v", id, id, got, want)
-		}
+            // Check that the tile size is otherwise unchanged.
+            assert_eq!(id, id.max_tile(&id.next()));
+            assert_eq!(id, id.max_tile(&id.next().children()[0]));
+            assert_eq!(id, id.max_tile(&id.next().children()[1].children()[0]));
+        }
+    }
 
-		if got, want := id.Children()[0], id.MaxTile(id.Children()[0].next().Children()[0]); got != want {
-			t.Errorf("%v.Children()[0], id.MaxTile(%v.Children()[0].next().Children()[0]) = %v, want %v", id, id, got, want)
-		}
+    fn test_cellid_center_face_siti_case(id: CellID, level_offset: u64) {
+        let (_, si, ti) = id.center_face_siti();
+        let want = 1 << level_offset;
+        let mask = ((1 << (level_offset + 1)) as u32 - 1) as i32;
 
-		if got, want := id.Children()[0], id.MaxTile(id.Children()[0].next().Children()[1]); got != want {
-			t.Errorf("%v.Children()[0], id.MaxTile(%v.Children()[0].next().Children()[1]) = %v, want %v", id, id, got, want)
-		}
+        assert_eq!(want, si & mask);
+        assert_eq!(want, ti & mask);
+    }
 
-		if got, want := id.Children()[0].Children()[0], id.MaxTile(id.Children()[0].Children()[0].next()); got != want {
-            t.Errorf("%v.Children()[0].Children()[0],
-                     id.MaxTile(%v.Children()[0].Children()[0].next()) = %v, want %v", id, id, got,
-                     want)
-		}
+    #[test]
+    fn test_cellid_center_face_siti() {
+        // Check that the (si, ti) coordinates of the center end in a
+        // 1 followed by (30 - level) 0s.
+        let id = CellID::from_face_pos_level(3, 0x12345678, MAX_LEVEL);
 
-		if got, want := id.Children()[0].Children()[0].Children()[0],
-			id.MaxTile(id.Children()[0].Children()[0].Children()[0].next()); got != want {
-			t.Errorf("%v.MaxTile(%v.Children()[0].Children()[0].Children()[0].next()) = %v, want %v", id, id, got, want)
-		}
-
-		// Check that the tile size is otherwise unchanged.
-		if got, want := id, id.MaxTile(id.next()); got != want {
-			t.Errorf("%v.MaxTile(%v.next()) = %v, want %v", id, id, got, want)
-		}
-
-		if got, want := id, id.MaxTile(id.next().Children()[0]); got != want {
-			t.Errorf("%v.MaxTile(%v.next().Children()[0]) = %v, want %v", id, id, got, want)
-		}
-
-		if got, want := id, id.MaxTile(id.next().Children()[1].Children()[0]); got != want {
-			t.Errorf("%v.MaxTile(%v.next().Children()[1].Children()[0]) = %v, want %v", id, id, got, want)
-		}
-	}
-}
-
-func TestCellIDCenterFaceSiTi(t *testing.T) {
-	// Check that the (si, ti) coordinates of the center end in a
-	// 1 followed by (30 - level) 0s.
-
-	id := CellID::from_face_pos_level(3, 0x12345678, MAX_LEVEL)
-
-	tests := []struct {
-		id          CellID
-		levelOffset uint
-	}{
-		// Leaf level, 30.
-		{id, 0},
-		// Level 29.
-		{id.parent(MAX_LEVEL - 1), 1},
-		// Level 28.
-		{id.parent(MAX_LEVEL - 2), 2},
-		// Level 20.
-		{id.parent(MAX_LEVEL - 10), 10},
-		// Level 10.
-		{id.parent(MAX_LEVEL - 20), 20},
-		// Level 0.
-		{id.parent(0), MAX_LEVEL},
-	}
-
-	for _, test := range tests {
-		_, si, ti := test.id.centerFaceSiTi()
-		want := 1 << test.levelOffset
-		mask := (1 << (test.levelOffset + 1)) - 1
-		if want != si&mask {
-			t.Errorf("Level Offset %d. %b != %b", test.levelOffset, want, si&mask)
-		}
-		if want != ti&mask {
-			t.Errorf("Level Offset: %d. %b != %b", test.levelOffset, want, ti&mask)
-		}
-	}
+        // Leaf level, 30.
+        test_cellid_center_face_siti_case(id, 0);
+        // Level 29.
+        test_cellid_center_face_siti_case(id.parent(MAX_LEVEL - 1), 1);
+        // Level 28.
+        test_cellid_center_face_siti_case(id.parent(MAX_LEVEL - 2), 2);
+        // Level 20.
+        test_cellid_center_face_siti_case(id.parent(MAX_LEVEL - 10), 10);
+        // Level 10.
+        test_cellid_center_face_siti_case(id.parent(MAX_LEVEL - 20), 20);
+        // Level 0.
+        test_cellid_center_face_siti_case(id.parent(0), MAX_LEVEL);
+    }
 }
 
 // TODO(roberts): Remaining tests to convert.
 // Coverage
 // TraversalOrder
-*/
