@@ -1,7 +1,7 @@
 [package]
 name = "s2"
 
-version = "0.0.3"
+version = "0.0.4"
 authors = ["Jihyun Yu <yjh0502@gmail.com>"]
 
 license = "Apache-2.0"
@@ -18,3 +18,6 @@ lazy_static = "0.2"
 rand = "0.3"
 float_extras = "0.1"
 cgmath = "0.14"
+
+[profile.release]
+debug = 2

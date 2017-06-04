@@ -29,10 +29,14 @@ Full parity with Go.
 
 ## [S²](https://docs.rs/s2/~0/s2/s2/) - Spherical Geometry
 
-* complete *
+**complete**
 
  - Cell, CellID, LatLng, Point, Region, stuv
 
-* partial *
+**in progress**
 
-TBD
+ - CellUnion, edgeutil, metric, predicates, Rect
+
+**pending**
+
+ - loop, paddedcell, polygon, polyline, shapeindex
