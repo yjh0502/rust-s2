@@ -31,7 +31,7 @@ Full parity with Go.
 
 * complete *
 
- - Cell, CellID, LatLng, Region, stuv
+ - Cell, CellID, LatLng, Point, Region, stuv
 
 * partial *
 

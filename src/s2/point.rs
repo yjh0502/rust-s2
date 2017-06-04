@@ -1,11 +1,13 @@
 
 use std;
 
-use cgmath;
+use cgmath::{Vector3, Matrix, Matrix3};
 
 use consts::*;
+use std::f64::consts::PI;
 use r3::vector::Vector;
 use s1;
+use s1::angle::*;
 use s1::chordangle::ChordAngle;
 use s2::predicates::*;
 use s2::region::Region;
@@ -16,7 +18,7 @@ use s2::cell::Cell;
 
 /// Point represents a point on the unit sphere as a normalized 3D vector.
 /// Fields should be treated as read-only. Use one of the factory methods for creation.
-#[derive(Clone,PartialEq,Debug)]
+#[derive(Clone,Copy,PartialEq,Debug)]
 pub struct Point(pub Vector);
 
 impl std::ops::Add<Point> for Point {
@@ -71,23 +73,23 @@ impl<'a> std::ops::Mul<f64> for &'a Point {
     }
 }
 
-impl From<Point> for cgmath::Vector3<f64> {
+impl From<Point> for Vector3<f64> {
     fn from(p: Point) -> Self {
         (&p).into()
     }
 }
-impl<'a> From<&'a Point> for cgmath::Vector3<f64> {
+impl<'a> From<&'a Point> for Vector3<f64> {
     fn from(p: &'a Point) -> Self {
-        cgmath::Vector3::new(p.0.x, p.0.y, p.0.z)
+        Vector3::new(p.0.x, p.0.y, p.0.z)
     }
 }
-impl From<cgmath::Vector3<f64>> for Point {
-    fn from(p: cgmath::Vector3<f64>) -> Self {
+impl From<Vector3<f64>> for Point {
+    fn from(p: Vector3<f64>) -> Self {
         (&p).into()
     }
 }
-impl<'a> From<&'a cgmath::Vector3<f64>> for Point {
-    fn from(p: &'a cgmath::Vector3<f64>) -> Self {
+impl<'a> From<&'a Vector3<f64>> for Point {
+    fn from(p: &'a Vector3<f64>) -> Self {
         Point(Vector::xyz(p.x, p.y, p.z))
     }
 }
@@ -177,21 +179,33 @@ impl Point {
         Point(self.0.ortho())
     }
 
+    // frame returns the orthonormal frame for the given point on the unit sphere.
     //struct for Frame and From<>/Into<>?
     //TODO: private
-    pub fn frame(&self) -> cgmath::Matrix3<f64> {
+    pub fn frame(&self) -> Matrix3<f64> {
         let c2 = self.clone();
         let c1 = self.ortho();
-        let c0 = c1.cross(self);
+        let c0 = Point(c1.0.cross(&self.0));
 
-        cgmath::Matrix3::from_cols(c0.into(), c1.into(), c2.into())
+        Matrix3::from_cols(c0.into(), c1.into(), c2.into())
     }
+}
 
-    //TODO: private
-    pub fn from_frame(m: &cgmath::Matrix3<f64>, p: &Point) -> Self {
-        let v: cgmath::Vector3<f64> = p.into();
-        (m * v).into()
-    }
+// from_frame returns the coordinates of the given point in standard axis-aligned basis
+// from its orthonormal basis m.
+// The resulting point p satisfies the identity (p == m * q).
+//TODO: private
+pub fn from_frame(m: &Matrix3<f64>, p: &Point) -> Point {
+    let v: Vector3<f64> = p.into();
+    (m * v).into()
+}
+
+// to_frame returns the coordinates of the given point with respect to its orthonormal basis m.
+// The resulting point q satisfies the identity (m * q == p).
+//TODO: private
+pub fn to_frame(m: &Matrix3<f64>, p: &Point) -> Point {
+    // The inverse of an orthonormal matrix is its transpose.
+    Point::from(m.transpose() * Vector3::from(p))
 }
 
 /// ordered_ccw returns true if the edges OA, OB, and OC are encountered in that
@@ -282,59 +296,53 @@ pub fn point_area(a: &Point, b: &Point, c: &Point) -> f64 {
         .atan()
 }
 
-/*
-// TrueCentroid returns the true centroid of the spherical triangle ABC multiplied by the
-// signed area of spherical triangle ABC. The result is not normalized.
-// The reasons for multiplying by the signed area are (1) this is the quantity
-// that needs to be summed to compute the centroid of a union or difference of triangles,
-// and (2) it's actually easier to calculate this way. All points must have unit length.
-//
-// The true centroid (mass centroid) is defined as the surface integral
-// over the spherical triangle of (x,y,z) divided by the triangle area.
-// This is the point that the triangle would rotate around if it was
-// spinning in empty space.
-//
-// The best centroid for most purposes is the true centroid. Unlike the
-// planar and surface centroids, the true centroid behaves linearly as
-// regions are added or subtracted. That is, if you split a triangle into
-// pieces and compute the average of their centroids (weighted by triangle
-// area), the result equals the centroid of the original triangle. This is
-// not true of the other centroids.
-func TrueCentroid(a, b, c Point) Point {
-	ra := float64(1)
-	if sa := float64(b.distance(c)); sa != 0 {
-		ra = sa / math.Sin(sa)
-	}
-	rb := float64(1)
-	if sb := float64(c.distance(a)); sb != 0 {
-		rb = sb / math.Sin(sb)
-	}
-	rc := float64(1)
-	if sc := float64(a.distance(b)); sc != 0 {
-		rc = sc / math.Sin(sc)
-	}
+/// true_centroid returns the true centroid of the spherical triangle ABC multiplied by the
+/// signed area of spherical triangle ABC. The result is not normalized.
+/// The reasons for multiplying by the signed area are (1) this is the quantity
+/// that needs to be summed to compute the centroid of a union or difference of triangles,
+/// and (2) it's actually easier to calculate this way. All points must have unit length.
+///
+/// The true centroid (mass centroid) is defined as the surface integral
+/// over the spherical triangle of (x,y,z) divided by the triangle area.
+/// This is the point that the triangle would rotate around if it was
+/// spinning in empty space.
+///
+/// The best centroid for most purposes is the true centroid. Unlike the
+/// planar and surface centroids, the true centroid behaves linearly as
+/// regions are added or subtracted. That is, if you split a triangle into
+/// pieces and compute the average of their centroids (weighted by triangle
+/// area), the result equals the centroid of the original triangle. This is
+/// not true of the other centroids.
+pub fn true_centroid(a: &Point, b: &Point, c: &Point) -> Point {
+    let sa = b.distance(&c).rad();
+    let ra = if sa == 0. { 1. } else { sa / sa.sin() };
+    let sb = c.distance(a).rad();
+    let rb = if sb == 0. { 1. } else { sb / sb.sin() };
+    let sc = a.distance(&b).rad();
+    let rc = if sc == 0. { 1. } else { sc / sc.sin() };
 
-	// Now compute a point M such that:
-	//
-	//  [Ax Ay Az] [Mx]                       [ra]
-	//  [Bx By Bz] [My]  = 0.5 * det(A,B,C) * [rb]
-	//  [Cx Cy Cz] [Mz]                       [rc]
-	//
-	// To improve the numerical stability we subtract the first row (A) from the
-	// other two rows; this reduces the cancellation error when A, B, and C are
-	// very close together. Then we solve it using Cramer's rule.
-	//
-	// This code still isn't as numerically stable as it could be.
-	// The biggest potential improvement is to compute B-A and C-A more
-	// accurately so that (B-A)x(C-A) is always inside triangle ABC.
-	x := r3.Vector{a.X, b.X - a.X, c.X - a.X}
-	y := r3.Vector{a.Y, b.Y - a.Y, c.Y - a.Y}
-	z := r3.Vector{a.Z, b.Z - a.Z, c.Z - a.Z}
-	r := r3.Vector{ra, rb - ra, rc - ra}
+    // Now compute a point M such that:
+    //
+    //  [Ax Ay Az] [Mx]                       [ra]
+    //  [Bx By Bz] [My]  = 0.5 * det(A,B,C) * [rb]
+    //  [Cx Cy Cz] [Mz]                       [rc]
+    //
+    // To improve the numerical stability we subtract the first row (A) from the
+    // other two rows; this reduces the cancellation error when A, B, and C are
+    // very close together. Then we solve it using Cramer's rule.
+    //
+    // This code still isn't as numerically stable as it could be.
+    // The biggest potential improvement is to compute B-A and C-A more
+    // accurately so that (B-A)x(C-A) is always inside triangle ABC.
+    let x = Vector::xyz(a.0.x, b.0.x - a.0.x, c.0.x - a.0.x);
+    let y = Vector::xyz(a.0.y, b.0.y - a.0.y, c.0.y - a.0.y);
+    let z = Vector::xyz(a.0.z, b.0.z - a.0.z, c.0.z - a.0.z);
+    let r = Vector::xyz(ra, rb - ra, rc - ra);
 
-	return Point{r3.Vector{y.Cross(z).Dot(r), z.Cross(x).Dot(r), x.Cross(y).Dot(r)}.Mul(0.5)}
+    Point(Vector::xyz(y.cross(&z).dot(&r),
+                      z.cross(&x).dot(&r),
+                      x.cross(&y).dot(&r))) * 0.5
 }
-*/
 
 /// planar_centroid returns the centroid of the planar triangle ABC, which is not normalized.
 /// It can be normalized to unit length to obtain the "surface centroid" of the corresponding
@@ -364,36 +372,40 @@ impl Point {
     }
 }
 
-/*
-// regularPoints generates a slice of points shaped as a regular polygon with
-// the numVertices vertices, all located on a circle of the specified angular radius
-// around the center. The radius is the actual distance from center to each vertex.
-func regularPoints(center Point, radius s1.Angle, numVertices int) []Point {
-	return regularPointsForFrame(getFrame(center), radius, numVertices)
+/// regular_points generates a slice of points shaped as a regular polygon with
+/// the numVertices vertices, all located on a circle of the specified angular radius
+/// around the center. The radius is the actual distance from center to each vertex.
+/// TODO: private?
+pub fn regular_points(center: &Point, radius: Angle, num_vertices: usize) -> Vec<Point> {
+    regular_points_for_frame(&center.frame(), radius, num_vertices)
 }
 
-// regularPointsForFrame generates a slice of points shaped as a regular polygon
-// with numVertices vertices, all on a circle of the specified angular radius around
-// the center. The radius is the actual distance from the center to each vertex.
-func regularPointsForFrame(frame matrix3x3, radius s1.Angle, numVertices int) []Point {
-	// We construct the loop in the given frame coordinates, with the center at
-	// (0, 0, 1). For a loop of radius r, the loop vertices have the form
-	// (x, y, z) where x^2 + y^2 = sin(r) and z = cos(r). The distance on the
-	// sphere (arc length) from each vertex to the center is acos(cos(r)) = r.
-	z := math.Cos(radius.Radians())
-	r := math.Sin(radius.Radians())
-	radianStep := 2 * math.Pi / float64(numVertices)
-	var vertices []Point
+/// regular_points_for_frame generates a slice of points shaped as a regular polygon
+/// with numVertices vertices, all on a circle of the specified angular radius around
+/// the center. The radius is the actual distance from the center to each vertex.
+/// TODO: private?
+fn regular_points_for_frame(frame: &Matrix3<f64>,
+                            radius: Angle,
+                            num_vertices: usize)
+                            -> Vec<Point> {
+    // We construct the loop in the given frame coordinates, with the center at
+    // (0, 0, 1). For a loop of radius r, the loop vertices have the form
+    // (x, y, z) where x^2 + y^2 = sin(r) and z = cos(r). The distance on the
+    // sphere (arc length) from each vertex to the center is acos(cos(r)) = r.
+    let z = radius.rad().cos();
+    let r = radius.rad().sin();
+    let radian_step = 2. * PI / (num_vertices as f64);
 
-	for i := 0; i < numVertices; i++ {
-		angle := float64(i) * radianStep
-		p := Point{r3.Vector{r * math.Cos(angle), r * math.Sin(angle), z}}
-		vertices = append(vertices, Point{fromFrame(frame, p).Normalize()})
-	}
+    let mut vertices = Vec::with_capacity(num_vertices);
 
-	return vertices
+    for i in 0..num_vertices {
+        let angle = (i as f64) * radian_step;
+        let p = Point(Vector::xyz(r * angle.cos(), r * angle.sin(), z));
+        vertices.push(from_frame(frame, &p).normalize());
+    }
+
+    vertices
 }
-*/
 
 impl Region for Point {
     /// cap_bound returns a bounding cap for this point.
@@ -430,6 +442,7 @@ impl Point {
 // SignedArea
 
 #[cfg(test)]
+#[allow(non_upper_case_globals)]
 mod tests {
     use super::*;
 
@@ -523,270 +536,309 @@ mod tests {
             assert!(f64_eq(PI / 4., Angle::from(w.chordangle(&z)).0));
         }
     }
+
+    fn approx_eq_case(want: bool, p1: Point, p2: Point) {
+        assert_eq!(want, p1.approx_eq(&p2));
+    }
+
+    #[test]
+    fn test_point_approx_eq() {
+        approx_eq_case(true,
+                       Point::from_coords(1., 0., 0.),
+                       Point::from_coords(1., 0., 0.));
+        approx_eq_case(false,
+                       Point::from_coords(1., 0., 0.),
+                       Point::from_coords(0., 1., 0.));
+        approx_eq_case(false,
+                       Point::from_coords(1., 0., 0.),
+                       Point::from_coords(0., 1., 1.));
+        approx_eq_case(false,
+                       Point::from_coords(1., 0., 0.),
+                       Point::from_coords(-1., 0., 0.));
+        approx_eq_case(false,
+                       Point::from_coords(1., 2., 3.),
+                       Point::from_coords(2., 3., -1.));
+        approx_eq_case(true,
+                       Point::from_coords(1., 0., 0.),
+                       Point::from_coords(1. * (1. + EPSILON), 0., 0.));
+        approx_eq_case(true,
+                       Point::from_coords(1., 0., 0.),
+                       Point::from_coords(1. * (1. - EPSILON), 0., 0.));
+        approx_eq_case(true,
+                       Point::from_coords(1., 0., 0.),
+                       Point::from_coords(1. + EPSILON, 0., 0.));
+        approx_eq_case(true,
+                       Point::from_coords(1., 0., 0.),
+                       Point::from_coords(1. - EPSILON, 0., 0.));
+        approx_eq_case(true,
+                       Point::from_coords(1., 0., 0.),
+                       Point::from_coords(1., EPSILON, 0.));
+        approx_eq_case(false,
+                       Point::from_coords(1., 0., 0.),
+                       Point::from_coords(1., EPSILON, EPSILON));
+        approx_eq_case(false,
+                       Point::from_coords(1., EPSILON, 0.),
+                       Point::from_coords(1., -EPSILON, EPSILON));
+    }
+
+    const pz: Point = Point(Vector {
+                                x: 0.,
+                                y: 0.,
+                                z: 1.,
+                            });
+    const p000: Point = Point(Vector {
+                                  x: 1.,
+                                  y: 0.,
+                                  z: 0.,
+                              });
+    const p045: Point = Point(Vector {
+                                  x: 1.,
+                                  y: 1.,
+                                  z: 0.,
+                              });
+    const p090: Point = Point(Vector {
+                                  x: 0.,
+                                  y: 1.,
+                                  z: 0.,
+                              });
+    const p180: Point = Point(Vector {
+                                  x: -1.,
+                                  y: 0.,
+                                  z: 0.,
+                              });
+    // Degenerate triangles.
+    const pr: Point = Point(Vector {
+                                x: 0.257,
+                                y: -0.5723,
+                                z: 0.112,
+                            });
+    const pq: Point = Point(Vector {
+                                x: -0.747,
+                                y: 0.401,
+                                z: 0.2235,
+                            });
+    const g1: Point = Point(Vector {
+                                x: 1.,
+                                y: 1.,
+                                z: 1.,
+                            });
+    lazy_static! {
+        // For testing the Girard area fall through case.
+        static ref g2: Point = (g1 + (pr * 1e-15)).normalize();
+        static ref g3: Point = (g1 + (pq * 1e-15)).normalize();
+    }
+
+    fn point_area_case(a: &Point, b: &Point, c: &Point, want: f64, nearness: f64) {
+        assert!(f64_near(want, point_area(&a, &b, &c), nearness));
+    }
+
+    #[test]
+    fn test_point_area() {
+        const EPSILON: f64 = 1e-10;
+        point_area_case(&p000, &p090, &pz, PI / 2., 0.);
+        // This test case should give 0 as the EPSILON, but either Go or C++'s value for Pi,
+        // or the accuracy of the multiplications along the way, cause a difference ~15 decimal
+        // places into the result, so it is not quite a difference of 0.
+        point_area_case(&p045, &pz, &p180, 3.0 * PI / 4.0, 1e-14);
+        // Make sure that Area has good *relative* accuracy even for very small areas.
+        point_area_case(&Point(Vector::xyz(EPSILON, 0., 1.)),
+                        &Point(Vector::xyz(0., EPSILON, 1.)),
+                        &pz,
+                        0.5 * EPSILON * EPSILON,
+                        1e-14);
+        // Make sure that it can handle degenerate triangles.
+        point_area_case(&pr, &pr, &pr, 0., 0.);
+        point_area_case(&pr, &pq, &pr, 0., 1e-15);
+        point_area_case(&p000, &p045, &p090, 0., 0.);
+        // Try a very long and skinny triangle.
+        point_area_case(&p000,
+                        &Point(Vector::xyz(1., 1., EPSILON)),
+                        &p090,
+                        5.8578643762690495119753e-11,
+                        1e-9);
+        // TODO(roberts):
+        // C++ includes a 10,000 loop of perterbations to test out the Girard area
+        // computation is less than some noise threshold.
+        // Do we need that many? Will one or two suffice?
+        point_area_case(&g1, &g2, &g3, 0.0, 1e-15);
+    }
+
+    fn area_quater_hemi_case(a: &Point, b: &Point, c: &Point, d: &Point, e: &Point, want: f64) {
+        let area = point_area(a, b, c) + point_area(a, c, d) + point_area(a, d, e) +
+                   point_area(a, e, b);
+        assert!(f64_eq(want, area));
+    }
+
+    #[test]
+    fn test_point_area_quater_hemisphere() {
+        // Triangles with near-180 degree edges that sum to a quarter-sphere.
+        area_quater_hemi_case(&Point(Vector::xyz(1., 0.1 * EPSILON, EPSILON)),
+                              &p000,
+                              &p045,
+                              &p180,
+                              &pz,
+                              PI);
+        // Four other triangles that sum to a quarter-sphere.
+        area_quater_hemi_case(&Point(Vector::xyz(1., 1., EPSILON)),
+                              &p000,
+                              &p045,
+                              &p180,
+                              &pz,
+                              PI);
+        // TODO(roberts):
+        // C++ Includes a loop of 100 perturbations on a hemisphere for more tests.
+    }
+
+    fn planar_centroid_case(p0: &Point, p1: &Point, p2: &Point, want: &Point) {
+        assert_eq!(*want, planar_centroid(p0, p1, p2));
+    }
+
+    #[test]
+    fn test_point_planar_centroid() {
+        // xyz axis
+        planar_centroid_case(&Point(Vector::xyz(0., 0., 1.)),
+                             &Point(Vector::xyz(0., 1., 0.)),
+                             &Point(Vector::xyz(1., 0., 0.)),
+                             &Point(Vector::xyz(1. / 3., 1. / 3., 1. / 3.)));
+
+        // same point
+        planar_centroid_case(&Point(Vector::xyz(1., 0., 0.)),
+                             &Point(Vector::xyz(1., 0., 0.)),
+                             &Point(Vector::xyz(1., 0., 0.)),
+                             &Point(Vector::xyz(1., 0., 0.)));
+    }
+
+    use rand::Rng;
+
+    #[test]
+    fn test_point_true_centroid() {
+        let mut rng = random::rng();
+
+        // Test TrueCentroid with very small triangles. This test assumes that
+        // the triangle is small enough so that it is nearly planar.
+        // The centroid of a planar triangle is at the intersection of its
+        // medians, which is two-thirds of the way along each median.
+        for _ in 0..100 {
+            let f = random::frame(&mut rng);
+            let p = Point::from(f.x);
+            let x = Point::from(f.y);
+            let y = Point::from(f.z);
+            let d = 1e-4 * 1e-4f64.powf(rng.gen_range(0., 1.));
+
+            // Make a triangle with two equal sides.
+            {
+                let p0 = (p - (x * d)).normalize();
+                let p1 = (p + (x * d)).normalize();
+                let p2 = (p + (y * (d * 3.))).normalize();
+                let want = (p + (y * d)).normalize();
+
+                let got = true_centroid(&p0, &p1, &p2).normalize();
+                assert!(got.distance(&want).rad() < 2e-8);
+            }
+
+            {
+                let p0 = p;
+                let p1 = (p + (x * (d * 3.))).normalize();
+                let p2 = (p + (y * (d * 6.))).normalize();
+                let want = (p + ((x + (y * 2.)) * d)).normalize();
+
+                let got = true_centroid(&p0, &p1, &p2).normalize();
+                assert!(got.distance(&want).rad() < 2e-8);
+            }
+        }
+    }
+
+    #[test]
+    fn test_point_regular_points() {
+        // Conversion to/from degrees has a little more variability than the default EPSILON.
+        const EPSILON: f64 = 1e-13;
+        let center = Point::from(LatLng::from_degrees(Deg(80.), Deg(135.)));
+        let radius = Angle::from(Deg(20.));
+        let pts = regular_points(&center, radius, 4);
+        assert_eq!(4, pts.len());
+
+        let lls = pts.iter().map(|p| LatLng::from(p)).collect::<Vec<_>>();
+        let cll = LatLng::from(&center);
+
+        // Make sure that the radius is correct.
+        let want_dist = 20.;
+        for ll in lls.iter() {
+            let got = cll.distance(ll).deg();
+            assert!(f64_near(want_dist, got, EPSILON));
+        }
+
+        let want_angle = PI / 2.;
+        // Make sure the angle between each point is correct.
+        for i in 0..4 {
+            let v0 = pts[(4 + i + 1) % 4];
+            let v1 = pts[(4 + i) % 4];
+            let v2 = pts[(4 + i - 1) % 4];
+            assert!(f64_near(want_angle, ((v0 - v1).0.angle(&(v2 - v1).0)).rad(), EPSILON));
+        }
+
+        // Make sure that all edges of the polygon have the same length.
+        let want_len = 27.990890717782829;
+        for i in 0..4 {
+            let ll1 = &lls[i];
+            let ll2 = &lls[(i + 1) % 4];
+            assert!(f64_near(want_len, ll1.distance(ll2).deg(), EPSILON));
+        }
+
+        // Spot check an actual coordinate now that we know the points are spaced
+        // evenly apart at the same angles and radii.
+        assert!(f64_near(lls[0].lat.deg(), 62.162880741097204, EPSILON));
+        assert!(f64_near(lls[0].lng.deg(), 103.11051028343407, EPSILON));
+    }
+
+    #[test]
+    fn test_point_region() {
+        let p = Point(Vector::xyz(1., 0., 0.));
+        let r = Point(Vector::xyz(1., 0., 0.));
+
+        assert!(r.contains(&p));
+        assert!(p.contains(&r));
+        assert_eq!(false, r.contains(&Point(Vector::xyz(1., 0., 1.))));
+
+        assert!(r.cap_bound().approx_eq(&Cap::from(&r)));
+        assert!(r.rect_bound().approx_eq(&Rect::from(LatLng::from(&p))));
+
+        let cell = Cell::from(&p);
+        assert_eq!(false, r.contains_cell(&cell));
+        assert_eq!(true, r.intersects_cell(&cell));
+    }
+
+    /*
+    func BenchmarkPointArea(b *testing.B) {
+        for i := 0; i < b.N; i++ {
+            PointArea(p000, p090, pz)
+        }
+    }
+
+    func BenchmarkPointAreaGirardCase(b *testing.B) {
+        for i := 0; i < b.N; i++ {
+            PointArea(g1, g2, g3)
+        }
+    }
+    */
+
+    use cgmath::SquareMatrix;
+
+    // tests for frame
+    #[test]
+    fn test_point_frames() {
+        let z = Point::from_coords(0.2, 0.5, -3.3);
+        let m = z.frame();
+
+        assert!(Point::from(m.x).0.is_unit());
+        assert!(Point::from(m.y).0.is_unit());
+        assert!(f64_eq(m.determinant(), 1.));
+
+        assert!(Point(Vector::xyz(1., 0., 0.)).approx_eq(&to_frame(&m, &Point::from(m.x))));
+        assert!(Point(Vector::xyz(0., 1., 0.)).approx_eq(&to_frame(&m, &Point::from(m.y))));
+        assert!(Point(Vector::xyz(0., 0., 1.)).approx_eq(&to_frame(&m, &Point::from(m.z))));
+
+        assert!(from_frame(&m, &Point(Vector::xyz(1., 0., 0.))).approx_eq(&Point::from(m.x)));
+        assert!(from_frame(&m, &Point(Vector::xyz(0., 1., 0.))).approx_eq(&Point::from(m.y)));
+        assert!(from_frame(&m, &Point(Vector::xyz(0., 0., 1.))).approx_eq(&Point::from(m.z)));
+    }
 }
-
-/*
-
-func TestPointApproxEqual(t *testing.T) {
-	tests := []struct {
-		x1, y1, z1 float64
-		x2, y2, z2 float64
-		want       bool
-	}{
-		{1, 0, 0, 1, 0, 0, true},
-		{1, 0, 0, 0, 1, 0, false},
-		{1, 0, 0, 0, 1, 1, false},
-		{1, 0, 0, -1, 0, 0, false},
-		{1, 2, 3, 2, 3, -1, false},
-		{1, 0, 0, 1 * (1 + epsilon), 0, 0, true},
-		{1, 0, 0, 1 * (1 - epsilon), 0, 0, true},
-		{1, 0, 0, 1 + epsilon, 0, 0, true},
-		{1, 0, 0, 1 - epsilon, 0, 0, true},
-		{1, 0, 0, 1, epsilon, 0, true},
-		{1, 0, 0, 1, epsilon, epsilon, false},
-		{1, epsilon, 0, 1, -epsilon, epsilon, false},
-	}
-	for _, test := range tests {
-		p1 := Point{r3.Vector{test.x1, test.y1, test.z1}}
-		p2 := Point{r3.Vector{test.x2, test.y2, test.z2}}
-		if got := p1.ApproxEqual(p2); got != test.want {
-			t.Errorf("%v.ApproxEqual(%v), got %v want %v", p1, p2, got, test.want)
-		}
-	}
-}
-
-var (
-	pz   = Point{r3.Vector{0, 0, 1}}
-	p000 = Point{r3.Vector{1, 0, 0}}
-	p045 = Point{r3.Vector{1, 1, 0}}
-	p090 = Point{r3.Vector{0, 1, 0}}
-	p180 = Point{r3.Vector{-1, 0, 0}}
-	// Degenerate triangles.
-	pr = Point{r3.Vector{0.257, -0.5723, 0.112}}
-	pq = Point{r3.Vector{-0.747, 0.401, 0.2235}}
-
-	// For testing the Girard area fall through case.
-	g1 = Point{r3.Vector{1, 1, 1}}
-	g2 = Point{g1.Add(pr.Mul(1e-15)).Normalize()}
-	g3 = Point{g1.Add(pq.Mul(1e-15)).Normalize()}
-)
-
-func TestPointArea(t *testing.T) {
-	epsilon := 1e-10
-	tests := []struct {
-		a, b, c  Point
-		want     float64
-		nearness float64
-	}{
-		{p000, p090, pz, math.Pi / 2.0, 0},
-		// This test case should give 0 as the epsilon, but either Go or C++'s value for Pi,
-		// or the accuracy of the multiplications along the way, cause a difference ~15 decimal
-		// places into the result, so it is not quite a difference of 0.
-		{p045, pz, p180, 3.0 * math.Pi / 4.0, 1e-14},
-		// Make sure that Area has good *relative* accuracy even for very small areas.
-		{Point{r3.Vector{epsilon, 0, 1}}, Point{r3.Vector{0, epsilon, 1}}, pz, 0.5 * epsilon * epsilon, 1e-14},
-		// Make sure that it can handle degenerate triangles.
-		{pr, pr, pr, 0.0, 0},
-		{pr, pq, pr, 0.0, 1e-15},
-		{p000, p045, p090, 0.0, 0},
-		// Try a very long and skinny triangle.
-		{p000, Point{r3.Vector{1, 1, epsilon}}, p090, 5.8578643762690495119753e-11, 1e-9},
-		// TODO(roberts):
-		// C++ includes a 10,000 loop of perterbations to test out the Girard area
-		// computation is less than some noise threshold.
-		// Do we need that many? Will one or two suffice?
-		{g1, g2, g3, 0.0, 1e-15},
-	}
-	for _, test := range tests {
-		if got := PointArea(test.a, test.b, test.c); !float64Near(got, test.want, test.nearness) {
-			t.Errorf("PointArea(%v, %v, %v), got %v want %v", test.a, test.b, test.c, got, test.want)
-		}
-	}
-}
-
-func TestPointAreaQuarterHemisphere(t *testing.T) {
-	tests := []struct {
-		a, b, c, d, e Point
-		want          float64
-	}{
-		// Triangles with near-180 degree edges that sum to a quarter-sphere.
-		{Point{r3.Vector{1, 0.1 * epsilon, epsilon}}, p000, p045, p180, pz, math.Pi},
-		// Four other triangles that sum to a quarter-sphere.
-		{Point{r3.Vector{1, 1, epsilon}}, p000, p045, p180, pz, math.Pi},
-		// TODO(roberts):
-		// C++ Includes a loop of 100 perturbations on a hemisphere for more tests.
-	}
-	for _, test := range tests {
-		area := PointArea(test.a, test.b, test.c) +
-			PointArea(test.a, test.c, test.d) +
-			PointArea(test.a, test.d, test.e) +
-			PointArea(test.a, test.e, test.b)
-
-		if !float64Eq(area, test.want) {
-			t.Errorf("Adding up 4 quarter hemispheres with PointArea(), got %v want %v", area, test.want)
-		}
-	}
-}
-
-func TestPointPlanarCentroid(t *testing.T) {
-	tests := []struct {
-		name             string
-		p0, p1, p2, want Point
-	}{
-		{
-			name: "xyz axis",
-			p0:   Point{r3.Vector{0, 0, 1}},
-			p1:   Point{r3.Vector{0, 1, 0}},
-			p2:   Point{r3.Vector{1, 0, 0}},
-			want: Point{r3.Vector{1. / 3, 1. / 3, 1. / 3}},
-		},
-		{
-			name: "Same point",
-			p0:   Point{r3.Vector{1, 0, 0}},
-			p1:   Point{r3.Vector{1, 0, 0}},
-			p2:   Point{r3.Vector{1, 0, 0}},
-			want: Point{r3.Vector{1, 0, 0}},
-		},
-	}
-
-	for _, test := range tests {
-		got := PlanarCentroid(test.p0, test.p1, test.p2)
-		if !got.ApproxEqual(test.want) {
-			t.Errorf("%s: PlanarCentroid(%v, %v, %v) = %v, want %v", test.name, test.p0, test.p1, test.p2, got, test.want)
-		}
-	}
-}
-
-func TestPointTrueCentroid(t *testing.T) {
-	// Test TrueCentroid with very small triangles. This test assumes that
-	// the triangle is small enough so that it is nearly planar.
-	// The centroid of a planar triangle is at the intersection of its
-	// medians, which is two-thirds of the way along each median.
-	for i := 0; i < 100; i++ {
-		f := randomFrame()
-		p := f.col(0)
-		x := f.col(1)
-		y := f.col(2)
-		d := 1e-4 * math.Pow(1e-4, randomFloat64())
-
-		// Make a triangle with two equal sides.
-		p0 := Point{p.Sub(x.Mul(d)).Normalize()}
-		p1 := Point{p.Add(x.Mul(d)).Normalize()}
-		p2 := Point{p.Add(y.Mul(d * 3)).Normalize()}
-		want := Point{p.Add(y.Mul(d)).Normalize()}
-
-		got := TrueCentroid(p0, p1, p2).Normalize()
-		if got.Distance(want.Vector) >= 2e-8 {
-			t.Errorf("TrueCentroid(%v, %v, %v).Normalize() = %v, want %v", p0, p1, p2, got, want)
-		}
-
-		// Make a triangle with a right angle.
-		p0 = p
-		p1 = Point{p.Add(x.Mul(d * 3)).Normalize()}
-		p2 = Point{p.Add(y.Mul(d * 6)).Normalize()}
-		want = Point{p.Add(x.Add(y.Mul(2)).Mul(d)).Normalize()}
-
-		got = TrueCentroid(p0, p1, p2).Normalize()
-		if got.Distance(want.Vector) >= 2e-8 {
-			t.Errorf("TrueCentroid(%v, %v, %v).Normalize() = %v, want %v", p0, p1, p2, got, want)
-		}
-	}
-}
-
-func TestPointRegularPoints(t *testing.T) {
-	// Conversion to/from degrees has a little more variability than the default epsilon.
-	const epsilon = 1e-13
-	center := PointFromLatLng(LatLngFromDegrees(80, 135))
-	radius := s1.Degree * 20
-	pts := regularPoints(center, radius, 4)
-
-	if len(pts) != 4 {
-		t.Errorf("regularPoints with 4 vertices should have 4 vertices, got %d", len(pts))
-	}
-
-	lls := []LatLng{
-		LatLngFromPoint(pts[0]),
-		LatLngFromPoint(pts[1]),
-		LatLngFromPoint(pts[2]),
-		LatLngFromPoint(pts[3]),
-	}
-	cll := LatLngFromPoint(center)
-
-	// Make sure that the radius is correct.
-	wantDist := 20.0
-	for i, ll := range lls {
-		if got := cll.Distance(ll).Degrees(); !float64Near(got, wantDist, epsilon) {
-			t.Errorf("Vertex %d distance from center = %v, want %v", i, got, wantDist)
-		}
-	}
-
-	// Make sure the angle between each point is correct.
-	wantAngle := math.Pi / 2
-	for i := 0; i < len(pts); i++ {
-		// Mod the index by 4 to wrap the values at each end.
-		v0, v1, v2 := pts[(4+i+1)%4], pts[(4+i)%4], pts[(4+i-1)%4]
-		if got := float64(v0.Sub(v1.Vector).Angle(v2.Sub(v1.Vector))); !float64Eq(got, wantAngle) {
-			t.Errorf("(%v-%v).Angle(%v-%v) = %v, want %v", v0, v1, v1, v2, got, wantAngle)
-		}
-	}
-
-	// Make sure that all edges of the polygon have the same length.
-	wantLength := 27.990890717782829
-	for i := 0; i < len(lls); i++ {
-		ll1, ll2 := lls[i], lls[(i+1)%4]
-		if got := ll1.Distance(ll2).Degrees(); !float64Near(got, wantLength, epsilon) {
-			t.Errorf("%v.Distance(%v) = %v, want %v", ll1, ll2, got, wantLength)
-		}
-	}
-
-	// Spot check an actual coordinate now that we know the points are spaced
-	// evenly apart at the same angles and radii.
-	if got, want := lls[0].Lat.Degrees(), 62.162880741097204; !float64Near(got, want, epsilon) {
-		t.Errorf("%v.Lat = %v, want %v", lls[0], got, want)
-	}
-	if got, want := lls[0].Lng.Degrees(), 103.11051028343407; !float64Near(got, want, epsilon) {
-		t.Errorf("%v.Lng = %v, want %v", lls[0], got, want)
-	}
-}
-
-func TestPointRegion(t *testing.T) {
-	p := Point{r3.Vector{1, 0, 0}}
-	r := Point{r3.Vector{1, 0, 0}}
-	if !r.Contains(p) {
-		t.Errorf("%v.Contains(%v) = false, want true", r, p)
-	}
-	if !r.Contains(r) {
-		t.Errorf("%v.Contains(%v) = false, want true", r, r)
-	}
-	if s := (Point{r3.Vector{1, 0, 1}}); r.Contains(s) {
-		t.Errorf("%v.Contains(%v) = true, want false", r, s)
-	}
-	if got, want := r.CapBound(), CapFromPoint(p); !got.ApproxEqual(want) {
-		t.Errorf("%v.CapBound() = %v, want %v", r, got, want)
-	}
-	if got, want := r.RectBound(), RectFromLatLng(LatLngFromPoint(p)); !rectsApproxEqual(got, want, epsilon, epsilon) {
-		t.Errorf("%v.RectBound() = %v, want %v", r, got, want)
-	}
-
-	// The leaf cell containing a point is still much larger than the point.
-	cell := CellFromPoint(p)
-	if r.ContainsCell(cell) {
-		t.Errorf("%v.ContainsCell(%v) = true, want false", r, cell)
-	}
-	if !r.IntersectsCell(cell) {
-		t.Errorf("%v.IntersectsCell(%v) = false, want true", r, cell)
-	}
-}
-
-func BenchmarkPointArea(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		PointArea(p000, p090, pz)
-	}
-}
-
-func BenchmarkPointAreaGirardCase(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		PointArea(g1, g2, g3)
-	}
-}
-*/

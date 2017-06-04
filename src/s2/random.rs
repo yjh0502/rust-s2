@@ -3,7 +3,7 @@ use cgmath;
 use std::f64::consts::PI;
 
 use s2::cap::Cap;
-use s2::point::Point;
+use s2::point::{self, Point};
 use s2::cellid::*;
 use rand;
 use rand::Rng;
@@ -95,6 +95,6 @@ pub fn sample_point_from_cap<R>(rng: &mut R, c: Cap) -> Point
 
     // The result should already be very close to unit-length, but we might as
     // well make it accurate as possible.
-    Point::from_frame(&m,
+    point::from_frame(&m,
                       &Point::from_coords(theta.cos() * r, theta.sin() * r, 1. - h).normalize())
 }
