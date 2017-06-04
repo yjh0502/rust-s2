@@ -183,9 +183,9 @@ impl Vector {
             z: 0.00457,
         };
         match self.largest_component() {
-            Axis::X => ov.z = 1.0,
-            Axis::Y => ov.x = 1.0,
-            Axis::Z => ov.y = 1.0,
+            Axis::X => ov.z = 1.,
+            Axis::Y => ov.x = 1.,
+            Axis::Z => ov.y = 1.,
         };
         self.cross(&ov).normalize()
     }
