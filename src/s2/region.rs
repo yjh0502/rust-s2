@@ -196,7 +196,7 @@ impl<'a, R> Coverer<'a, R>
 
     /// expand_children populates the children of the candidate by expanding the given number of
     /// levels from the given cell.  Returns the number of children that were marked "terminal".
-    fn expand_children(&self, cand: &mut Candidate, cell: Cell, mut num_levels: u8) -> usize {
+    fn expand_children(&self, cand: &mut Candidate, cell: Cell, mut num_levels: i32) -> usize {
         num_levels -= 1;
         let mut num_terminals = 0;
         for ci in cell.id.child_iter() {
@@ -237,7 +237,7 @@ impl<'a, R> Coverer<'a, R>
         };
 
         let cand_cell = cand.cell.clone();
-        let num_terminals = self.expand_children(&mut cand, cand_cell, num_levels);
+        let num_terminals = self.expand_children(&mut cand, cand_cell, num_levels as i32);
         let max_children_shift = self.constraint.level_mod * 2;
         if cand.children.is_empty() {
             return;
