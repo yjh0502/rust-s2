@@ -87,7 +87,7 @@ impl<'a> std::ops::Mul<f64> for &'a Point {
 
 impl Point {
     pub fn new(x: f64, y: f64) -> Self {
-        Self { x: x, y: y }
+        Self { x, y }
     }
 
     /// returns a counterclockwise orthogonal point with the same norm.
@@ -126,53 +126,6 @@ impl Point {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /*
-    const SW: Point = Point { x: 0., y: 0.25 };
-    const SE: Point = Point { x: 0.5, y: 0.25 };
-    const NE: Point = Point { x: 0.5, y: 0.75 };
-    const NW: Point = Point { x: 0., y: 0.75 };
-    */
-
-    /*
-    const RECT: Rect = Rect {
-        x: Interval { lo: 0., hi: 0.5 },
-        y: Interval {
-            lo: 0.25,
-            hi: 0.75,
-        },
-    };
-
-    const RECT_MID: Rect = Rect {
-        x: Interval {
-            lo: 0.25,
-            hi: 0.25,
-        },
-        y: Interval { lo: 0.5, hi: 0.5 },
-    };
-
-    const RECT_SW: Rect = Rect {
-        x: Interval {
-            lo: SW.x,
-            hi: SW.x,
-        },
-        y: Interval {
-            lo: SW.y,
-            hi: SW.y,
-        },
-    };
-
-    const RECT_NE: Rect = Rect {
-        x: Interval {
-            lo: NE.x,
-            hi: NE.x,
-        },
-        y: Interval {
-            lo: NE.y,
-            hi: NE.y,
-        },
-    };
-    */
 
     fn approx_eq(x: f64, y: f64) -> bool {
         (x - y).abs() < 1e-14

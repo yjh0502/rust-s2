@@ -271,6 +271,53 @@ impl<'b> std::ops::Add<&'b Rect> for Rect {
 mod tests {
     use super::*;
 
+    /*
+    const SW: Point = Point { x: 0., y: 0.25 };
+    const SE: Point = Point { x: 0.5, y: 0.25 };
+    const NE: Point = Point { x: 0.5, y: 0.75 };
+    const NW: Point = Point { x: 0., y: 0.75 };
+    */
+
+    /*
+    const RECT: Rect = Rect {
+        x: Interval { lo: 0., hi: 0.5 },
+        y: Interval {
+            lo: 0.25,
+            hi: 0.75,
+        },
+    };
+
+    const RECT_MID: Rect = Rect {
+        x: Interval {
+            lo: 0.25,
+            hi: 0.25,
+        },
+        y: Interval { lo: 0.5, hi: 0.5 },
+    };
+
+    const RECT_SW: Rect = Rect {
+        x: Interval {
+            lo: SW.x,
+            hi: SW.x,
+        },
+        y: Interval {
+            lo: SW.y,
+            hi: SW.y,
+        },
+    };
+
+    const RECT_NE: Rect = Rect {
+        x: Interval {
+            lo: NE.x,
+            hi: NE.x,
+        },
+        y: Interval {
+            lo: NE.y,
+            hi: NE.y,
+        },
+    };
+    */
+
     #[test]
     fn empty_rect() {
         assert!(EMPTY.is_valid());
