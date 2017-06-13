@@ -27,18 +27,18 @@ use std::f64::consts::PI;
 ///     use std::f64::consts::PI;
 ///
 ///     // The following conversions between degrees and radians are exact:
-///     assert_eq!(Deg(180.), Deg::from(Angle(PI)));
+///     assert_eq!(Deg(180.), Deg::from(Rad(PI)));
 ///     for n in 0..9 {
 ///         // for n == 0..8
-///         assert_eq!(Angle(PI/(n as f64)), Deg(180./(n as f64)).into());
+///         assert_eq!(Rad(PI/(n as f64)), Deg(180./(n as f64)).into());
 ///     }
 ///
 ///     // These identities hold when the arguments are scaled up or down by any power
 ///     // of 2. Some similar identities are also true, for example,
-///     assert_eq!(Angle(PI/3.), Deg(60.).into());
+///     assert_eq!(Rad(PI/3.), Deg(60.).into());
 ///
 ///     // But be aware that this type of identity does not hold in general. For example,
-///     assert_ne!(Angle(PI/60.), Deg(3.).into());
+///     assert_ne!(Rad(PI/60.), Deg(3.).into());
 ///
 ///     // Similarly, the conversion to radians means that Deg::from(Angle::from(Deg(x)))
 ///     // does not always equal x. For example,
@@ -55,7 +55,7 @@ use std::f64::consts::PI;
 /// When testing for equality, you should allow for numerical errors (float64Eq)
 /// or convert to discrete E5/E6/E7 values first.
 #[derive(Clone,Copy,PartialEq,PartialOrd)]
-pub struct Angle(pub f64);
+pub struct Angle(f64);
 #[derive(Clone,Copy,PartialEq,PartialOrd,Debug)]
 pub struct Rad(pub f64);
 #[derive(Clone,Copy,PartialEq,PartialOrd,Debug)]
@@ -175,6 +175,7 @@ macro_rules! convert_i32 {
 }
 
 convert!(Rad, Angle, 1.);
+convert!(Deg, Rad, PI / 180.);
 convert!(Deg, Angle, PI / 180.);
 
 convert_i32!(E5, Angle, PI / 180. / 1e5);

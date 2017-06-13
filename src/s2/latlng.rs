@@ -6,8 +6,9 @@ use r3::vector::Vector;
 use s1::*;
 use s2::point::Point;
 
-const NORTH_POLE_LAT: Angle = Angle(PI / 2.);
-const SOUTH_POLE_LAT: Angle = Angle(PI / -2.);
+//TODO: typed const?
+const NORTH_POLE_LAT: f64 = PI / 2.;
+const SOUTH_POLE_LAT: f64 = PI / -2.;
 
 #[derive(Clone)]
 pub struct LatLng {
@@ -30,30 +31,30 @@ impl LatLng {
     }
 
     pub fn is_valid(&self) -> bool {
-        self.lat.0.abs() <= PI / 2. && self.lng.0.abs() <= PI
+        self.lat.rad().abs() <= PI / 2. && self.lng.rad().abs() <= PI
     }
 
     pub fn normalized(&self) -> Self {
-        let lat = if self.lat.0 > NORTH_POLE_LAT.0 {
-            NORTH_POLE_LAT
-        } else if self.lat.0 < SOUTH_POLE_LAT.0 {
-            SOUTH_POLE_LAT
+        let lat = if self.lat.rad() > NORTH_POLE_LAT {
+            Rad(NORTH_POLE_LAT).into()
+        } else if self.lat.rad() < SOUTH_POLE_LAT {
+            Rad(SOUTH_POLE_LAT).into()
         } else {
-            self.lat.clone()
+            self.lat
         };
 
         LatLng {
             lat: lat,
-            lng: Angle(remainder(self.lng.0, PI * 2.)),
+            lng: Rad(remainder(self.lng.rad(), PI * 2.)).into(),
         }
     }
 
     pub fn distance(&self, other: &Self) -> Angle {
-        let dlat = (0.5 * (other.lat.0 - self.lat.0)).sin();
-        let dlng = (0.5 * (other.lng.0 - self.lng.0)).sin();
+        let dlat = (0.5 * (other.lat.rad() - self.lat.rad())).sin();
+        let dlng = (0.5 * (other.lng.rad() - self.lng.rad())).sin();
 
-        let x = dlat * dlat + dlng * dlng * self.lat.0.cos() * other.lat.0.cos();
-        Angle(2. * x.sqrt().atan2((1. - x).max(0.).sqrt()))
+        let x = dlat * dlat + dlng * dlng * self.lat.rad().cos() * other.lat.rad().cos();
+        Rad(2. * x.sqrt().atan2((1. - x).max(0.).sqrt())).into()
     }
 }
 
@@ -61,19 +62,19 @@ impl Point {
     pub fn latitude(&self) -> Angle {
         let v = &self.0;
         let l = (v.x * v.x + v.y * v.y).sqrt();
-        Angle(v.z.atan2(l))
+        Rad(v.z.atan2(l)).into()
     }
 
     pub fn longitude(&self) -> Angle {
         let v = &self.0;
-        Angle(v.y.atan2(v.x))
+        Rad(v.y.atan2(v.x)).into()
     }
 }
 
 impl<'a> From<&'a LatLng> for Point {
     fn from(ll: &'a LatLng) -> Self {
-        let phi = ll.lat.0;
-        let theta = ll.lng.0;
+        let phi = ll.lat.rad();
+        let theta = ll.lng.rad();
         let cosphi = phi.cos();
         Point(Vector {
                   x: theta.cos() * cosphi,
@@ -170,10 +171,10 @@ mod tests {
         test_approx_eq(llp.0.z, p.0.z);
 
         let pll: LatLng = p.into();
-        test_approx_eq(pll.lat.0, ll.lat.0);
-        let is_polar = ll.lng.0 == PI / 2. || ll.lng.0 == PI / -2.;
+        test_approx_eq(pll.lat.rad(), ll.lat.rad());
+        let is_polar = ll.lng.rad() == PI / 2. || ll.lng.rad() == PI / -2.;
         if !is_polar {
-            test_approx_eq(pll.lng.0, ll.lng.0);
+            test_approx_eq(pll.lng.rad(), ll.lng.rad());
         }
     }
 

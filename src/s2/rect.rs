@@ -3,7 +3,7 @@ use std;
 use std::f64::consts::PI;
 
 use r1;
-use s1::{Angle, Interval, interval};
+use s1::*;
 use s2::latlng::LatLng;
 
 #[derive(Clone)]
@@ -73,8 +73,8 @@ impl Rect {
             _ => unimplemented!(),
         };
         LatLng {
-            lat: Angle(lat),
-            lng: Angle(lng),
+            lat: Rad(lat).into(),
+            lng: Rad(lng).into(),
         }
     }
 
@@ -86,14 +86,14 @@ impl Rect {
     }
     pub fn center(&self) -> LatLng {
         LatLng {
-            lat: Angle(self.lat.center()),
-            lng: Angle(self.lng.center()),
+            lat: Rad(self.lat.center()).into(),
+            lng: Rad(self.lng.center()).into(),
         }
     }
     pub fn size(&self) -> LatLng {
         LatLng {
-            lat: Angle(self.lat.len()),
-            lng: Angle(self.lng.len()),
+            lat: Rad(self.lat.len()).into(),
+            lng: Rad(self.lng.len()).into(),
         }
     }
 
@@ -107,8 +107,8 @@ impl Rect {
     }
 
     pub fn expanded(&self, margin: &LatLng) -> Self {
-        let lat = self.lat.expanded(margin.lat.0);
-        let lng = self.lng.expanded(margin.lng.0);
+        let lat = self.lat.expanded(margin.lat.rad());
+        let lng = self.lng.expanded(margin.lng.rad());
 
         if lat.is_empty() || lng.is_empty() {
             Self::empty()
@@ -167,8 +167,8 @@ impl<'a, 'b> std::ops::Add<&'a LatLng> for &'b Rect {
             self.clone()
         } else {
             Rect {
-                lat: &self.lat + ll.lat.0,
-                lng: &self.lng + ll.lng.0,
+                lat: &self.lat + ll.lat.rad(),
+                lng: &self.lng + ll.lng.rad(),
             }
         }
     }
@@ -177,10 +177,10 @@ impl<'a, 'b> std::ops::Add<&'a LatLng> for &'b Rect {
 impl From<LatLng> for Rect {
     fn from(ll: LatLng) -> Self {
         Self {
-            lat: r1::interval::Interval::from_point(ll.lat.0),
+            lat: r1::interval::Interval::from_point(ll.lat.rad()),
             lng: Interval {
-                lo: ll.lng.0,
-                hi: ll.lng.0,
+                lo: ll.lng.rad(),
+                hi: ll.lng.rad(),
             },
         }
     }
@@ -211,7 +211,7 @@ impl Region for Rect {
         };
 
         let pole_cap = Cap::from_center_angle(&Point::from_coords(0., 0., pole_z),
-                                              &Angle(pole_angle));
+                                              &Rad(pole_angle).into());
 
         // For bounding rectangles that span 180 degrees or less in longitude, the
         // maximum cap size is achieved at one of the rectangle vertices.  For
@@ -256,7 +256,7 @@ impl Rect {
 
     /// contains_latlng reports whether the given LatLng is within the Rect.
     pub fn contains_latlng(&self, ll: &LatLng) -> bool {
-        ll.is_valid() && self.lat.contains(ll.lat.0) && self.lng.contains(ll.lng.0)
+        ll.is_valid() && self.lat.contains(ll.lat.rad()) && self.lng.contains(ll.lng.rad())
     }
 
     /// contains_point reports whether the given Point is within the Rect.

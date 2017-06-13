@@ -264,12 +264,14 @@ impl Cell {
 
     /// latitude returns the latitude of the cell vertex given by (i,j), where "i" and "j" are either 0 or 1.
     pub fn latitude(&self, i: i32, j: i32) -> f64 {
-        self.point_from_ij(i, j).latitude().0
+        //XXX
+        self.point_from_ij(i, j).latitude().rad()
     }
 
     /// longitude returns the longitude of the cell vertex given by (i,j), where "i" and "j" are either 0 or 1.
     pub fn longitude(&self, i: i32, j: i32) -> f64 {
-        self.point_from_ij(i, j).longitude().0
+        //XXX
+        self.point_from_ij(i, j).longitude().rad()
     }
 
     /// rect_bound returns the bounding rectangle of this cell.
@@ -319,14 +321,14 @@ impl Cell {
             // up to 0.5 * DBL_EPSILON and the other sources of error can cause the
             // two latitudes to differ by up to another 1.5 * DBL_EPSILON, which also
             // leads to a maximum difference of 2 * DBL_EPSILON.
-            let max_err = Angle(2. * DBL_EPSILON);
+            let max_err = Angle::from(Rad(2. * DBL_EPSILON));
             return s2::rect::Rect {
                            lat: lat.into(),
                            lng: lng.into(),
                        }
                        .expanded(&LatLng {
-                                     lat: max_err.clone(),
-                                     lng: max_err.clone(),
+                                     lat: max_err,
+                                     lng: max_err,
                                  })
                        .polar_closure();
         }
@@ -413,8 +415,8 @@ impl Cell {
         // longitude because longitude is calculated via a single call to math.Atan2,
         // which is guaranteed to be semi-monotoniself.
         return bound.expanded(&LatLng {
-                                  lat: Angle(DBL_EPSILON),
-                                  lng: Angle(0.),
+                                  lat: Rad(DBL_EPSILON).into(),
+                                  lng: Rad(0.).into(),
                               });
     }
 
@@ -835,9 +837,10 @@ mod tests {
             let i2 = (i1 + 1) & 3;
             let v1 = &cell.vertices()[i1];
 
-            let v2 = random::sample_point_from_cap(&mut rng,
-                                                   Cap::from_center_angle(&cell.vertex(i2),
-                                                                          &Angle(EPSILON)));
+            let v2 =
+                random::sample_point_from_cap(&mut rng,
+                                              Cap::from_center_angle(&cell.vertex(i2),
+                                                                     &Angle::from(Rad(EPSILON))));
             let p = edgeutil::interpolate(rng.gen_range(0., 1.), &v1, &v2);
 
             assert!(Cell::from(&CellID::from(&p)).contains_point(&p));

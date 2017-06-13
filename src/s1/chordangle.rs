@@ -55,7 +55,7 @@ pub const STRAIGHT: ChordAngle = ChordAngle(4f64);
 impl<'a> From<&'a Angle> for ChordAngle {
     /// returns a ChordAngle from the given Angle.
     fn from(a: &'a Angle) -> Self {
-        if a.0 < 0. {
+        if a.rad() < 0. {
             NEGATIVE
         } else if a.is_infinite() {
             ChordAngle::inf()
@@ -87,11 +87,11 @@ impl<'a> From<&'a ChordAngle> for Angle {
     /// converts this ChordAngle to an Angle.
     fn from(ca: &'a ChordAngle) -> Self {
         if ca.0 < 0. {
-            Angle(-1.)
+            Rad(-1.).into()
         } else if ca.is_infinite() {
             Angle::inf()
         } else {
-            Angle(2. * (0.5 * ca.0.sqrt()).asin())
+            Rad(2. * (0.5 * ca.0.sqrt()).asin()).into()
         }
 
     }
@@ -305,7 +305,10 @@ mod tests {
 
     #[test]
     fn test_chordangle_from_angle() {
-        let angles = vec![Angle(0.), Angle(1.), Angle(-1.), Angle(PI)];
+        let angles = vec![Angle::from(Rad(0.)),
+                          Angle::from(Rad(1.)),
+                          Angle::from(Rad(-1.)),
+                          Angle::from(Rad(PI))];
 
         for angle in angles.into_iter() {
             let ca = ChordAngle::from(angle);
@@ -313,7 +316,7 @@ mod tests {
             assert_eq!(got, angle);
         }
 
-        assert_eq!(STRAIGHT, ChordAngle::from(Angle(PI)));
+        assert_eq!(STRAIGHT, ChordAngle::from(Angle::from(Rad(PI))));
         assert_eq!(Angle::inf(), Angle::from(ChordAngle::from(Angle::inf())));
     }
 
@@ -360,7 +363,7 @@ mod tests {
         let iters = 40usize;
         for i in 0..(iters + 1) {
             let radians = PI * (i as f64) / (iters as f64);
-            let chordangle = ChordAngle::from(Angle(radians));
+            let chordangle = ChordAngle::from(Angle::from(Rad(radians)));
 
             assert!(f64_eq(radians.sin(), chordangle.sin()));
             assert!(f64_eq(radians.cos(), chordangle.cos()));

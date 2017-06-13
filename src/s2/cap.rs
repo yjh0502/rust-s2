@@ -21,7 +21,7 @@ use std::f64::consts::PI;
 use consts::*;
 use r1;
 use r3::vector::Vector;
-use s1::{self, Angle, Deg, ChordAngle, chordangle};
+use s1::{self, Angle, Deg, Rad, ChordAngle, chordangle};
 use s2::rect::Rect;
 use s2::point::Point;
 use s2::cell::Cell;
@@ -257,9 +257,9 @@ impl Region for Cap {
             return Rect::empty();
         }
 
-        let cap_angle = self.radius().0;
+        let cap_angle = self.radius().rad();
         let mut all_longitudes = false;
-        let center_lat = self.center.latitude().0;
+        let center_lat = self.center.latitude().rad();
         let mut lat = r1::interval::Interval {
             lo: center_lat - cap_angle,
             hi: center_lat + cap_angle,
@@ -291,10 +291,10 @@ impl Region for Cap {
             //
             // The formula for sin(a) follows from the relationship h = 1 - cos(a).
             let sin_a = self.radius.0.sin();
-            let sin_c = self.center.latitude().0.cos();
+            let sin_c = self.center.latitude().rad().cos();
             if sin_a <= sin_c {
                 let angle_a = (sin_a / sin_c).asin();
-                let center_lng = self.center.longitude().0;
+                let center_lng = self.center.longitude().rad();
                 lng.lo = remainder(center_lng - angle_a, PI * 2.);
                 lng.hi = remainder(center_lng + angle_a, PI * 2.);
             }
@@ -426,17 +426,17 @@ impl Cap {
         }
 
         // TODO: This calculation would be more efficient using s1.ChordAngles.
-        let a_radius = a.radius().0;
-        let b_radius = b.radius().0;
-        let distance = a.center.distance(&b.center).0;
+        let a_radius = a.radius().rad();
+        let b_radius = b.radius().rad();
+        let distance = a.center.distance(&b.center).rad();
         if a_radius >= distance + b_radius {
             a.clone()
         } else {
             let res_radius = 0.5 * (distance + a_radius + b_radius);
-            let res_center = interpolate_at_distance(&Angle(0.5 *
-                                                            (distance - a_radius + b_radius)),
-                                                     &self.center,
-                                                     &other.center);
+            let res_center =
+                interpolate_at_distance(&Angle::from(Rad(0.5 * (distance - a_radius + b_radius))),
+                                        &self.center,
+                                        &other.center);
             Cap::from_center_chordangle(&res_center, &ChordAngle(res_radius))
         }
     }
@@ -507,9 +507,9 @@ mod tests {
     impl Angle {
         // radius_to_height converts an Angle into the height of the cap.
         pub fn radius_to_height(&self) -> f64 {
-            if self.0 < 0. {
+            if self.rad() < 0. {
                 chordangle::NEGATIVE.0
-            } else if self.0 >= PI {
+            } else if self.rad() >= PI {
                 chordangle::RIGHT.0
             } else {
                 0.5 * ChordAngle::from(self).0

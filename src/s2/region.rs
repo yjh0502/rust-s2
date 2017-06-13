@@ -460,7 +460,7 @@ fn raw_fast_covering(cap: &Cap) -> CellUnion {
     let mut v = Vec::new();
     // Find the maximum level such that the cap contains at most one cell vertex
     // and such that CellId.VertexNeighbors() can be called.
-    let level = min(MIN_WIDTHMETRIC.max_level(2. * cap.radius().0),
+    let level = min(MIN_WIDTHMETRIC.max_level(2. * cap.radius().rad()),
                     MAX_LEVEL - 1);
     if level == 0 {
         for face in 0..6 {

@@ -19,7 +19,7 @@ limitations under the License.
 use std;
 
 use consts::EPSILON;
-use s1::angle::Angle;
+use s1::angle::*;
 
 /// Vector represents a point in ℝ³.
 #[derive(Clone,Copy,PartialEq,PartialOrd)]
@@ -172,7 +172,7 @@ impl Vector {
 
     /// angle returns the angle between v and ov.
     pub fn angle(&self, other: &Self) -> Angle {
-        Angle(self.cross(other).norm().atan2(self.dot(other)))
+        Angle::from(Rad(self.cross(other).norm().atan2(self.dot(other))))
     }
 
     /// ortho returns a unit vector that is orthogonal to v.
@@ -348,11 +348,12 @@ mod tests {
 
     #[test]
     fn test_vector_angle() {
-        assert!(f64_eq(V!(1., 0., 0.).angle(&V!(1., 0., 0.)).0, 0.));
-        assert!(f64_eq(V!(1., 0., 0.).angle(&V!(0., 1., 0.)).0, PI / 2.));
-        assert!(f64_eq(V!(1., 0., 0.).angle(&V!(0., 1., 1.)).0, PI / 2.));
-        assert!(f64_eq(V!(1., 0., 0.).angle(&V!(-1., 0., 0.)).0, PI));
-        assert!(f64_eq(V!(1., 2., 3.).angle(&V!(2., 3., -1.)).0, 1.2055891055045298));
+        assert!(f64_eq(V!(1., 0., 0.).angle(&V!(1., 0., 0.)).rad(), 0.));
+        assert!(f64_eq(V!(1., 0., 0.).angle(&V!(0., 1., 0.)).rad(), PI / 2.));
+        assert!(f64_eq(V!(1., 0., 0.).angle(&V!(0., 1., 1.)).rad(), PI / 2.));
+        assert!(f64_eq(V!(1., 0., 0.).angle(&V!(-1., 0., 0.)).rad(), PI));
+        assert!(f64_eq(V!(1., 2., 3.).angle(&V!(2., 3., -1.)).rad(),
+                       1.2055891055045298));
     }
 
     fn test_vector_ortho_case(v: Vector) {
@@ -371,8 +372,8 @@ mod tests {
     }
 
     fn test_vector_identities_case(v1: Vector, v2: Vector) {
-        let a1 = v1.angle(&v2).0;
-        let a2 = v2.angle(&v1).0;
+        let a1 = v1.angle(&v2).rad();
+        let a2 = v2.angle(&v1).rad();
         let c1 = v1.cross(&v2);
         let c2 = v2.cross(&v1);
         let d1 = v1.dot(&v2);

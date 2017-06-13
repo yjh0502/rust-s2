@@ -701,7 +701,7 @@ pub fn expanded_by_distance_uv(uv: &r2::rect::Rect, distance: &Angle) -> r2::rec
     let max_u = uv.x.lo.abs().max(uv.x.hi.abs());
     let max_v = uv.y.lo.abs().max(uv.y.hi.abs());
 
-    let sin_dist = distance.0.sin();
+    let sin_dist = distance.rad().sin();
     r2::rect::Rect {
         x: r1::interval::Interval {
             lo: expand_endpoint(uv.x.lo, max_v, -sin_dist),
@@ -1629,7 +1629,7 @@ pub mod tests {
                     let closest = face_uv_to_xyz(face, closest_uv.x, closest_uv.y).normalize();
                     let actual_dist = p.distance(&Point(closest));
 
-                    if distance.0 >= 0. {
+                    if distance.rad() >= 0. {
                         // expanded should contain all points in the original bound,
                         // and also all points within distance of the boundary.
                         if bound.contains_point(&uv) || actual_dist < distance {
@@ -1638,7 +1638,7 @@ pub mod tests {
                     } else {
                         // expanded should not contain any points within distance
                         // of the original boundary.
-                        if actual_dist.0 < -1. * distance.0 {
+                        if actual_dist.rad() < -1. * distance.rad() {
                             assert!(!expanded.contains_point(&uv));
                         }
                     }

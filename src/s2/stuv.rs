@@ -255,7 +255,7 @@ mod tests {
                 let angle = face_uv_to_xyz(face, x, -1.)
                     .cross(&face_uv_to_xyz(face, x, 1.))
                     .angle(&unorm(face, x));
-                assert!(angle.0 < std::f64::EPSILON);
+                assert!(angle.rad() < std::f64::EPSILON);
 
                 x += step;
                 if x > 1. {

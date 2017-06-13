@@ -163,7 +163,7 @@ impl Point {
 
     /// approx_eq reports whether the two points are similar enough to be equal.
     pub fn approx_eq(&self, other: &Self) -> bool {
-        self.0.angle(&other.0) <= s1::Angle(EPSILON)
+        self.0.angle(&other.0).rad() <= EPSILON
     }
 
     /// norm returns the point's norm.
@@ -268,19 +268,23 @@ pub fn ordered_ccw(a: &Point, b: &Point, c: &Point, o: &Point) -> bool {
 /// is about 1e-15, this means that we shouldn't even consider it unless
 /// s >= 3e-4 or so.
 pub fn point_area(a: &Point, b: &Point, c: &Point) -> f64 {
-    let sa = b.0.angle(&c.0).0;
-    let sb = c.0.angle(&a.0).0;
-    let sc = a.0.angle(&b.0).0;
+    let sa = b.0.angle(&c.0).rad();
+    let sb = c.0.angle(&a.0).rad();
+    let sc = a.0.angle(&b.0).rad();
     let s = 0.5 * (sa + sb + sc);
     if s >= 3e-4 {
         // Consider whether Girard's formula might be more accurate.
         let dmin = s - sa.max(sb.max(sc));
         if dmin < 1e-2 * s * s * s * s * s {
             // This triangle is skinny enough to use Girard's formula.
-            let ab = a.cross(b);
-            let bc = b.cross(c);
-            let ac = a.cross(c);
-            let area = (ab.0.angle(&ac.0).0 - ab.0.angle(&bc.0).0 + bc.0.angle(&ac.0).0).max(0.0);
+            let ab = a.cross(b).0;
+            let bc = b.cross(c).0;
+            let ac = a.cross(c).0;
+
+            let ab_ac = ab.angle(&ac).rad();
+            let ab_bc = ab.angle(&bc).rad();
+            let bc_ac = bc.angle(&ac).rad();
+            let area = (ab_ac - ab_bc + bc_ac).max(0.0);
 
             if dmin < s * 0.1 * area {
                 return area;
@@ -495,8 +499,8 @@ mod tests {
         let p1 = Point(v1);
         let p2 = Point(v2);
 
-        assert!(f64_eq(expected, p1.distance(&p2).0));
-        assert!(f64_eq(expected, p2.distance(&p1).0));
+        assert!(f64_eq(expected, p1.distance(&p2).rad()));
+        assert!(f64_eq(expected, p2.distance(&p1).rad()));
     }
 
     #[test]
@@ -527,13 +531,13 @@ mod tests {
                     "{} != {}",
                     PI,
                     Angle::from((&z * -1.).chordangle(&z)).rad());
-            assert!(f64_eq(PI / 2., Angle::from(x.chordangle(&z)).0),
+            assert!(f64_eq(PI / 2., Angle::from(x.chordangle(&z)).rad()),
                     "{} != {}",
                     PI / 2.,
-                    Angle::from(x.chordangle(&z)).0);
+                    Angle::from(x.chordangle(&z)).rad());
 
             let w = (&y + &z).normalize();
-            assert!(f64_eq(PI / 4., Angle::from(w.chordangle(&z)).0));
+            assert!(f64_eq(PI / 4., Angle::from(w.chordangle(&z)).rad()));
         }
     }
 
