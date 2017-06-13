@@ -29,7 +29,9 @@ pub struct Rect {
     pub y: Interval,
 }
 
-/// empty rect
+/// Canonical empty rectangle. Use IsEmpty() to test
+/// for empty rectangles, since they have more than one representation. A Rect::default()
+/// is not the same as the EmptyRect.
 pub const EMPTY: Rect = Rect {
     x: interval::EMPTY,
     y: interval::EMPTY,
@@ -54,7 +56,7 @@ impl Rect {
         for p in &points[1..] {
             r = r + p;
         }
-        return r;
+        r
     }
 
     /// from_center_size constructs a rectangle with the given center and size.
@@ -63,16 +65,6 @@ impl Rect {
         Rect {
             x: Interval::from_point(center.x).expanded(size.x / 2.),
             y: Interval::from_point(center.y).expanded(size.y / 2.),
-        }
-    }
-
-    /// empty constructs the canonical empty rectangle. Use IsEmpty() to test
-    /// for empty rectangles, since they have more than one representation. A Rect{}
-    /// is not the same as the EmptyRect.
-    pub fn empty() -> Self {
-        Rect {
-            x: Interval::empty(),
-            y: Interval::empty(),
         }
     }
 
@@ -90,22 +82,10 @@ impl Rect {
     /// vertices returns all four vertices of the rectangle. Vertices are returned in
     /// CCW direction starting with the lower left corner.
     pub fn vertices(&self) -> [Point; 4] {
-        [Point {
-             x: self.x.lo,
-             y: self.y.lo,
-         },
-         Point {
-             x: self.x.hi,
-             y: self.y.lo,
-         },
-         Point {
-             x: self.x.hi,
-             y: self.y.hi,
-         },
-         Point {
-             x: self.x.lo,
-             y: self.y.hi,
-         }]
+        [Point::new(self.x.lo, self.y.lo),
+         Point::new(self.x.hi, self.y.lo),
+         Point::new(self.x.hi, self.y.hi),
+         Point::new(self.x.lo, self.y.hi)]
     }
 
     /// vertex_ij returns the vertex in direction i along the X-axis (0=left, 1=right) and
@@ -113,40 +93,28 @@ impl Rect {
     pub fn vertex_ij(&self, i: isize, j: isize) -> Point {
         let x = if i == 0 { self.x.lo } else { self.x.hi };
         let y = if j == 0 { self.y.lo } else { self.y.hi };
-        Point { x: x, y: y }
+        Point::new(x, y)
     }
 
     /// lo returns the low corner of the rect.
     pub fn lo(&self) -> Point {
-        Point {
-            x: self.x.lo,
-            y: self.y.lo,
-        }
+        Point::new(self.x.lo, self.y.lo)
     }
 
     /// hi returns the high corner of the rect.
     pub fn hi(&self) -> Point {
-        Point {
-            x: self.x.hi,
-            y: self.y.hi,
-        }
+        Point::new(self.x.hi, self.y.hi)
     }
 
     /// center returns the center of the rectangle in (x,y)-space
     pub fn center(&self) -> Point {
-        Point {
-            x: self.x.center(),
-            y: self.y.center(),
-        }
+        Point::new(self.x.center(), self.y.center())
     }
 
     /// size returns the width and height of this rectangle in (x,y)-space. Empty
     /// rectangles have a negative width and height.
     pub fn size(&self) -> Point {
-        Point {
-            x: self.x.len(),
-            y: self.y.len(),
-        }
+        Point::new(self.x.len(), self.y.len())
     }
 
     /// contains_point reports whether the rectangle contains the given point.
@@ -186,10 +154,7 @@ impl Rect {
     /// clamp_point returns the closest point in the rectangle to the given point.
     /// The rectangle must be non-empty.
     pub fn clamp_point(&self, p: &Point) -> Point {
-        Point {
-            x: self.x.clamp_point(p.x),
-            y: self.y.clamp_point(p.y),
-        }
+        Point::new(self.x.clamp_point(p.x), self.y.clamp_point(p.y))
     }
 
     /// expanded returns a rectangle that has been expanded in the x-direction
@@ -200,7 +165,7 @@ impl Rect {
         let x = self.x.expanded(margin.x);
         let y = self.y.expanded(margin.y);
         if x.is_empty() || y.is_empty() {
-            Self::empty()
+            EMPTY
         } else {
             Rect { x: x, y: y }
         }
@@ -208,10 +173,7 @@ impl Rect {
 
     /// expanded_by_margin returns a Rect that has been expanded by the amount on all sides.
     pub fn expanded_by_margin(&self, margin: f64) -> Self {
-        self.expanded(&Point {
-                          x: margin,
-                          y: margin,
-                      })
+        self.expanded(&Point::new(margin, margin))
     }
 
     /// union returns the smallest rectangle containing the union of this rectangle and
@@ -229,7 +191,7 @@ impl Rect {
         let x = self.x.intersection(&other.x);
         let y = self.y.intersection(&other.y);
         if x.is_empty() || y.is_empty() {
-            Self::empty()
+            EMPTY
         } else {
             Rect { x: x, y: y }
         }

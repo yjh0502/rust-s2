@@ -35,14 +35,10 @@ impl std::fmt::Debug for Interval {
     }
 }
 
+/// An empty interval.
 pub const EMPTY: Interval = Interval { lo: 1., hi: 0. };
 
 impl Interval {
-    /// empty returns an empty interval.
-    pub fn empty() -> Self {
-        EMPTY
-    }
-
     pub fn new(lo: f64, hi: f64) -> Self {
         Self { lo, hi }
     }
@@ -60,7 +56,7 @@ impl Interval {
     /// center returns the midpoint of the interval.
     /// It is undefined for empty intervals.
     pub fn center(&self) -> f64 {
-        0.5f64 * (self.lo + self.hi)
+        0.5 * (self.lo + self.hi)
     }
 
     /// len returns the length of the interval.
@@ -165,12 +161,11 @@ impl Interval {
     /// the empty interval.
     pub fn approx_eq(&self, other: &Self) -> bool {
         if self.is_empty() {
-            other.len() < 2f64 * EPSILON
+            other.len() < 2. * EPSILON
         } else if other.is_empty() {
-            self.len() < 2f64 * EPSILON
+            self.len() < 2. * EPSILON
         } else {
             (self.lo - other.lo).abs() <= EPSILON && (self.hi - other.hi).abs() <= EPSILON
-
         }
     }
 }
