@@ -43,9 +43,13 @@ impl Interval {
         EMPTY
     }
 
+    pub fn new(lo: f64, hi: f64) -> Self {
+        Self { lo, hi }
+    }
+
     /// from_point returns an interval representing a single point.
     pub fn from_point(p: f64) -> Self {
-        Interval { lo: p, hi: p }
+        Self { lo: p, hi: p }
     }
 
     /// is_empty reports whether the interval is empty.
