@@ -76,12 +76,12 @@ pub fn xyz_to_face_uv(r: &Vector) -> (u8, f64, f64) {
 
 pub fn face_uv_to_xyz(face: u8, u: f64, v: f64) -> Vector {
     match face {
-        0 => Vector::xyz(1., u, v),
-        1 => Vector::xyz(-u, 1., v),
-        2 => Vector::xyz(-u, -v, 1.),
-        3 => Vector::xyz(-1., -v, -u),
-        4 => Vector::xyz(v, -1., -u),
-        5 => Vector::xyz(v, u, -1.),
+        0 => Vector::new(1., u, v),
+        1 => Vector::new(-u, 1., v),
+        2 => Vector::new(-u, -v, 1.),
+        3 => Vector::new(-1., -v, -u),
+        4 => Vector::new(v, -1., -u),
+        5 => Vector::new(v, u, -1.),
         _ => unimplemented!(),
     }
 }
@@ -107,12 +107,12 @@ pub fn face_xyz_to_uv(face: u8, p: &Point) -> Option<(f64, f64)> {
 fn face_xyz_to_uvw(face: u8, p: &Point) -> Point {
     let v = &p.0;
     match face {
-        0 => Point(Vector::xyz(v.y, v.z, v.x)),
-        1 => Point(Vector::xyz(-v.x, v.z, v.y)),
-        2 => Point(Vector::xyz(-v.x, -v.y, v.z)),
-        3 => Point(Vector::xyz(-v.z, -v.y, -v.x)),
-        4 => Point(Vector::xyz(-v.z, v.x, -v.y)),
-        5 => Point(Vector::xyz(v.y, v.x, -v.z)),
+        0 => Point(Vector::new(v.y, v.z, v.x)),
+        1 => Point(Vector::new(-v.x, v.z, v.y)),
+        2 => Point(Vector::new(-v.x, -v.y, v.z)),
+        3 => Point(Vector::new(-v.z, -v.y, -v.x)),
+        4 => Point(Vector::new(-v.z, v.x, -v.y)),
+        5 => Point(Vector::new(v.y, v.x, -v.z)),
         _ => unimplemented!(),
     }
 }
@@ -158,24 +158,24 @@ fn xyz_to_face_siti(p: &Point) -> (u8, u64, u64, i8) {
 
 pub fn unorm(face: u8, u: f64) -> Vector {
     match face {
-        0 => Vector::xyz(u, -1., 0.),
-        1 => Vector::xyz(1., u, 0.),
-        2 => Vector::xyz(1., 0., u),
-        3 => Vector::xyz(-u, 0., 1.),
-        4 => Vector::xyz(0., -u, 1.),
-        5 => Vector::xyz(0., -1., -u),
+        0 => Vector::new(u, -1., 0.),
+        1 => Vector::new(1., u, 0.),
+        2 => Vector::new(1., 0., u),
+        3 => Vector::new(-u, 0., 1.),
+        4 => Vector::new(0., -u, 1.),
+        5 => Vector::new(0., -1., -u),
         _ => unimplemented!(),
     }
 }
 
 pub fn vnorm(face: u8, v: f64) -> Vector {
     match face {
-        0 => Vector::xyz(-v, 0., 1.),
-        1 => Vector::xyz(0., -v, 1.),
-        2 => Vector::xyz(0., -1., -v),
-        3 => Vector::xyz(v, -1., 0.),
-        4 => Vector::xyz(1., v, 0.),
-        5 => Vector::xyz(1., 0., v),
+        0 => Vector::new(-v, 0., 1.),
+        1 => Vector::new(0., -v, 1.),
+        2 => Vector::new(0., -1., -v),
+        3 => Vector::new(v, -1., 0.),
+        4 => Vector::new(1., v, 0.),
+        5 => Vector::new(1., 0., v),
         _ => unimplemented!(),
     }
 }
@@ -402,7 +402,7 @@ mod tests {
     #[test]
     fn test_xyz_to_face_siti() {
         let mut rng = random::rng();
-        let shift = Point(Vector::xyz(1e-13, 1e-13, 1e-13));
+        let shift = Point(Vector::new(1e-13, 1e-13, 1e-13));
 
         for level in 0..MAX_LEVEL {
             for _ in 0..1000 {

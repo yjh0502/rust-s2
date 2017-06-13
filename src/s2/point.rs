@@ -90,7 +90,7 @@ impl From<Vector3<f64>> for Point {
 }
 impl<'a> From<&'a Vector3<f64>> for Point {
     fn from(p: &'a Vector3<f64>) -> Self {
-        Point(Vector::xyz(p.x, p.y, p.z))
+        Point(Vector::new(p.x, p.y, p.z))
     }
 }
 
@@ -334,12 +334,12 @@ pub fn true_centroid(a: &Point, b: &Point, c: &Point) -> Point {
     // This code still isn't as numerically stable as it could be.
     // The biggest potential improvement is to compute B-A and C-A more
     // accurately so that (B-A)x(C-A) is always inside triangle ABC.
-    let x = Vector::xyz(a.0.x, b.0.x - a.0.x, c.0.x - a.0.x);
-    let y = Vector::xyz(a.0.y, b.0.y - a.0.y, c.0.y - a.0.y);
-    let z = Vector::xyz(a.0.z, b.0.z - a.0.z, c.0.z - a.0.z);
-    let r = Vector::xyz(ra, rb - ra, rc - ra);
+    let x = Vector::new(a.0.x, b.0.x - a.0.x, c.0.x - a.0.x);
+    let y = Vector::new(a.0.y, b.0.y - a.0.y, c.0.y - a.0.y);
+    let z = Vector::new(a.0.z, b.0.z - a.0.z, c.0.z - a.0.z);
+    let r = Vector::new(ra, rb - ra, rc - ra);
 
-    Point(Vector::xyz(y.cross(&z).dot(&r),
+    Point(Vector::new(y.cross(&z).dot(&r),
                       z.cross(&x).dot(&r),
                       x.cross(&y).dot(&r))) * 0.5
 }
@@ -400,7 +400,7 @@ fn regular_points_for_frame(frame: &Matrix3<f64>,
 
     for i in 0..num_vertices {
         let angle = (i as f64) * radian_step;
-        let p = Point(Vector::xyz(r * angle.cos(), r * angle.sin(), z));
+        let p = Point(Vector::new(r * angle.cos(), r * angle.sin(), z));
         vertices.push(from_frame(frame, &p).normalize());
     }
 
@@ -483,12 +483,12 @@ mod tests {
 
     #[test]
     fn test_point_cross() {
-        test_point_cross_case(1., Vector::xyz(1., 0., 0.), Vector::xyz(1., 0., 0.));
-        test_point_cross_case(2., Vector::xyz(1., 0., 0.), Vector::xyz(0., 1., 0.));
-        test_point_cross_case(2., Vector::xyz(0., 1., 0.), Vector::xyz(1., 0., 0.));
+        test_point_cross_case(1., Vector::new(1., 0., 0.), Vector::new(1., 0., 0.));
+        test_point_cross_case(2., Vector::new(1., 0., 0.), Vector::new(0., 1., 0.));
+        test_point_cross_case(2., Vector::new(0., 1., 0.), Vector::new(1., 0., 0.));
         test_point_cross_case(2. * 934f64.sqrt(),
-                              Vector::xyz(1., 2., 3.),
-                              Vector::xyz(-4., 5., -6.));
+                              Vector::new(1., 2., 3.),
+                              Vector::new(-4., 5., -6.));
     }
 
     fn test_point_distance_case(expected: f64, v1: Vector, v2: Vector) {
@@ -501,12 +501,12 @@ mod tests {
 
     #[test]
     fn test_point_distance() {
-        test_point_distance_case(0., Vector::xyz(1., 0., 0.), Vector::xyz(1., 0., 0.));
-        test_point_distance_case(PI / 2., Vector::xyz(1., 0., 0.), Vector::xyz(0., 1., 0.));
-        test_point_distance_case(PI / 2., Vector::xyz(1., 0., 0.), Vector::xyz(0., 1., 1.));
+        test_point_distance_case(0., Vector::new(1., 0., 0.), Vector::new(1., 0., 0.));
+        test_point_distance_case(PI / 2., Vector::new(1., 0., 0.), Vector::new(0., 1., 0.));
+        test_point_distance_case(PI / 2., Vector::new(1., 0., 0.), Vector::new(0., 1., 1.));
         test_point_distance_case(1.2055891055045298,
-                                 Vector::xyz(1., 2., 3.),
-                                 Vector::xyz(2., 3., -1.));
+                                 Vector::new(1., 2., 3.),
+                                 Vector::new(2., 3., -1.));
     }
 
     use s2::random;
@@ -641,8 +641,8 @@ mod tests {
         // places into the result, so it is not quite a difference of 0.
         point_area_case(&p045, &pz, &p180, 3.0 * PI / 4.0, 1e-14);
         // Make sure that Area has good *relative* accuracy even for very small areas.
-        point_area_case(&Point(Vector::xyz(EPSILON, 0., 1.)),
-                        &Point(Vector::xyz(0., EPSILON, 1.)),
+        point_area_case(&Point(Vector::new(EPSILON, 0., 1.)),
+                        &Point(Vector::new(0., EPSILON, 1.)),
                         &pz,
                         0.5 * EPSILON * EPSILON,
                         1e-14);
@@ -652,7 +652,7 @@ mod tests {
         point_area_case(&p000, &p045, &p090, 0., 0.);
         // Try a very long and skinny triangle.
         point_area_case(&p000,
-                        &Point(Vector::xyz(1., 1., EPSILON)),
+                        &Point(Vector::new(1., 1., EPSILON)),
                         &p090,
                         5.8578643762690495119753e-11,
                         1e-9);
@@ -672,14 +672,14 @@ mod tests {
     #[test]
     fn test_point_area_quater_hemisphere() {
         // Triangles with near-180 degree edges that sum to a quarter-sphere.
-        area_quater_hemi_case(&Point(Vector::xyz(1., 0.1 * EPSILON, EPSILON)),
+        area_quater_hemi_case(&Point(Vector::new(1., 0.1 * EPSILON, EPSILON)),
                               &p000,
                               &p045,
                               &p180,
                               &pz,
                               PI);
         // Four other triangles that sum to a quarter-sphere.
-        area_quater_hemi_case(&Point(Vector::xyz(1., 1., EPSILON)),
+        area_quater_hemi_case(&Point(Vector::new(1., 1., EPSILON)),
                               &p000,
                               &p045,
                               &p180,
@@ -696,16 +696,16 @@ mod tests {
     #[test]
     fn test_point_planar_centroid() {
         // xyz axis
-        planar_centroid_case(&Point(Vector::xyz(0., 0., 1.)),
-                             &Point(Vector::xyz(0., 1., 0.)),
-                             &Point(Vector::xyz(1., 0., 0.)),
-                             &Point(Vector::xyz(1. / 3., 1. / 3., 1. / 3.)));
+        planar_centroid_case(&Point(Vector::new(0., 0., 1.)),
+                             &Point(Vector::new(0., 1., 0.)),
+                             &Point(Vector::new(1., 0., 0.)),
+                             &Point(Vector::new(1. / 3., 1. / 3., 1. / 3.)));
 
         // same point
-        planar_centroid_case(&Point(Vector::xyz(1., 0., 0.)),
-                             &Point(Vector::xyz(1., 0., 0.)),
-                             &Point(Vector::xyz(1., 0., 0.)),
-                             &Point(Vector::xyz(1., 0., 0.)));
+        planar_centroid_case(&Point(Vector::new(1., 0., 0.)),
+                             &Point(Vector::new(1., 0., 0.)),
+                             &Point(Vector::new(1., 0., 0.)),
+                             &Point(Vector::new(1., 0., 0.)));
     }
 
     use rand::Rng;
@@ -792,12 +792,12 @@ mod tests {
 
     #[test]
     fn test_point_region() {
-        let p = Point(Vector::xyz(1., 0., 0.));
-        let r = Point(Vector::xyz(1., 0., 0.));
+        let p = Point(Vector::new(1., 0., 0.));
+        let r = Point(Vector::new(1., 0., 0.));
 
         assert!(r.contains(&p));
         assert!(p.contains(&r));
-        assert_eq!(false, r.contains(&Point(Vector::xyz(1., 0., 1.))));
+        assert_eq!(false, r.contains(&Point(Vector::new(1., 0., 1.))));
 
         assert!(r.cap_bound().approx_eq(&Cap::from(&r)));
         assert!(r.rect_bound().approx_eq(&Rect::from(LatLng::from(&p))));
@@ -833,12 +833,12 @@ mod tests {
         assert!(Point::from(m.y).0.is_unit());
         assert!(f64_eq(m.determinant(), 1.));
 
-        assert!(Point(Vector::xyz(1., 0., 0.)).approx_eq(&to_frame(&m, &Point::from(m.x))));
-        assert!(Point(Vector::xyz(0., 1., 0.)).approx_eq(&to_frame(&m, &Point::from(m.y))));
-        assert!(Point(Vector::xyz(0., 0., 1.)).approx_eq(&to_frame(&m, &Point::from(m.z))));
+        assert!(Point(Vector::new(1., 0., 0.)).approx_eq(&to_frame(&m, &Point::from(m.x))));
+        assert!(Point(Vector::new(0., 1., 0.)).approx_eq(&to_frame(&m, &Point::from(m.y))));
+        assert!(Point(Vector::new(0., 0., 1.)).approx_eq(&to_frame(&m, &Point::from(m.z))));
 
-        assert!(from_frame(&m, &Point(Vector::xyz(1., 0., 0.))).approx_eq(&Point::from(m.x)));
-        assert!(from_frame(&m, &Point(Vector::xyz(0., 1., 0.))).approx_eq(&Point::from(m.y)));
-        assert!(from_frame(&m, &Point(Vector::xyz(0., 0., 1.))).approx_eq(&Point::from(m.z)));
+        assert!(from_frame(&m, &Point(Vector::new(1., 0., 0.))).approx_eq(&Point::from(m.x)));
+        assert!(from_frame(&m, &Point(Vector::new(0., 1., 0.))).approx_eq(&Point::from(m.y)));
+        assert!(from_frame(&m, &Point(Vector::new(0., 0., 1.))).approx_eq(&Point::from(m.z)));
     }
 }

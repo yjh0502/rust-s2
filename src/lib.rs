@@ -4,7 +4,7 @@ extern crate float_extras;
 extern crate cgmath;
 extern crate rand;
 
-pub mod consts;
+mod consts;
 
 pub mod r1;
 pub mod r2;

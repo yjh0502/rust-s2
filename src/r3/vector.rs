@@ -28,6 +28,7 @@ pub struct Vector {
     pub y: f64,
     pub z: f64,
 }
+
 impl std::fmt::Debug for Vector {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "({:0.24}, {:0.24}, {:0.24})", self.x, self.y, self.z)
@@ -106,7 +107,7 @@ impl std::ops::Mul<f64> for Vector {
 }
 
 impl Vector {
-    pub fn xyz(x: f64, y: f64, z: f64) -> Self {
+    pub fn new(x: f64, y: f64, z: f64) -> Self {
         Vector { x: x, y: y, z: z }
     }
 
@@ -129,9 +130,9 @@ impl Vector {
     /// normalize returns a unit vector in the same direction as v.
     pub fn normalize(&self) -> Self {
         if self.x == 0. && self.y == 0. && self.z == 0. {
-            self.clone()
+            *self
         } else {
-            self.clone() * (1.0 / self.norm())
+            self * (1.0 / self.norm())
         }
     }
 
@@ -382,7 +383,7 @@ mod tests {
         // dot commutes
         assert!(f64_eq(d1, d2));
         // cross anti-commuts
-        assert!(c1.approx_eq(&(c2.clone() * -1.)));
+        assert!(c1.approx_eq(&(c2 * -1.)));
 
         // cross is orthogonal to original vectors
         assert!(f64_eq(v1.dot(&c1), 0.));
