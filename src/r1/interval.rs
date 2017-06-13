@@ -205,16 +205,16 @@ impl std::cmp::PartialEq<Interval> for Interval {
 mod tests {
     use super::*;
 
-    const UNIT: Interval = Interval { lo: 0., hi: 1. };
-    const NEG_UNIT: Interval = Interval { lo: -1., hi: 0. };
-    const HALF: Interval = Interval { lo: 0.5, hi: 0.5 };
-    const ZERO: Interval = Interval { lo: 0., hi: 0. };
-
     macro_rules! I {
         ($lo: expr, $hi: expr) => {
             Interval{lo: $lo, hi: $hi}
         }
     }
+
+    const UNIT: Interval = I!{0., 1.};
+    const NEG_UNIT: Interval = I!{-1., 0.};
+    const HALF: Interval = I!{0.5, 0.5};
+    const ZERO: Interval = I!{0., 0.};
 
     #[test]
     fn is_empty() {
