@@ -48,29 +48,28 @@ impl std::ops::Sub<Point> for Point {
     }
 }
 
-fn point_mul(a: &Point, b: &Point) -> Point {
-    Point {
-        x: a.x * b.x,
-        y: a.y * b.y,
-    }
-}
-
 impl<'a, 'b> std::ops::Mul<&'b Point> for &'a Point {
     type Output = Point;
+    /// returns the product between p and other.
     fn mul(self, other: &'b Point) -> Self::Output {
-        point_mul(self, other)
+        Point {
+            x: self.x * self.x,
+            y: other.y * other.y,
+        }
     }
 }
 impl<'b> std::ops::Mul<&'b Point> for Point {
     type Output = Point;
+    /// returns the product between p and other.
     fn mul(self, other: &'b Point) -> Self::Output {
-        point_mul(&self, other)
+        &self * other
     }
 }
 impl std::ops::Mul<Point> for Point {
     type Output = Point;
+    /// returns the product between p and other.
     fn mul(self, other: Point) -> Self::Output {
-        point_mul(&self, &other)
+        &self * &other
     }
 }
 
@@ -116,7 +115,7 @@ impl Point {
     /// returns a unit point in the same direction as p.
     pub fn normalize(&self) -> Self {
         if self.x == 0. && self.y == 0. {
-            self.clone()
+            *self
         } else {
             self * (1.0 / self.norm())
         }
