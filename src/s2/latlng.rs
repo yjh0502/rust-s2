@@ -3,7 +3,7 @@ use std;
 use std::f64::consts::PI;
 use consts::remainder;
 use r3::vector::Vector;
-use s1::angle::*;
+use s1::*;
 use s2::point::Point;
 
 const NORTH_POLE_LAT: Angle = Angle(PI / 2.);
@@ -111,7 +111,7 @@ mod tests {
 
     macro_rules! ll {
         ($lat: expr, $lng: expr) => {
-            LatLng{lat: s1::angle::Deg($lat).into(), lng: s1::angle::Deg($lng).into()}
+            LatLng{lat: s1::Deg($lat).into(), lng: s1::Deg($lng).into()}
         }
     }
     macro_rules! p {
@@ -126,7 +126,7 @@ mod tests {
         assert!(normalized.is_valid(), desc);
 
         let distance = normalized.distance(&want);
-        assert!(distance < s1::angle::Deg(1e-13).into(), desc);
+        assert!(distance < s1::Deg(1e-13).into(), desc);
     }
 
     #[test]
@@ -195,7 +195,7 @@ mod tests {
     }
 
     fn test_latlng_distance_case(ll1: LatLng, ll2: LatLng, want: f64, tolerance: f64) {
-        let distance: s1::angle::Deg = ll1.distance(&ll2).into();
+        let distance: s1::Deg = ll1.distance(&ll2).into();
         assert!((distance.0 - want).abs() <= tolerance);
     }
 

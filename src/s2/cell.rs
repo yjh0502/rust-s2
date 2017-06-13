@@ -20,7 +20,7 @@ use r1;
 use r2;
 use s1;
 use s2;
-use s1::angle::*;
+use s1::*;
 use s2::stuv::*;
 use s2::cellid::*;
 use s2::point::*;
@@ -43,7 +43,7 @@ pub struct Cell {
     level: u8,
     pub orientation: u8,
     pub id: CellID,
-    pub uv: r2::Rect,
+    pub uv: r2::rect::Rect,
 }
 
 impl<'a> From<&'a CellID> for Cell {
@@ -144,7 +144,7 @@ impl Cell {
     }
 
     /// bound_uv returns the bounds of this cell in (u,v)-space.
-    pub fn bound_uv(&self) -> &r2::Rect {
+    pub fn bound_uv(&self) -> &r2::rect::Rect {
         &self.uv
     }
 
@@ -299,7 +299,8 @@ impl Cell {
                 if v > 0. { 1 } else { 0 }
             };
 
-            let lat = r1::Interval::from_point(self.latitude(i, j)) + self.latitude(1 - i, 1 - j);
+            let lat = r1::interval::Interval::from_point(self.latitude(i, j)) +
+                      self.latitude(1 - i, 1 - j);
             let lng = s1::interval::EMPTY + self.longitude(i, 1 - j) + self.longitude(1 - i, j);
 
             // We grow the bounds slightly to make sure that the bounding rectangle
@@ -338,11 +339,11 @@ impl Cell {
         let bound = match self.face {
             0 => {
                 s2::rect::Rect {
-                    lat: r1::Interval {
+                    lat: r1::interval::Interval {
                         lo: -PI_4,
                         hi: PI_4,
                     },
-                    lng: s1::interval::Interval {
+                    lng: s1::Interval {
                         lo: -PI_4,
                         hi: PI_4,
                     },
@@ -350,11 +351,11 @@ impl Cell {
             }
             1 => {
                 s2::rect::Rect {
-                    lat: r1::Interval {
+                    lat: r1::interval::Interval {
                         lo: -PI_4,
                         hi: PI_4,
                     },
-                    lng: s1::interval::Interval {
+                    lng: s1::Interval {
                         lo: PI_4,
                         hi: 3. * PI_4,
                     },
@@ -362,7 +363,7 @@ impl Cell {
             }
             2 => {
                 s2::rect::Rect {
-                    lat: r1::Interval {
+                    lat: r1::interval::Interval {
                         lo: *POLE_MIN_LAT,
                         hi: PI / 2.,
                     },
@@ -371,11 +372,11 @@ impl Cell {
             }
             3 => {
                 s2::rect::Rect {
-                    lat: r1::Interval {
+                    lat: r1::interval::Interval {
                         lo: -PI_4,
                         hi: PI_4,
                     },
-                    lng: s1::interval::Interval {
+                    lng: s1::Interval {
                         lo: 3. * PI_4,
                         hi: -3. * PI_4,
                     },
@@ -383,11 +384,11 @@ impl Cell {
             }
             4 => {
                 s2::rect::Rect {
-                    lat: r1::Interval {
+                    lat: r1::interval::Interval {
                         lo: -PI_4,
                         hi: PI_4,
                     },
-                    lng: s1::interval::Interval {
+                    lng: s1::Interval {
                         lo: -3. * PI_4,
                         hi: -PI_4,
                     },
@@ -395,7 +396,7 @@ impl Cell {
             }
             5 => {
                 s2::rect::Rect {
-                    lat: r1::Interval {
+                    lat: r1::interval::Interval {
                         lo: -PI / 2.,
                         hi: -1. * (*POLE_MIN_LAT),
                     },
@@ -426,7 +427,7 @@ impl Cell {
     // you will need to convert the Cell to a loop.
     pub fn contains_point(&self, p: &Point) -> bool {
         if let Some((u, v)) = face_xyz_to_uv(self.face, p) {
-            let uv = r2::Point { x: u, y: v };
+            let uv = r2::point::Point { x: u, y: v };
 
             // Expand the (u,v) bound to ensure that
             //
@@ -485,7 +486,6 @@ mod tests {
     use rand::Rng;
     use super::*;
 
-    use std::collections::{btree_map, BTreeMap};
     use s2::random;
 
     // maxCellSize is the upper bounds on the number of bytes we want the Cell object to ever be.
@@ -496,6 +496,8 @@ mod tests {
         assert!(std::mem::size_of::<Cell>() <= MAX_CELL_SIZE);
     }
 
+    /*
+    use std::collections::{btree_map, BTreeMap};
     fn incr<K>(m: &mut BTreeMap<K, usize>, k: K)
         where K: std::cmp::Ord
     {
@@ -509,6 +511,7 @@ mod tests {
             }
         };
     }
+    */
 
     //XXX
     #[test]
@@ -651,11 +654,11 @@ mod tests {
             // where the cell size at a given level is maximal.
             let max_size_uv = 0.3964182625366691;
             let special_uv = [
-                r2::Point::new(DBL_EPSILON, DBL_EPSILON),// Face center
-                r2::Point::new(DBL_EPSILON, 1.),// Edge midpoint
-                r2::Point::new(1., 1.),// Face corner
-                r2::Point::new(max_size_uv, max_size_uv),// Largest cell area
-                r2::Point::new(DBL_EPSILON, max_size_uv),// Longest edge/diagonal
+                r2::point::Point::new(DBL_EPSILON, DBL_EPSILON),// Face center
+                r2::point::Point::new(DBL_EPSILON, 1.),// Edge midpoint
+                r2::point::Point::new(1., 1.),// Face corner
+                r2::point::Point::new(max_size_uv, max_size_uv),// Largest cell area
+                r2::point::Point::new(DBL_EPSILON, max_size_uv),// Longest edge/diagonal
             ];
 
             let mut force_subdivide = false;

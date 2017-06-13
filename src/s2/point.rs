@@ -7,8 +7,8 @@ use consts::*;
 use std::f64::consts::PI;
 use r3::vector::Vector;
 use s1;
-use s1::angle::*;
-use s1::chordangle::ChordAngle;
+use s1::*;
+use s1::ChordAngle;
 use s2::predicates::*;
 use s2::region::Region;
 use s2::latlng::LatLng;
@@ -157,13 +157,13 @@ impl Point {
     }
 
     /// distance returns the angle between two points.
-    pub fn distance(&self, b: &Point) -> s1::angle::Angle {
+    pub fn distance(&self, b: &Point) -> s1::Angle {
         self.0.angle(&b.0)
     }
 
     /// approx_eq reports whether the two points are similar enough to be equal.
     pub fn approx_eq(&self, other: &Self) -> bool {
-        self.0.angle(&other.0) <= s1::angle::Angle(EPSILON)
+        self.0.angle(&other.0) <= s1::Angle(EPSILON)
     }
 
     /// norm returns the point's norm.
@@ -510,7 +510,7 @@ mod tests {
     }
 
     use s2::random;
-    use s1::angle::Angle;
+    use s1::Angle;
 
     #[test]
     fn test_chordangle_between_points() {

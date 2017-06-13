@@ -165,7 +165,7 @@ func DistanceFraction(x, a, b Point) float64 {
 }
 */
 
-use s1::angle::Angle;
+use s1::Angle;
 use s2::point::Point;
 
 /// interpolate returns the point X along the line segment AB whose distance from A

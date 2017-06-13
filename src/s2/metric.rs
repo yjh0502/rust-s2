@@ -96,9 +96,9 @@ metric!(MAX_AREAMETRIC, 2, 2.635799256963161491);
 // and also the maximum geometric width (see the comment for widths). For
 // example, the distance from an arbitrary point to the closest cell center
 // at a given level is at most half the maximum diagonal length.
-metric!(MIN_DIAG_METRIC, 1, 8. * SQRT_2 / 9.);
-metric!(AVG_DIAG_METRIC, 1, 2.060422738998471683);
-metric!(MAX_DIAG_METRIC, 1, 2.438654594434021032);
+metric!(MIN_DIAGMETRIC, 1, 8. * SQRT_2 / 9.);
+metric!(AVG_DIAGMETRIC, 1, 2.060422738998471683);
+metric!(MAX_DIAGMETRIC, 1, 2.438654594434021032);
 
 /// MAX_DIAG_ASPECT is the maximum diagonal aspect ratio over all cells at any
 /// level, where the diagonal aspect ratio of a cell is defined as the ratio
@@ -167,6 +167,28 @@ impl Metric {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[ignore]
+    fn test_metric() {
+        assert_eq!(9, MIN_WIDTHMETRIC.max_level(0.001256));
+
+        // Check that the maximum aspect ratio of an individual cell is consistent
+        // with the global minimums and maximums.
+        assert!(MAX_EDGE_ASPECT >= 1.);
+        assert!(MAX_EDGEMETRIC.deriv / MIN_EDGEMETRIC.deriv <= MAX_EDGE_ASPECT);
+
+        assert!(MAX_DIAG_ASPECT >= 1.);
+        assert!(MAX_DIAGMETRIC.deriv / MIN_DIAGMETRIC.deriv <= MAX_DIAG_ASPECT);
+
+        // Check that area is consistent with edge and width.
+        assert!(MIN_WIDTHMETRIC.deriv / MIN_EDGEMETRIC.deriv - 1e-15 <= MIN_AREAMETRIC.deriv);
+        assert!(MAX_WIDTHMETRIC.deriv / MAX_EDGEMETRIC.deriv + 1e-15 >= MAX_AREAMETRIC.deriv);
+    }
+}
 
 /*
 package s2
@@ -177,26 +199,6 @@ import (
 )
 
 func TestMetric(t *testing.T) {
-	if got := MinWidthMetric.MaxLevel(0.001256); got != 9 {
-		t.Errorf("MinWidthMetric.MaxLevel(0.001256) = %d, want 9", got)
-	}
-
-	// Check that the maximum aspect ratio of an individual cell is consistent
-	// with the global minimums and maximums.
-	if MaxEdgeAspect < 1 {
-		t.Errorf("MaxEdgeAspect = %v, want >= 1", MaxEdgeAspect)
-	}
-	if got := MaxEdgeMetric.Deriv / MinEdgeMetric.Deriv; MaxEdgeAspect > got {
-		t.Errorf("Edge Aspect: %v/%v = %v, want <= %v", MaxEdgeMetric.Deriv, MinEdgeMetric.Deriv, got, MaxDiagAspect)
-	}
-	if MaxDiagAspect < 1 {
-		t.Errorf("MaxDiagAspect = %v, want >= 1", MaxDiagAspect)
-	}
-	if got := MaxDiagMetric.Deriv / MinDiagMetric.Deriv; MaxDiagAspect > got {
-		t.Errorf("Diag Aspect: %v/%v = %v, want <= %v", MaxDiagMetric.Deriv, MinDiagMetric.Deriv, got, MaxDiagAspect)
-	}
-
-	// Check that area is consistent with edge and width.
 	if got := MinWidthMetric.Deriv*MinEdgeMetric.Deriv - 1e-15; MinAreaMetric.Deriv < got {
 		t.Errorf("Min Area: %v*%v = %v, want >= %v", MinWidthMetric.Deriv, MinEdgeMetric.Deriv, got, MinAreaMetric.Deriv)
 	}

@@ -21,9 +21,7 @@ use std::f64::consts::PI;
 use consts::*;
 use r1;
 use r3::vector::Vector;
-use s1;
-use s1::angle::*;
-use s1::chordangle::{self, ChordAngle};
+use s1::{self, Angle, Deg, ChordAngle, chordangle};
 use s2::rect::Rect;
 use s2::point::Point;
 use s2::cell::Cell;
@@ -262,7 +260,7 @@ impl Region for Cap {
         let cap_angle = self.radius().0;
         let mut all_longitudes = false;
         let center_lat = self.center.latitude().0;
-        let mut lat = r1::Interval {
+        let mut lat = r1::interval::Interval {
             lo: center_lat - cap_angle,
             hi: center_lat + cap_angle,
         };

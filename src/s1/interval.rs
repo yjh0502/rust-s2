@@ -370,14 +370,14 @@ impl<'a> std::ops::Add<f64> for &'a Interval {
     }
 }
 
-impl From<Interval> for r1::Interval {
+impl From<Interval> for r1::interval::Interval {
     fn from(i: Interval) -> Self {
         Self { lo: i.lo, hi: i.hi }
     }
 }
 
-impl From<r1::Interval> for Interval {
-    fn from(i: r1::Interval) -> Self {
+impl From<r1::interval::Interval> for Interval {
+    fn from(i: r1::interval::Interval) -> Self {
         Self { lo: i.lo, hi: i.hi }
     }
 }

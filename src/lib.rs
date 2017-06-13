@@ -11,4 +11,7 @@ pub mod r2;
 pub mod r3;
 
 pub mod s1;
-pub mod s2;
+
+// export s2 modules directly
+mod s2;
+pub use s2::*;

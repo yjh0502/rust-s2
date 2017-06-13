@@ -13,7 +13,8 @@ pub fn siti_to_st(si: u64) -> f64 {
     }
 }
 
-pub fn st_to_siti(s: f64) -> u64 {
+#[cfg(test)]
+fn st_to_siti(s: f64) -> u64 {
     if s < 0. {
         (s * (MAX_SITI as f64) - 0.5) as u64
     } else {
@@ -102,7 +103,8 @@ pub fn face_xyz_to_uv(face: u8, p: &Point) -> Option<(f64, f64)> {
     }
 }
 
-pub fn face_xyz_to_uvw(face: u8, p: &Point) -> Point {
+#[cfg(test)]
+fn face_xyz_to_uvw(face: u8, p: &Point) -> Point {
     let v = &p.0;
     match face {
         0 => Point(Vector::xyz(v.y, v.z, v.x)),
@@ -115,17 +117,20 @@ pub fn face_xyz_to_uvw(face: u8, p: &Point) -> Point {
     }
 }
 
-pub fn face_siti_to_xyz(face: u8, si: u64, ti: u64) -> Point {
+#[cfg(test)]
+fn face_siti_to_xyz(face: u8, si: u64, ti: u64) -> Point {
     Point(face_uv_to_xyz(face, st_to_uv(siti_to_st(si)), st_to_uv(siti_to_st(ti))))
 }
 
+#[cfg(test)]
 fn siti_to_level(si: u64) -> i8 {
     (MAX_LEVEL as i8) - ((si | MAX_SITI).trailing_zeros() as i8)
 }
 
+#[cfg(test)]
 /// xyz_to_face_siti transforms the (not necessarily unit length) Point to
 /// (face, si, ti) coordinates and the level the Point is at.
-pub fn xyz_to_face_siti(p: &Point) -> (u8, u64, u64, i8) {
+fn xyz_to_face_siti(p: &Point) -> (u8, u64, u64, i8) {
     let (face, u, v) = xyz_to_face_uv(&p.0);
     let si = st_to_siti(uv_to_st(u));
     let ti = st_to_siti(uv_to_st(v));
@@ -193,6 +198,7 @@ const FACE_UVW_AXES: [[Point; 3]; 6] = [[P!(0, 1, 0), P!(0, 0, 1), P!(1, 0, 0)],
                                         [P!(0, 0, -1), P!(1, 0, 0), P!(0, -1, 0)],
                                         [P!(0, 1, 0), P!(1, 0, 0), P!(0, 0, -1)]];
 
+#[cfg(test)]
 const FACE_UVW_FACES: [[[u8; 2]; 3]; 6] = [[[4, 1], [5, 2], [3, 0]],
                                            [[0, 3], [5, 2], [4, 1]],
                                            [[0, 3], [1, 4], [5, 2]],
@@ -204,7 +210,8 @@ fn uvw_axis(face: u8, axis: u8) -> Point {
     FACE_UVW_AXES[face as usize][axis as usize].clone()
 }
 
-pub fn uvw_face(face: u8, axis: u8, direction: u8) -> u8 {
+#[cfg(test)]
+fn uvw_face(face: u8, axis: u8, direction: u8) -> u8 {
     FACE_UVW_FACES[face as usize][axis as usize][direction as usize]
 }
 
@@ -216,7 +223,8 @@ pub fn v_axis(face: u8) -> Point {
     uvw_axis(face, 1)
 }
 
-pub fn unit_norm(face: u8) -> Point {
+#[cfg(test)]
+fn unit_norm(face: u8) -> Point {
     uvw_axis(face, 2)
 }
 

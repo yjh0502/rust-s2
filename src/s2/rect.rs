@@ -3,13 +3,12 @@ use std;
 use std::f64::consts::PI;
 
 use r1;
-use s1::angle::Angle;
-use s1::interval::{self, Interval};
+use s1::{Angle, Interval, interval};
 use s2::latlng::LatLng;
 
 #[derive(Clone)]
 pub struct Rect {
-    pub lat: r1::Interval,
+    pub lat: r1::interval::Interval,
     pub lng: Interval,
 }
 
@@ -19,7 +18,7 @@ impl std::fmt::Debug for Rect {
     }
 }
 
-const VALID_RECT_LAT_RANGE: r1::Interval = r1::Interval {
+const VALID_RECT_LAT_RANGE: r1::interval::Interval = r1::interval::Interval {
     lo: -PI / 2.,
     hi: PI / 2.,
 };
@@ -28,7 +27,7 @@ const VALID_RECT_LNG_RANGE: Interval = interval::FULL;
 impl Rect {
     pub fn empty() -> Rect {
         Rect {
-            lat: r1::EMPTY,
+            lat: r1::interval::EMPTY,
             lng: interval::EMPTY,
         }
     }
@@ -178,7 +177,7 @@ impl<'a, 'b> std::ops::Add<&'a LatLng> for &'b Rect {
 impl From<LatLng> for Rect {
     fn from(ll: LatLng) -> Self {
         Self {
-            lat: r1::Interval::from_point(ll.lat.0),
+            lat: r1::interval::Interval::from_point(ll.lat.0),
             lng: Interval {
                 lo: ll.lng.0,
                 hi: ll.lng.0,

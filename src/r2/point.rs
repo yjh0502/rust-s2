@@ -1,0 +1,248 @@
+/*
+Copyright 2014 Google Inc. All rights reserved.
+Copyright 2017 Jihyun Yu. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+use std;
+
+/// Point represents a point in ℝ².
+#[derive(Clone,Copy,PartialEq,Debug)]
+pub struct Point {
+    /// x coordinate of the point
+    pub x: f64,
+    /// y coordinate of the point
+    pub y: f64,
+}
+
+impl std::ops::Add<Point> for Point {
+    type Output = Point;
+    /// returns the sum of p and other.
+    fn add(self, other: Point) -> Self::Output {
+        Point {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        }
+    }
+}
+
+impl std::ops::Sub<Point> for Point {
+    type Output = Point;
+    /// returns the difference of p and other.
+    fn sub(self, other: Point) -> Self::Output {
+        Self::Output {
+            x: self.x - other.x,
+            y: self.y - other.y,
+        }
+    }
+}
+
+fn point_mul(a: &Point, b: &Point) -> Point {
+    Point {
+        x: a.x * b.x,
+        y: a.y * b.y,
+    }
+}
+
+impl<'a, 'b> std::ops::Mul<&'b Point> for &'a Point {
+    type Output = Point;
+    fn mul(self, other: &'b Point) -> Self::Output {
+        point_mul(self, other)
+    }
+}
+impl<'b> std::ops::Mul<&'b Point> for Point {
+    type Output = Point;
+    fn mul(self, other: &'b Point) -> Self::Output {
+        point_mul(&self, other)
+    }
+}
+impl std::ops::Mul<Point> for Point {
+    type Output = Point;
+    fn mul(self, other: Point) -> Self::Output {
+        point_mul(&self, &other)
+    }
+}
+
+impl<'a> std::ops::Mul<f64> for &'a Point {
+    type Output = Point;
+    /// returns the scalar product of p and other.
+    fn mul(self, other: f64) -> Self::Output {
+        Self::Output {
+            x: self.x * other,
+            y: self.y * other,
+        }
+    }
+}
+
+impl Point {
+    pub fn new(x: f64, y: f64) -> Self {
+        Self { x: x, y: y }
+    }
+
+    /// returns a counterclockwise orthogonal point with the same norm.
+    pub fn ortho(&self) -> Self {
+        Self {
+            x: -self.y,
+            y: self.x,
+        }
+    }
+
+    /// returns the dot product between p and op.
+    pub fn dot(&self, other: &Self) -> f64 {
+        self.x * other.x + self.y * other.y
+    }
+
+    /// returns the cross product of p and op.
+    pub fn cross(&self, other: &Self) -> f64 {
+        self.x * other.y - self.y * other.x
+    }
+
+    /// returns the vector's norm.
+    pub fn norm(&self) -> f64 {
+        self.x.hypot(self.y)
+    }
+
+    /// returns a unit point in the same direction as p.
+    pub fn normalize(&self) -> Self {
+        if self.x == 0. && self.y == 0. {
+            self.clone()
+        } else {
+            self * (1.0 / self.norm())
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /*
+    const SW: Point = Point { x: 0., y: 0.25 };
+    const SE: Point = Point { x: 0.5, y: 0.25 };
+    const NE: Point = Point { x: 0.5, y: 0.75 };
+    const NW: Point = Point { x: 0., y: 0.75 };
+    */
+
+    /*
+    const RECT: Rect = Rect {
+        x: Interval { lo: 0., hi: 0.5 },
+        y: Interval {
+            lo: 0.25,
+            hi: 0.75,
+        },
+    };
+
+    const RECT_MID: Rect = Rect {
+        x: Interval {
+            lo: 0.25,
+            hi: 0.25,
+        },
+        y: Interval { lo: 0.5, hi: 0.5 },
+    };
+
+    const RECT_SW: Rect = Rect {
+        x: Interval {
+            lo: SW.x,
+            hi: SW.x,
+        },
+        y: Interval {
+            lo: SW.y,
+            hi: SW.y,
+        },
+    };
+
+    const RECT_NE: Rect = Rect {
+        x: Interval {
+            lo: NE.x,
+            hi: NE.x,
+        },
+        y: Interval {
+            lo: NE.y,
+            hi: NE.y,
+        },
+    };
+    */
+
+    fn approx_eq(x: f64, y: f64) -> bool {
+        (x - y).abs() < 1e-14
+    }
+
+    fn point_approx_eq(a: &Point, b: &Point) -> bool {
+        approx_eq(a.x, b.x) && approx_eq(a.y, b.y)
+    }
+
+    macro_rules! P {
+        ($x: expr, $y: expr) => {
+            Point{x: $x, y: $y}
+        }
+    }
+
+    #[test]
+    fn ortho() {
+        assert_eq!(P!(0., 0.), P!(0., 0.).ortho());
+        assert_eq!(P!(-1., 0.), P!(0., 1.).ortho());
+        assert_eq!(P!(-1., 1.), P!(1., 1.).ortho());
+        assert_eq!(P!(-7., -4.), P!(-4., 7.).ortho());
+        assert_eq!(P!(-(3f64).sqrt(), 1.), P!(1., (3f64).sqrt()).ortho());
+    }
+
+    #[test]
+    fn dot() {
+        assert_eq!(0., P!(0., 0.).dot(&P!(0., 0.)));
+        assert_eq!(0., P!(0., 1.).dot(&P!(0., 0.)));
+        assert_eq!(7., P!(1., 1.).dot(&P!(4., 3.)));
+        assert_eq!(31., P!(-4., 7.).dot(&P!(1., 5.)));
+    }
+
+    #[test]
+    fn cross() {
+        assert_eq!(0., P!(0., 0.).cross(&P!(0., 0.)));
+        assert_eq!(0., P!(0., 1.).cross(&P!(0., 0.)));
+        assert_eq!(0., P!(1., 1.).cross(&P!(-1., -1.)));
+        assert_eq!(-1., P!(1., 1.).cross(&P!(4., 3.)));
+        assert_eq!(13., P!(1., 5.).cross(&P!(-2., 3.)));
+    }
+
+    #[test]
+    fn norm() {
+        assert_eq!(0., P!(0., 0.).norm());
+        assert_eq!(1., P!(0., 1.).norm());
+        assert_eq!(1., P!(-1., 0.).norm());
+        assert_eq!(5., P!(3., 4.).norm());
+        assert_eq!(5., P!(3., -4.).norm());
+        assert_eq!(2. * 2f64.sqrt(), P!(2., 2.).norm());
+        assert!(approx_eq(2., P!(1., 3f64.sqrt()).norm()));
+        assert!(approx_eq(29. * 2., P!(29., 29. * 3f64.sqrt()).norm()));
+        assert!(approx_eq(1e15, P!(1., 1e15).norm()));
+        assert!(approx_eq(std::f64::MAX, P!(1e14, std::f64::MAX - 1.).norm()));
+    }
+
+    fn test_normalize(p1: Point, p2: Point) {
+        point_approx_eq(&p1, &p2.normalize());
+    }
+
+    #[test]
+    fn normalize() {
+        test_normalize(P!(0., 0.), P!(0., 0.));
+        test_normalize(P!(0., 1.), P!(0., 1.));
+        test_normalize(P!(-1., 0.), P!(-1., 0.));
+        test_normalize(P!(3., 4.), P!(0.6, 0.8));
+        test_normalize(P!(3., -4.), P!(0.6, -0.8));
+        test_normalize(P!(2., 2.), P!(2f64.sqrt() / 2., 2f64.sqrt() / 2.));
+        test_normalize(P!(7., 7. * 3f64.sqrt()), P!(0.5, 3f64.sqrt() / 2.));
+        test_normalize(P!(1e21, 1e21 * 3f64.sqrt()), P!(0.5, 3f64.sqrt() / 2.));
+        test_normalize(P!(1., 1e16), P!(0., 1.));
+        test_normalize(P!(1e4, std::f64::MAX - 1.), P!(0., 1.));
+    }
+}

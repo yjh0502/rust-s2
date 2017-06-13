@@ -24,7 +24,7 @@ use consts::clamp;
 use r1;
 use r2;
 use r3::vector::Vector;
-use s1::angle::Angle;
+use s1::Angle;
 use s2::stuv::*;
 use s2::point::Point;
 use s2::latlng::*;
@@ -563,9 +563,9 @@ impl CellID {
     }
 
     /// center_st return the center of the CellID in (s,t)-space.
-    fn center_st(&self) -> r2::Point {
+    fn center_st(&self) -> r2::point::Point {
         let (_, si, ti) = self.face_siti();
-        r2::Point {
+        r2::point::Point {
             x: siti_to_st(si as u64),
             y: siti_to_st(ti as u64),
         }
@@ -578,9 +578,9 @@ impl CellID {
 
     //TODO private
     /// bound_st returns the bound of this CellID in (s,t)-space.
-    pub fn bound_st(&self) -> r2::Rect {
+    pub fn bound_st(&self) -> r2::rect::Rect {
         let s = self.size_st(self.level());
-        r2::Rect::from_center_size(&self.center_st(), &r2::Point { x: s, y: s })
+        r2::rect::Rect::from_center_size(&self.center_st(), &r2::point::Point { x: s, y: s })
     }
 
     //TODO private
@@ -588,16 +588,16 @@ impl CellID {
     /// the center of the cell is defined as the point at which it is recursively
     /// subdivided into four children; in general, it is not at the midpoint of
     /// the (u,v) rectangle covered by the cell.
-    pub fn center_uv(&self) -> r2::Point {
+    pub fn center_uv(&self) -> r2::point::Point {
         let (_, si, ti) = self.face_siti();
-        r2::Point {
+        r2::point::Point {
             x: st_to_uv(siti_to_st(si as u64)),
             y: st_to_uv(siti_to_st(ti as u64)),
         }
     }
 
     /// bound_uv returns the bound of this CellID in (u,v)-space.
-    pub fn bound_uv(&self) -> r2::Rect {
+    pub fn bound_uv(&self) -> r2::rect::Rect {
         let (_, i, j, _) = self.face_ij_orientation();
         ij_level_to_bound_uv(i, j, self.level())
     }
@@ -697,17 +697,17 @@ fn expand_endpoint(u: f64, max_v: f64, sin_dist: f64) -> f64 {
 ///  - The implementation is not exact for negative distances. The resulting
 ///    rectangle will exclude all points within the given distance of the
 ///    boundary but may be slightly smaller than necessary.
-pub fn expanded_by_distance_uv(uv: &r2::Rect, distance: &Angle) -> r2::Rect {
+pub fn expanded_by_distance_uv(uv: &r2::rect::Rect, distance: &Angle) -> r2::rect::Rect {
     let max_u = uv.x.lo.abs().max(uv.x.hi.abs());
     let max_v = uv.y.lo.abs().max(uv.y.hi.abs());
 
     let sin_dist = distance.0.sin();
-    r2::Rect {
-        x: r1::Interval {
+    r2::rect::Rect {
+        x: r1::interval::Interval {
             lo: expand_endpoint(uv.x.lo, max_v, -sin_dist),
             hi: expand_endpoint(uv.x.hi, max_v, sin_dist),
         },
-        y: r1::Interval {
+        y: r1::interval::Interval {
             lo: expand_endpoint(uv.y.lo, max_u, -sin_dist),
             hi: expand_endpoint(uv.y.hi, max_u, sin_dist),
         },
@@ -895,17 +895,17 @@ fn init_lookup_cell(level: u64,
 
 /// ij_level_to_bound_uv returns the bounds in (u,v)-space for the cell at the given
 /// level containing the leaf cell with the given (i,j)-coordinates.
-pub fn ij_level_to_bound_uv(i: i32, j: i32, level: u64) -> r2::Rect {
+pub fn ij_level_to_bound_uv(i: i32, j: i32, level: u64) -> r2::rect::Rect {
     let cell_size = size_ij(level) as i32;
     let x_lo = i & -cell_size;
     let y_lo = j & -cell_size;
 
-    r2::Rect {
-        x: r1::Interval {
+    r2::rect::Rect {
+        x: r1::interval::Interval {
             lo: st_to_uv(ij_to_stmin(x_lo)),
             hi: st_to_uv(ij_to_stmin(x_lo + cell_size)),
         },
-        y: r1::Interval {
+        y: r1::interval::Interval {
             lo: st_to_uv(ij_to_stmin(y_lo)),
             hi: st_to_uv(ij_to_stmin(y_lo + cell_size)),
         },
@@ -1000,14 +1000,14 @@ pub mod tests {
 
     fn test_cellid_latlng_case(ci: CellID, lat: f64, lng: f64) {
         let ll = LatLng {
-            lat: s1::angle::Deg(lat).into(),
-            lng: s1::angle::Deg(lng).into(),
+            lat: s1::Deg(lat).into(),
+            lng: s1::Deg(lng).into(),
         };
         //TODO
         let l2 = LatLng::from(ci);
 
         let distance = ll.distance(&l2);
-        assert!(distance < s1::angle::Deg(1.0e-9).into());
+        assert!(distance < s1::Deg(1.0e-9).into());
 
         let ci2: CellID = ll.into();
         assert_eq!(ci, ci2);
@@ -1187,13 +1187,13 @@ pub mod tests {
 
     macro_rules! P {
         ($x: expr, $y: expr) => {
-            r2::Point::new($x as f64, $y as f64)
+            r2::point::Point::new($x as f64, $y as f64)
         }
     }
 
-    fn test_ij_level_to_bound_uv_case(i: i32, j: i32, level: u64, points: &[r2::Point]) {
+    fn test_ij_level_to_bound_uv_case(i: i32, j: i32, level: u64, points: &[r2::point::Point]) {
         let uv = ij_level_to_bound_uv(i, j, level);
-        let want = r2::Rect::from_points(points);
+        let want = r2::rect::Rect::from_points(points);
 
         test_approx_eq(uv.x.lo, want.x.lo);
         test_approx_eq(uv.x.hi, want.x.hi);
@@ -1553,7 +1553,7 @@ pub mod tests {
     }
 
     // sample_boundary returns a random point on the boundary of the given rectangle.
-    fn sample_boundary<R>(r: &mut R, rect: &r2::Rect) -> (f64, f64)
+    fn sample_boundary<R>(r: &mut R, rect: &r2::rect::Rect) -> (f64, f64)
         where R: Rng
     {
         if random::one_in(r, 2) {
@@ -1575,7 +1575,7 @@ pub mod tests {
         }
     }
 
-    fn project_to_boundary(u: f64, v: f64, rect: &r2::Rect) -> r2::Point {
+    fn project_to_boundary(u: f64, v: f64, rect: &r2::rect::Rect) -> r2::point::Point {
         let du0 = (u - rect.x.lo).abs();
         let du1 = (u - rect.x.hi).abs();
         let dv0 = (v - rect.y.lo).abs();
@@ -1583,13 +1583,13 @@ pub mod tests {
 
         let dmin = du0.min(du1).min(du0.min(dv1));
         if du0 == dmin {
-            r2::Point::new(rect.x.lo, rect.y.clamp_point(v))
+            r2::point::Point::new(rect.x.lo, rect.y.clamp_point(v))
         } else if du1 == dmin {
-            r2::Point::new(rect.x.hi, rect.y.clamp_point(v))
+            r2::point::Point::new(rect.x.hi, rect.y.clamp_point(v))
         } else if dv0 == dmin {
-            r2::Point::new(rect.x.clamp_point(u), rect.y.lo)
+            r2::point::Point::new(rect.x.clamp_point(u), rect.y.lo)
         } else {
-            r2::Point::new(rect.x.clamp_point(u), rect.y.hi)
+            r2::point::Point::new(rect.x.clamp_point(u), rect.y.hi)
         }
     }
 
@@ -1603,8 +1603,8 @@ pub mod tests {
 
         for _ in 0..1000 {
             let id = random::cellid(&mut rng);
-            let distance: s1::angle::Angle =
-                s1::angle::Deg(rng.gen_range(-MAX_DIST_DEGREES, MAX_DIST_DEGREES)).into();
+            let distance: s1::Angle = s1::Deg(rng.gen_range(-MAX_DIST_DEGREES, MAX_DIST_DEGREES))
+                .into();
 
             let bound = id.bound_uv();
             let expanded = expanded_by_distance_uv(&bound, &distance);
@@ -1624,7 +1624,7 @@ pub mod tests {
 
                 // Find the closest point on the boundary to the sampled point.
                 if let Some((u, v)) = face_xyz_to_uv(face, &p) {
-                    let uv = r2::Point::new(u, v);
+                    let uv = r2::point::Point::new(u, v);
                     let closest_uv = project_to_boundary(u, v, &bound);
                     let closest = face_uv_to_xyz(face, closest_uv.x, closest_uv.y).normalize();
                     let actual_dist = p.distance(&Point(closest));
