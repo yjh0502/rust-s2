@@ -260,10 +260,7 @@ impl Region for Cap {
         let cap_angle = self.radius().rad();
         let mut all_longitudes = false;
         let center_lat = self.center.latitude().rad();
-        let mut lat = r1::interval::Interval {
-            lo: center_lat - cap_angle,
-            hi: center_lat + cap_angle,
-        };
+        let mut lat = r1::interval::Interval::new(center_lat - cap_angle, center_lat + cap_angle);
         let mut lng = s1::interval::FULL;
 
         // Check whether cap includes the south pole.

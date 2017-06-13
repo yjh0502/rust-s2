@@ -21,10 +21,9 @@ use std::u64;
 use std::iter::*;
 
 use consts::clamp;
-use r1;
+use r1::interval::Interval;
 use r2;
 use r3::vector::Vector;
-use s1::Angle;
 use s2::stuv::*;
 use s2::point::Point;
 use s2::latlng::*;
@@ -664,6 +663,7 @@ impl CellID {
     }
 }
 
+#[cfg(test)]
 /// expand_endpoint returns a new u-coordinate u' such that the distance from the
 /// line u=u' to the given edge (u,v0)-(u,v1) is exactly the given distance
 /// (which is specified as the sine of the angle corresponding to the distance).
@@ -673,6 +673,10 @@ fn expand_endpoint(u: f64, max_v: f64, sin_dist: f64) -> f64 {
     (cos_u_shift * u + sin_u_shift) / (cos_u_shift - sin_u_shift * u)
 }
 
+#[cfg(test)]
+use s1::Angle;
+
+#[cfg(test)]
 /// expanded_by_distance_uv returns a rectangle expanded in (u,v)-space so that it
 /// contains all points within the given distance of the boundary, and return the
 /// smallest such rectangle. If the distance is negative, then instead shrink this
@@ -703,14 +707,10 @@ pub fn expanded_by_distance_uv(uv: &r2::rect::Rect, distance: &Angle) -> r2::rec
 
     let sin_dist = distance.rad().sin();
     r2::rect::Rect {
-        x: r1::interval::Interval {
-            lo: expand_endpoint(uv.x.lo, max_v, -sin_dist),
-            hi: expand_endpoint(uv.x.hi, max_v, sin_dist),
-        },
-        y: r1::interval::Interval {
-            lo: expand_endpoint(uv.y.lo, max_u, -sin_dist),
-            hi: expand_endpoint(uv.y.hi, max_u, sin_dist),
-        },
+        x: Interval::new(expand_endpoint(uv.x.lo, max_v, -sin_dist),
+                         expand_endpoint(uv.x.hi, max_v, sin_dist)),
+        y: Interval::new(expand_endpoint(uv.y.lo, max_u, -sin_dist),
+                         expand_endpoint(uv.y.hi, max_u, sin_dist)),
     }
 }
 
@@ -901,14 +901,10 @@ pub fn ij_level_to_bound_uv(i: i32, j: i32, level: u64) -> r2::rect::Rect {
     let y_lo = j & -cell_size;
 
     r2::rect::Rect {
-        x: r1::interval::Interval {
-            lo: st_to_uv(ij_to_stmin(x_lo)),
-            hi: st_to_uv(ij_to_stmin(x_lo + cell_size)),
-        },
-        y: r1::interval::Interval {
-            lo: st_to_uv(ij_to_stmin(y_lo)),
-            hi: st_to_uv(ij_to_stmin(y_lo + cell_size)),
-        },
+        x: Interval::new(st_to_uv(ij_to_stmin(x_lo)),
+                         st_to_uv(ij_to_stmin(x_lo + cell_size))),
+        y: Interval::new(st_to_uv(ij_to_stmin(y_lo)),
+                         st_to_uv(ij_to_stmin(y_lo + cell_size))),
     }
 }
 

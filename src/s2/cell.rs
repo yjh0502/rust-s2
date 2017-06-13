@@ -340,68 +340,38 @@ impl Cell {
         let bound = match self.face {
             0 => {
                 s2::rect::Rect {
-                    lat: r1::interval::Interval {
-                        lo: -PI_4,
-                        hi: PI_4,
-                    },
-                    lng: s1::Interval {
-                        lo: -PI_4,
-                        hi: PI_4,
-                    },
+                    lat: r1::interval::Interval::new(-PI_4, PI_4),
+                    lng: s1::Interval::new(-PI_4, PI_4),
                 }
             }
             1 => {
                 s2::rect::Rect {
-                    lat: r1::interval::Interval {
-                        lo: -PI_4,
-                        hi: PI_4,
-                    },
-                    lng: s1::Interval {
-                        lo: PI_4,
-                        hi: 3. * PI_4,
-                    },
+                    lat: r1::interval::Interval::new(-PI_4, PI_4),
+                    lng: s1::Interval::new(PI_4, 3. * PI_4),
                 }
             }
             2 => {
                 s2::rect::Rect {
-                    lat: r1::interval::Interval {
-                        lo: *POLE_MIN_LAT,
-                        hi: PI / 2.,
-                    },
-                    lng: s1::interval::FULL.into(),
+                    lat: r1::interval::Interval::new(*POLE_MIN_LAT, PI / 2.),
+                    lng: s1::interval::FULL,
                 }
             }
             3 => {
                 s2::rect::Rect {
-                    lat: r1::interval::Interval {
-                        lo: -PI_4,
-                        hi: PI_4,
-                    },
-                    lng: s1::Interval {
-                        lo: 3. * PI_4,
-                        hi: -3. * PI_4,
-                    },
+                    lat: r1::interval::Interval::new(-PI_4, PI_4),
+                    lng: s1::Interval::new(3. * PI_4, -3. * PI_4),
                 }
             }
             4 => {
                 s2::rect::Rect {
-                    lat: r1::interval::Interval {
-                        lo: -PI_4,
-                        hi: PI_4,
-                    },
-                    lng: s1::Interval {
-                        lo: -3. * PI_4,
-                        hi: -PI_4,
-                    },
+                    lat: r1::interval::Interval::new(-PI_4, PI_4),
+                    lng: s1::Interval::new(-3. * PI_4, -PI_4),
                 }
             }
             5 => {
                 s2::rect::Rect {
-                    lat: r1::interval::Interval {
-                        lo: -PI / 2.,
-                        hi: -1. * (*POLE_MIN_LAT),
-                    },
-                    lng: s1::interval::FULL.into(),
+                    lat: r1::interval::Interval::new(-PI / 2., -1. * (*POLE_MIN_LAT)),
+                    lng: s1::interval::FULL,
                 }
             }
             _ => panic!("invalid face"),

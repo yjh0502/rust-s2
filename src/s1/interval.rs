@@ -25,7 +25,7 @@ use consts::*;
 /// Zero-length intervals (where Lo == Hi) represent single points.
 /// If Lo > Hi then the interval is "inverted".
 /// The point at (-1, 0) on the unit circle has two valid representations,
-/// [π,π] and [-π,-π]. We normalize the latter to the former in Interval::from_endpoints.
+/// [π,π] and [-π,-π]. We normalize the latter to the former in Interval::new.
 /// There are two special intervals that take advantage of that:
 ///   - the full interval, [-π,π], and
 ///   - the empty interval, [π,-π].
@@ -56,7 +56,7 @@ impl Interval {
     /// from_endpoint constructs a new interval from endpoints.
     /// Both arguments must be in the range [-π,π]. This function allows inverted intervals
     /// to be created.
-    pub fn from_endpoints(lo: f64, hi: f64) -> Self {
+    pub fn new(lo: f64, hi: f64) -> Self {
         let mut i = Interval { lo: lo, hi: hi };
         if lo == -PI && hi != PI {
             i.lo = PI
@@ -330,8 +330,8 @@ impl Interval {
                 return EMPTY;
             }
         }
-        let mut result = Interval::from_endpoints(remainder(self.lo - margin, 2. * PI),
-                                                  remainder(self.hi + margin, 2. * PI));
+        let mut result = Interval::new(remainder(self.lo - margin, 2. * PI),
+                                       remainder(self.hi + margin, 2. * PI));
         if result.lo <= -PI {
             result.lo = PI
         }
@@ -398,31 +398,31 @@ mod tests {
         static ref empty: Interval = EMPTY;
 	    // Single-point intervals:
         static ref zero: Interval = Interval::default();
-        static ref pi2: Interval = Interval::from_endpoints(PI/2., PI/2.);
-        static ref pi: Interval = Interval::from_endpoints(PI, PI);
-        static ref mipi  :Interval = Interval::from_endpoints(-PI, -PI); // same as pi after normalization
-        static ref mipi2 :Interval = Interval::from_endpoints(-PI/2., -PI/2.);
+        static ref pi2: Interval = Interval::new(PI/2., PI/2.);
+        static ref pi: Interval = Interval::new(PI, PI);
+        static ref mipi  :Interval = Interval::new(-PI, -PI); // same as pi after normalization
+        static ref mipi2 :Interval = Interval::new(-PI/2., -PI/2.);
         // Single quadrants:
-        static ref quad1 :Interval = Interval::from_endpoints(0., PI/2.);
-        static ref quad2 :Interval = Interval::from_endpoints(PI/2., -PI); // equivalent to (pi/2., pi)
-        static ref quad3 :Interval = Interval::from_endpoints(PI, -PI/2.);
-        static ref quad4 :Interval = Interval::from_endpoints(-PI/2., 0.);
+        static ref quad1 :Interval = Interval::new(0., PI/2.);
+        static ref quad2 :Interval = Interval::new(PI/2., -PI); // equivalent to (pi/2., pi)
+        static ref quad3 :Interval = Interval::new(PI, -PI/2.);
+        static ref quad4 :Interval = Interval::new(-PI/2., 0.);
         // Quadrant pairs:
-        static ref quad12 :Interval = Interval::from_endpoints(0., -PI);
-        static ref quad23 :Interval = Interval::from_endpoints(PI/2., -PI/2.);
-        static ref quad34 :Interval = Interval::from_endpoints(-PI, 0.);
-        static ref quad41 :Interval = Interval::from_endpoints(-PI/2., PI/2.);
+        static ref quad12 :Interval = Interval::new(0., -PI);
+        static ref quad23 :Interval = Interval::new(PI/2., -PI/2.);
+        static ref quad34 :Interval = Interval::new(-PI, 0.);
+        static ref quad41 :Interval = Interval::new(-PI/2., PI/2.);
         // Quadrant triples:
-        static ref quad123 :Interval = Interval::from_endpoints(0., -PI/2.);
-        static ref quad234 :Interval = Interval::from_endpoints(PI/2., 0.);
-        static ref quad341 :Interval = Interval::from_endpoints(PI, PI/2.);
-        static ref quad412 :Interval = Interval::from_endpoints(-PI/2., -PI);
+        static ref quad123 :Interval = Interval::new(0., -PI/2.);
+        static ref quad234 :Interval = Interval::new(PI/2., 0.);
+        static ref quad341 :Interval = Interval::new(PI, PI/2.);
+        static ref quad412 :Interval = Interval::new(-PI/2., -PI);
         // Small intervals around the midpoints between quadrants,
         // such that the center of each interval is offset slightly CCW from the midpoint.
-        static ref mid12 :Interval = Interval::from_endpoints(PI/2.-0.01, PI/2.+0.02);
-        static ref mid23 :Interval = Interval::from_endpoints(PI-0.01, -PI+0.02);
-        static ref mid34 :Interval = Interval::from_endpoints(-PI/2.-0.01, -PI/2.+0.02);
-        static ref mid41 :Interval = Interval::from_endpoints(-0.01, 0.02);
+        static ref mid12 :Interval = Interval::new(PI/2.-0.01, PI/2.+0.02);
+        static ref mid23 :Interval = Interval::new(PI-0.01, -PI+0.02);
+        static ref mid34 :Interval = Interval::new(-PI/2.-0.01, -PI/2.+0.02);
+        static ref mid41 :Interval = Interval::new(-0.01, 0.02);
     }
 
     #[test]
@@ -461,10 +461,10 @@ mod tests {
         // representable value less than Pi.
         let almost_pi = PI - 2. * DBL_EPSILON;
 
-        assert!(!Interval::from_endpoints(-almost_pi, almost_pi).is_full());
-        assert!(!Interval::from_endpoints(-PI, almost_pi).is_full());
-        assert!(!Interval::from_endpoints(PI, -almost_pi).is_full());
-        assert!(!Interval::from_endpoints(almost_pi, -PI).is_full());
+        assert!(!Interval::new(-almost_pi, almost_pi).is_full());
+        assert!(!Interval::new(-PI, almost_pi).is_full());
+        assert!(!Interval::new(PI, -almost_pi).is_full());
+        assert!(!Interval::new(almost_pi, -PI).is_full());
     }
 
     fn test_center_case(expected: f64, i: Interval) {
@@ -474,9 +474,9 @@ mod tests {
     #[test]
     fn test_interval_center() {
         test_center_case(PI / 2., *quad12);
-        test_center_case(3. - PI, Interval::from_endpoints(3.1, 2.9));
-        test_center_case(PI - 3., Interval::from_endpoints(-2.9, -3.1));
-        test_center_case(PI, Interval::from_endpoints(2.1, -2.1));
+        test_center_case(3. - PI, Interval::new(3.1, 2.9));
+        test_center_case(PI - 3., Interval::new(-2.9, -3.1));
+        test_center_case(PI, Interval::new(2.1, -2.1));
 
         test_center_case(PI, *pi);
         test_center_case(PI, *mipi);
@@ -551,16 +551,16 @@ mod tests {
 
     #[test]
     fn test_interval_operations() {
-        let quad12eps = Interval::from_endpoints(quad12.lo, mid23.hi);
-        let quad2hi = Interval::from_endpoints(mid23.lo, quad12.hi);
-        let quad412eps = Interval::from_endpoints(mid34.lo, quad12.hi);
-        let quadeps12 = Interval::from_endpoints(mid41.lo, quad12.hi);
-        let quad1lo = Interval::from_endpoints(quad12.lo, mid41.hi);
-        let quad2lo = Interval::from_endpoints(quad23.lo, mid12.hi);
-        let quad3hi = Interval::from_endpoints(mid34.lo, quad23.hi);
-        let quadeps23 = Interval::from_endpoints(mid12.lo, quad23.hi);
-        let quad23eps = Interval::from_endpoints(quad23.lo, mid34.hi);
-        let quadeps123 = Interval::from_endpoints(mid41.lo, quad23.hi);
+        let quad12eps = Interval::new(quad12.lo, mid23.hi);
+        let quad2hi = Interval::new(mid23.lo, quad12.hi);
+        let quad412eps = Interval::new(mid34.lo, quad12.hi);
+        let quadeps12 = Interval::new(mid41.lo, quad12.hi);
+        let quad1lo = Interval::new(quad12.lo, mid41.hi);
+        let quad2lo = Interval::new(quad23.lo, mid12.hi);
+        let quad3hi = Interval::new(mid34.lo, quad23.hi);
+        let quadeps23 = Interval::new(mid12.lo, quad23.hi);
+        let quad23eps = Interval::new(quad23.lo, mid34.hi);
+        let quadeps123 = Interval::new(mid41.lo, quad23.hi);
 
         iops_case(&empty, &empty, true, true, false, false, &empty, &empty);
         iops_case(&empty, &full, false, false, false, false, &full, &empty);
@@ -587,7 +587,7 @@ mod tests {
                   false,
                   false,
                   false,
-                  &Interval::from_endpoints(0., PI),
+                  &Interval::new(0., PI),
                   &empty);
         iops_case(&zero, &pi2, false, false, false, false, &quad1, &empty);
         iops_case(&zero, &mipi, false, false, false, false, &quad12, &empty);
@@ -605,7 +605,7 @@ mod tests {
                   false,
                   false,
                   false,
-                  &Interval::from_endpoints(PI / 2., PI),
+                  &Interval::new(PI / 2., PI),
                   &empty);
         iops_case(&pi2, &pi2, true, false, true, false, &pi2, &pi2);
         iops_case(&pi2, &mipi, false, false, false, false, &quad2, &empty);
@@ -622,7 +622,7 @@ mod tests {
                   false,
                   false,
                   false,
-                  &Interval::from_endpoints(PI, 0.),
+                  &Interval::new(PI, 0.),
                   &empty);
         iops_case(&pi, &pi, true, false, true, false, &pi, &pi);
         iops_case(&pi,
@@ -631,7 +631,7 @@ mod tests {
                   false,
                   false,
                   false,
-                  &Interval::from_endpoints(PI / 2., PI),
+                  &Interval::new(PI / 2., PI),
                   &empty);
         iops_case(&pi, &mipi, true, false, true, false, &pi, &pi);
         iops_case(&pi, &mipi2, false, false, false, false, &quad3, &empty);
@@ -641,7 +641,7 @@ mod tests {
                   false,
                   true,
                   false,
-                  &Interval::from_endpoints(0., PI),
+                  &Interval::new(0., PI),
                   &pi);
         iops_case(&pi, &quad23, false, false, true, false, &quad23, &pi);
 
@@ -658,7 +658,7 @@ mod tests {
                   false,
                   false,
                   false,
-                  &Interval::from_endpoints(-PI, -PI / 2.),
+                  &Interval::new(-PI, -PI / 2.),
                   &empty);
         iops_case(&mipi, &quad12, false, false, true, false, &quad12, &mipi);
         iops_case(&mipi, &quad23, false, false, true, false, &quad23, &mipi);
@@ -688,7 +688,7 @@ mod tests {
                   true,
                   true,
                   &quad234,
-                  &Interval::from_endpoints(-PI, -PI / 2.));
+                  &Interval::new(-PI, -PI / 2.));
 
         // 64
         iops_case(&quad1,
@@ -698,7 +698,7 @@ mod tests {
                   true,
                   false,
                   &quad123,
-                  &Interval::from_endpoints(PI / 2., PI / 2.));
+                  &Interval::new(PI / 2., PI / 2.));
         iops_case(&quad2, &quad3, false, false, true, false, &quad23, &mipi);
         iops_case(&quad3, &quad2, false, false, true, false, &quad23, &pi);
         iops_case(&quad2, &pi, true, false, true, false, &quad2, &pi);
@@ -847,9 +847,8 @@ mod tests {
     fn test_interval_expanded() {
         assert_eq!(*empty, empty.expanded(1.));
         assert_eq!(*full, full.expanded(1.));
-        assert_eq!(Interval::from_endpoints(-1., 1.), zero.expanded(1.));
-        assert_eq!(Interval::from_endpoints(PI - 0.01, -PI + 0.01),
-                   mipi.expanded(0.01));
+        assert_eq!(Interval::new(-1., 1.), zero.expanded(1.));
+        assert_eq!(Interval::new(PI - 0.01, -PI + 0.01), mipi.expanded(0.01));
         assert_eq!(*full, pi.expanded(27.));
         assert_eq!(*quad23, pi.expanded(PI / 2.));
         assert_eq!(*quad12, pi2.expanded(PI / 2.));
