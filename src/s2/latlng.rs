@@ -23,11 +23,8 @@ impl std::fmt::Debug for LatLng {
 }
 
 impl LatLng {
-    pub fn from_degrees(lat: Deg, lng: Deg) -> Self {
-        LatLng {
-            lat: lat.into(),
-            lng: lng.into(),
-        }
+    pub fn new(lat: Angle, lng: Angle) -> Self {
+        LatLng { lat: lat, lng: lng }
     }
 
     pub fn is_valid(&self) -> bool {

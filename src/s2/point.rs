@@ -756,7 +756,7 @@ mod tests {
     fn test_point_regular_points() {
         // Conversion to/from degrees has a little more variability than the default EPSILON.
         const EPSILON: f64 = 1e-13;
-        let center = Point::from(LatLng::from_degrees(Deg(80.), Deg(135.)));
+        let center = Point::from(LatLng::new(Deg(80.).into(), Deg(135.).into()));
         let radius = Angle::from(Deg(20.));
         let pts = regular_points(&center, radius, 4);
         assert_eq!(4, pts.len());

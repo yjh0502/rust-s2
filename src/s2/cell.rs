@@ -263,15 +263,13 @@ impl Cell {
     }
 
     /// latitude returns the latitude of the cell vertex given by (i,j), where "i" and "j" are either 0 or 1.
-    pub fn latitude(&self, i: i32, j: i32) -> f64 {
-        //XXX
-        self.point_from_ij(i, j).latitude().rad()
+    pub fn latitude(&self, i: i32, j: i32) -> Angle {
+        self.point_from_ij(i, j).latitude()
     }
 
     /// longitude returns the longitude of the cell vertex given by (i,j), where "i" and "j" are either 0 or 1.
-    pub fn longitude(&self, i: i32, j: i32) -> f64 {
-        //XXX
-        self.point_from_ij(i, j).longitude().rad()
+    pub fn longitude(&self, i: i32, j: i32) -> Angle {
+        self.point_from_ij(i, j).longitude()
     }
 
     /// rect_bound returns the bounding rectangle of this cell.
@@ -301,9 +299,10 @@ impl Cell {
                 if v > 0. { 1 } else { 0 }
             };
 
-            let lat = r1::interval::Interval::from_point(self.latitude(i, j)) +
-                      self.latitude(1 - i, 1 - j);
-            let lng = s1::interval::EMPTY + self.longitude(i, 1 - j) + self.longitude(1 - i, j);
+            let lat = r1::interval::Interval::from_point(self.latitude(i, j).rad()) +
+                      self.latitude(1 - i, 1 - j).rad();
+            let lng = s1::interval::EMPTY + self.longitude(i, 1 - j).rad() +
+                      self.longitude(1 - i, j).rad();
 
             // We grow the bounds slightly to make sure that the bounding rectangle
             // contains LatLngFromPoint(P) for any point P inside the loop L defined by the
@@ -764,7 +763,7 @@ mod tests {
     }
 
     fn test_cell_rect_bound_case(lat: f64, lng: f64) {
-        let c = Cell::from(LatLng::from_degrees(Deg(lat).into(), Deg(lng).into()));
+        let c = Cell::from(LatLng::new(Deg(lat).into(), Deg(lng).into()));
         let rect = c.rect_bound();
         let verts = c.vertices();
         for i in 0..4 {
@@ -861,7 +860,7 @@ mod tests {
         //
         // This tests that Cell.ContainsPoint() expands the cell bounds sufficiently
         // so that the returned cell is still considered to contain p.
-        let p = Point::from(LatLng::from_degrees(Deg(-2.), Deg(90.)));
+        let p = Point::from(LatLng::new(Deg(-2.).into(), Deg(90.).into()));
         let cell = Cell::from(CellID::from(&p).parent(1));
         assert_eq!(true, cell.contains_point(&p));
     }
