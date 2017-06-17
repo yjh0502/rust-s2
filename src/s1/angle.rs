@@ -227,8 +227,7 @@ mod tests {
     #[test]
     fn test_e5e6e7_representation() {
         // NOTE(dsymonds): This first test gives a variance in the 16th decimal place. I should track that down.
-        assert_eq!(true,
-                   f64_eq(Angle::from(Deg(-45.)).0, Angle::from(E5(-4500000)).0));
+        assert_f64_eq!(Angle::from(Deg(-45.)).0, Angle::from(E5(-4500000)).0);
 
         assert_eq!(Angle::from(Deg(-60.)), Angle::from(E6(-60000000)));
         assert_eq!(Angle::from(Deg(-75.)), Angle::from(E7(-750000000)));
@@ -272,7 +271,7 @@ mod tests {
         }
 
         // We also spot check a non-identity.
-        assert_eq!(true, f64_eq(Deg::from(Angle::from(Deg(60.))).0, Deg(60.).0));
+        assert_f64_eq!(Deg::from(Angle::from(Deg(60.))).0, Deg(60.).0);
     }
 }
 

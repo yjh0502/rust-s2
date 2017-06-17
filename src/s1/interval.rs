@@ -468,7 +468,7 @@ mod tests {
     }
 
     fn test_center_case(expected: f64, i: Interval) {
-        assert!(f64_eq(expected, i.center()));
+        assert_f64_eq!(expected, i.center());
     }
 
     #[test]
@@ -488,12 +488,12 @@ mod tests {
     fn test_interval_len() {
         assert!(empty.len() < 0.);
 
-        assert!(f64_eq(PI, quad12.len()));
-        assert!(f64_eq(0., pi.len()));
-        assert!(f64_eq(0., mipi.len()));
-        assert!(f64_eq(1.5 * PI, quad123.len()));
-        assert!(f64_eq(PI, quad23.len()));
-        assert!(f64_eq(2. * PI, full.len()));
+        assert_f64_eq!(PI, quad12.len());
+        assert_f64_eq!(0., pi.len());
+        assert_f64_eq!(0., mipi.len());
+        assert_f64_eq!(1.5 * PI, quad123.len());
+        assert_f64_eq!(PI, quad23.len());
+        assert_f64_eq!(2. * PI, full.len());
     }
 
     fn test_contains_case(i: Interval,

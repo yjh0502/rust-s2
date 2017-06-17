@@ -12,6 +12,20 @@ pub const EPSILON: f64 = 1e-14;
 /// DBL_EPSILON is a smaller number for values that require more precision.
 pub const DBL_EPSILON: f64 = 2.220446049250313e-16;
 
+#[macro_export]
+macro_rules! f64_eq {
+    ($x: expr, $y: expr) => {
+        ($x - $y).abs() < EPSILON
+    }
+}
+
+#[macro_export]
+macro_rules! assert_f64_eq {
+    ($x: expr, $y: expr) => {
+        assert!(($x - $y).abs() < EPSILON)
+    }
+}
+
 /// f64_eq reports whether the two values are within the default epsilon.
 pub fn f64_eq(x: f64, y: f64) -> bool {
     f64_near(x, y, EPSILON)

@@ -321,7 +321,7 @@ mod tests {
     }
 
     fn chordangle_eq(a: ChordAngle, b: ChordAngle) {
-        assert!(f64_eq(a.0, b.0));
+        assert_f64_eq!(a.0, b.0);
     }
 
     #[test]
@@ -365,25 +365,25 @@ mod tests {
             let radians = PI * (i as f64) / (iters as f64);
             let chordangle = ChordAngle::from(Angle::from(Rad(radians)));
 
-            assert!(f64_eq(radians.sin(), chordangle.sin()));
-            assert!(f64_eq(radians.cos(), chordangle.cos()));
+            assert_f64_eq!(radians.sin(), chordangle.sin());
+            assert_f64_eq!(radians.cos(), chordangle.cos());
 
             // Since tan(x) is unbounded near pi/4, we map the result back to an
             // angle before comparing. The assertion is that the result is equal to
             // the tangent of a nearby angle.
-            assert!(f64_eq(radians.tan().atan(), chordangle.tan().atan()));
+            assert_f64_eq!(radians.tan().atan(), chordangle.tan().atan());
         }
 
         let angle_90 = ChordAngle::from_squared_length(2.);
         let angle_180 = ChordAngle::from_squared_length(4.);
 
-        assert!(f64_eq(1., angle_90.sin()));
-        assert!(f64_eq(0., angle_90.cos()));
+        assert_f64_eq!(1., angle_90.sin());
+        assert_f64_eq!(0., angle_90.cos());
         assert!(angle_90.tan().is_infinite());
 
-        assert!(f64_eq(0., angle_180.sin()));
-        assert!(f64_eq(-1., angle_180.cos()));
-        assert!(f64_eq(0., angle_180.tan()));
+        assert_f64_eq!(0., angle_180.sin());
+        assert_f64_eq!(-1., angle_180.cos());
+        assert_f64_eq!(0., angle_180.tan());
 
     }
 

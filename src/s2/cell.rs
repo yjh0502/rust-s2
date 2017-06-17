@@ -509,9 +509,9 @@ mod tests {
                 incr(&mut vert_counts, vert);
                 */
 
-                assert!(f64_eq(0., vert.0.dot(&edge.0)));
-                assert!(f64_eq(0., vert_cross.0.dot(&edge.0)));
-                assert!(f64_eq(1., vert.0.cross(&vert_cross.0).normalize().dot(&edge.0)));
+                assert_f64_eq!(0., vert.0.dot(&edge.0));
+                assert_f64_eq!(0., vert_cross.0.dot(&edge.0));
+                assert_f64_eq!(1., vert.0.cross(&vert_cross.0).normalize().dot(&edge.0));
             }
         }
         /*
@@ -667,7 +667,7 @@ mod tests {
         let level1_cell = CellID(0x1000000000000000);
         let want_area = 4. * PI / 6.;
 
-        assert!(f64_eq(Cell::from(&level1_cell).exact_area(), want_area));
+        assert_f64_eq!(Cell::from(&level1_cell).exact_area(), want_area);
 
         // Test 2. Iterate inwards from this cell, checking at every level that
         // the sum of the areas of the children is equal to the area of the parent.
@@ -686,7 +686,7 @@ mod tests {
 
             let cell = Cell::from(&ci);
 
-            assert!(f64_eq(exact_area, cell.exact_area()));
+            assert_f64_eq!(exact_area, cell.exact_area());
 
             child_index = (child_index + 1) % 4;
 

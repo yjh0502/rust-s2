@@ -477,12 +477,9 @@ mod tests {
         let p2 = Point(v2);
 
         let result = p1.cross(&p2);
-        assert!(f64_eq(expected, result.norm()),
-                "{} != {}",
-                expected,
-                result.norm());
-        assert!(f64_eq(0., result.0.dot(&p1.0)));
-        assert!(f64_eq(0., result.0.dot(&p2.0)));
+        assert_f64_eq!(expected, result.norm());
+        assert_f64_eq!(0., result.0.dot(&p1.0));
+        assert_f64_eq!(0., result.0.dot(&p2.0));
     }
 
     #[test]
@@ -499,8 +496,8 @@ mod tests {
         let p1 = Point(v1);
         let p2 = Point(v2);
 
-        assert!(f64_eq(expected, p1.distance(&p2).rad()));
-        assert!(f64_eq(expected, p2.distance(&p1).rad()));
+        assert_f64_eq!(expected, p1.distance(&p2).rad());
+        assert_f64_eq!(expected, p2.distance(&p1).rad());
     }
 
     #[test]
@@ -531,13 +528,10 @@ mod tests {
                     "{} != {}",
                     PI,
                     Angle::from((&z * -1.).chordangle(&z)).rad());
-            assert!(f64_eq(PI / 2., Angle::from(x.chordangle(&z)).rad()),
-                    "{} != {}",
-                    PI / 2.,
-                    Angle::from(x.chordangle(&z)).rad());
+            assert_f64_eq!(PI / 2., Angle::from(x.chordangle(&z)).rad());
 
             let w = (&y + &z).normalize();
-            assert!(f64_eq(PI / 4., Angle::from(w.chordangle(&z)).rad()));
+            assert_f64_eq!(PI / 4., Angle::from(w.chordangle(&z)).rad());
         }
     }
 
@@ -670,7 +664,7 @@ mod tests {
     fn area_quater_hemi_case(a: &Point, b: &Point, c: &Point, d: &Point, e: &Point, want: f64) {
         let area = point_area(a, b, c) + point_area(a, c, d) + point_area(a, d, e) +
                    point_area(a, e, b);
-        assert!(f64_eq(want, area));
+        assert_f64_eq!(want, area);
     }
 
     #[test]
@@ -835,7 +829,7 @@ mod tests {
 
         assert!(Point::from(m.x).0.is_unit());
         assert!(Point::from(m.y).0.is_unit());
-        assert!(f64_eq(m.determinant(), 1.));
+        assert_f64_eq!(m.determinant(), 1.);
 
         assert!(Point(Vector::new(1., 0., 0.)).approx_eq(&to_frame(&m, &Point::from(m.x))));
         assert!(Point(Vector::new(0., 1., 0.)).approx_eq(&to_frame(&m, &Point::from(m.y))));

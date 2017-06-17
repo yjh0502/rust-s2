@@ -2,6 +2,7 @@
 use std;
 use std::f64::consts::PI;
 
+use consts::*;
 use r1;
 use s1::*;
 use s2::latlng::LatLng;
@@ -190,7 +191,6 @@ use s2::point::Point;
 use s2::region::Region;
 use s2::cap::Cap;
 use s2::cell::Cell;
-use consts::*;
 
 impl Region for Rect {
     /// cap_bound returns a cap that countains Rect.

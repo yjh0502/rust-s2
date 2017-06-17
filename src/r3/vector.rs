@@ -223,7 +223,6 @@ pub enum Axis {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use consts::*;
     use std::cmp::Ordering;
     use std::f64::consts::PI;
 
@@ -253,10 +252,10 @@ mod tests {
 
     fn test_vec_norm(v: Vector) {
         let n = v.normalize();
-        assert!(f64_eq(v.x * n.y, v.y * n.x));
-        assert!(f64_eq(v.x * n.z, v.z * n.x));
+        assert_f64_eq!(v.x * n.y, v.y * n.x);
+        assert_f64_eq!(v.x * n.z, v.z * n.x);
 
-        assert!(f64_eq(n.norm(), 1.));
+        assert_f64_eq!(n.norm(), 1.);
     }
 
     #[test]
@@ -280,8 +279,8 @@ mod tests {
     }
 
     fn test_vector_dot_case(expected: f64, v1: Vector, v2: Vector) {
-        assert!(f64_eq(expected, v1.dot(&v2)));
-        assert!(f64_eq(expected, v2.dot(&v1)));
+        assert_f64_eq!(expected, v1.dot(&v2));
+        assert_f64_eq!(expected, v2.dot(&v1));
     }
 
     #[test]
@@ -327,13 +326,13 @@ mod tests {
 
     #[test]
     fn test_vector_distance() {
-        assert!(f64_eq(V!(1., 0., 0.).distance(&V!(1., 0., 0.)), 0.));
-        assert!(f64_eq(V!(1., 0., 0.).distance(&V!(0., 1., 0.)), 1.41421356237310));
-        assert!(f64_eq(V!(1., 0., 0.).distance(&V!(0., 1., 1.)), 1.73205080756888));
-        assert!(f64_eq(V!(1., 1., 1.).distance(&V!(-1., -1., -1.)),
-                       3.46410161513775));
-        assert!(f64_eq(V!(1., 2., 2.).distance(&V!(-0.3, 0.4, -1.2)),
-                       3.80657326213486));
+        assert_f64_eq!(V!(1., 0., 0.).distance(&V!(1., 0., 0.)), 0.);
+        assert_f64_eq!(V!(1., 0., 0.).distance(&V!(0., 1., 0.)), 1.41421356237310);
+        assert_f64_eq!(V!(1., 0., 0.).distance(&V!(0., 1., 1.)), 1.73205080756888);
+        assert_f64_eq!(V!(1., 1., 1.).distance(&V!(-1., -1., -1.)),
+                       3.46410161513775);
+        assert_f64_eq!(V!(1., 2., 2.).distance(&V!(-0.3, 0.4, -1.2)),
+                       3.80657326213486);
     }
 
     #[test]
@@ -348,17 +347,17 @@ mod tests {
 
     #[test]
     fn test_vector_angle() {
-        assert!(f64_eq(V!(1., 0., 0.).angle(&V!(1., 0., 0.)).rad(), 0.));
-        assert!(f64_eq(V!(1., 0., 0.).angle(&V!(0., 1., 0.)).rad(), PI / 2.));
-        assert!(f64_eq(V!(1., 0., 0.).angle(&V!(0., 1., 1.)).rad(), PI / 2.));
-        assert!(f64_eq(V!(1., 0., 0.).angle(&V!(-1., 0., 0.)).rad(), PI));
-        assert!(f64_eq(V!(1., 2., 3.).angle(&V!(2., 3., -1.)).rad(),
-                       1.2055891055045298));
+        assert_f64_eq!(V!(1., 0., 0.).angle(&V!(1., 0., 0.)).rad(), 0.);
+        assert_f64_eq!(V!(1., 0., 0.).angle(&V!(0., 1., 0.)).rad(), PI / 2.);
+        assert_f64_eq!(V!(1., 0., 0.).angle(&V!(0., 1., 1.)).rad(), PI / 2.);
+        assert_f64_eq!(V!(1., 0., 0.).angle(&V!(-1., 0., 0.)).rad(), PI);
+        assert_f64_eq!(V!(1., 2., 3.).angle(&V!(2., 3., -1.)).rad(),
+                       1.2055891055045298);
     }
 
     fn test_vector_ortho_case(v: Vector) {
-        assert!(f64_eq(v.dot(&v.ortho()), 0.));
-        assert!(f64_eq(v.ortho().norm(), 1.));
+        assert_f64_eq!(v.dot(&v.ortho()), 0.);
+        assert_f64_eq!(v.ortho().norm(), 1.);
     }
 
     #[test]
@@ -380,17 +379,17 @@ mod tests {
         let d2 = v2.dot(&v1);
 
         // angle commuts
-        assert!(f64_eq(a1, a2));
+        assert_f64_eq!(a1, a2);
         // dot commutes
-        assert!(f64_eq(d1, d2));
+        assert_f64_eq!(d1, d2);
         // cross anti-commuts
         assert!(c1.approx_eq(&(c2 * -1.)));
 
         // cross is orthogonal to original vectors
-        assert!(f64_eq(v1.dot(&c1), 0.));
-        assert!(f64_eq(v2.dot(&c1), 0.));
-        assert!(f64_eq(v1.dot(&c2), 0.));
-        assert!(f64_eq(v2.dot(&c2), 0.));
+        assert_f64_eq!(v1.dot(&c1), 0.);
+        assert_f64_eq!(v2.dot(&c1), 0.);
+        assert_f64_eq!(v1.dot(&c2), 0.);
+        assert_f64_eq!(v2.dot(&c2), 0.);
     }
 
     #[test]

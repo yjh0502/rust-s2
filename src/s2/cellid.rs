@@ -1541,8 +1541,8 @@ pub mod tests {
             // Check that the raw_point() returns the center of each cell
             // in (s,t) coordinates.
             let (_, u, v) = xyz_to_face_uv(&p);
-            assert!(f64_eq(remainder(uv_to_st(u), 0.5 * CELL_SIZE), 0.));
-            assert!(f64_eq(remainder(uv_to_st(v), 0.5 * CELL_SIZE), 0.));
+            assert_f64_eq!(remainder(uv_to_st(u), 0.5 * CELL_SIZE), 0.);
+            assert_f64_eq!(remainder(uv_to_st(v), 0.5 * CELL_SIZE), 0.);
 
             id = id.next();
         }
