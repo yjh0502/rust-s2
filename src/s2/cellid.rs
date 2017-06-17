@@ -800,12 +800,12 @@ impl From<Point> for CellID {
     }
 }
 
-pub struct CellIDIter {
+pub struct Iter {
     cur: CellID,
     end: CellID,
 }
 
-impl Iterator for CellIDIter {
+impl Iterator for Iter {
     type Item = CellID;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -820,15 +820,15 @@ impl Iterator for CellIDIter {
 }
 
 impl CellID {
-    pub fn child_iter(&self) -> CellIDIter {
-        CellIDIter {
+    pub fn child_iter(&self) -> Iter {
+        Iter {
             cur: self.child_begin(),
             end: self.child_end(),
         }
     }
 
-    pub fn child_iter_at_level(&self, level: u64) -> CellIDIter {
-        CellIDIter {
+    pub fn child_iter_at_level(&self, level: u64) -> Iter {
+        Iter {
             cur: self.child_begin_at_level(level),
             end: self.child_end_at_level(level),
         }
