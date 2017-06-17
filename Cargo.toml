@@ -1,7 +1,7 @@
 [package]
 name = "s2"
 
-version = "0.0.5"
+version = "0.0.6"
 authors = ["Jihyun Yu <yjh0502@gmail.com>"]
 
 license = "Apache-2.0"
