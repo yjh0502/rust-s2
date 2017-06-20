@@ -21,7 +21,7 @@ use r1::interval::{self, Interval};
 use r2::point::Point;
 
 /// Rect represents a closed axis-aligned rectangle in the (x,y) plane.
-#[derive(Clone,Debug,Default)]
+#[derive(Clone,Debug,Default,PartialEq)]
 pub struct Rect {
     /// x interval of the rect
     pub x: Interval,
@@ -233,373 +233,238 @@ impl<'b> std::ops::Add<&'b Rect> for Rect {
 mod tests {
     use super::*;
 
-    /*
     const SW: Point = Point { x: 0., y: 0.25 };
     const SE: Point = Point { x: 0.5, y: 0.25 };
     const NE: Point = Point { x: 0.5, y: 0.75 };
     const NW: Point = Point { x: 0., y: 0.75 };
-    */
 
-    /*
     const RECT: Rect = Rect {
         x: Interval { lo: 0., hi: 0.5 },
-        y: Interval {
-            lo: 0.25,
-            hi: 0.75,
-        },
+        y: Interval { lo: 0.25, hi: 0.75 },
     };
 
     const RECT_MID: Rect = Rect {
-        x: Interval {
-            lo: 0.25,
-            hi: 0.25,
-        },
+        x: Interval { lo: 0.25, hi: 0.25 },
         y: Interval { lo: 0.5, hi: 0.5 },
     };
 
     const RECT_SW: Rect = Rect {
-        x: Interval {
-            lo: SW.x,
-            hi: SW.x,
-        },
-        y: Interval {
-            lo: SW.y,
-            hi: SW.y,
-        },
+        x: Interval { lo: SW.x, hi: SW.x },
+        y: Interval { lo: SW.y, hi: SW.y },
     };
 
     const RECT_NE: Rect = Rect {
-        x: Interval {
-            lo: NE.x,
-            hi: NE.x,
-        },
-        y: Interval {
-            lo: NE.y,
-            hi: NE.y,
-        },
+        x: Interval { lo: NE.x, hi: NE.x },
+        y: Interval { lo: NE.y, hi: NE.y },
     };
-    */
+
+    use r2::point::Point;
 
     #[test]
     fn empty_rect() {
         assert!(EMPTY.is_valid());
         assert!(EMPTY.is_empty());
     }
+
+    #[test]
+    fn test_from_various_types() {
+        let d1 = Rect::from_points(&[Point::new(0.1, 0.), Point::new(0.25, 0.1)]);
+
+        assert!(Rect::from_center_size(&Point::new(0.3, 0.5), &Point::new(0.2, 0.4))
+                    .approx_eq(&Rect::from_points(&[Point::new(0.2, 0.3),
+                                                    Point::new(0.4, 0.7)])));
+
+        assert!(Rect::from_center_size(&Point::new(1., 0.1), &Point::new(0., 2.))
+                    .approx_eq(&Rect::from_points(&[Point::new(1., -0.9),
+                                                    Point::new(1., 1.1)])));
+
+        assert!(d1.approx_eq(&Rect { x: d1.x, y: d1.y }));
+
+        assert!(Rect::from_points(&[Point::new(0.15, 0.3), Point::new(0.35, 0.9)])
+                    .approx_eq(&Rect::from_points(&[Point::new(0.15, 0.9),
+                                                    Point::new(0.35, 0.3)])));
+
+        assert!(Rect::from_points(&[Point::new(0.12, 0.), Point::new(0.83, 0.5)])
+                    .approx_eq(&Rect::from_points(&[Point::new(0.83, 0.),
+                                                    Point::new(0.12, 0.5)])));
+    }
+
+    #[test]
+    fn test_center() {
+        assert!(EMPTY.center().approx_eq(&Point::new(0.5, 0.5)));
+        assert!(RECT.center().approx_eq(&Point::new(0.25, 0.5)));
+    }
+
+    #[test]
+    fn test_vertices() {
+        let want = &[SW, SE, NE, NW];
+        assert_eq!(&RECT.vertices(), want);
+    }
+
+    #[test]
+    fn test_contains_point() {
+        assert_eq!(true, RECT.contains_point(&Point::new(0.2, 0.4)));
+        assert_eq!(false, RECT.contains_point(&Point::new(0.2, 0.8)));
+        assert_eq!(false, RECT.contains_point(&Point::new(-0.1, 0.4)));
+        assert_eq!(false, RECT.contains_point(&Point::new(0.6, 0.1)));
+        assert_eq!(true, RECT.contains_point(&Point::new(RECT.x.lo, RECT.y.lo)));
+        assert_eq!(true, RECT.contains_point(&Point::new(RECT.x.hi, RECT.y.hi)));
+    }
+
+    #[test]
+    fn test_interior_contains_point() {
+        // Check corners are not contained.
+        assert_eq!(false, RECT.interior_contains_point(&SW));
+        assert_eq!(false, RECT.interior_contains_point(&NE));
+        // Check a point on the border is not contained.
+        assert_eq!(false, RECT.interior_contains_point(&Point::new(0., 0.5)));
+        assert_eq!(false, RECT.interior_contains_point(&Point::new(0.25, 0.25)));
+        assert_eq!(false, RECT.interior_contains_point(&Point::new(0.5, 0.5)));
+        // Check points inside are contained.
+        assert_eq!(true, RECT.interior_contains_point(&Point::new(0.125, 0.6)));
+    }
+
+    fn test_interval_cases(r1: &Rect,
+                           r2: &Rect,
+                           contains: bool,
+                           int_contains: bool,
+                           intersects: bool,
+                           int_intersects: bool,
+                           want_union: &Rect,
+                           want_intersection: &Rect) {
+        assert_eq!(contains, r1.contains(r2));
+        assert_eq!(int_contains, r1.interior_contains(r2));
+        assert_eq!(intersects, r1.intersects(r2));
+        assert_eq!(int_intersects, r1.interior_intersects(r2));
+
+        assert!(r1.union(r2).approx_eq(&want_union));
+        assert!(r1.intersection(r2).approx_eq(&want_intersection));
+
+        assert!((r1.clone() + r2).approx_eq(&want_union));
+    }
+
+    #[test]
+    fn test_interval_ops() {
+        test_interval_cases(&RECT, &RECT_MID, true, true, true, true, &RECT, &RECT_MID);
+        test_interval_cases(&RECT, &RECT_SW, true, false, true, false, &RECT, &RECT_SW);
+        test_interval_cases(&RECT, &RECT_NE, true, false, true, false, &RECT, &RECT_NE);
+
+        test_interval_cases(&RECT,
+                            &Rect::from_points(&[Point::new(0.45, 0.1), Point::new(0.75, 0.3)]),
+                            false,
+                            false,
+                            true,
+                            true,
+                            &Rect::from_points(&[Point::new(0., 0.1), Point::new(0.75, 0.75)]),
+                            &Rect::from_points(&[Point::new(0.45, 0.25), Point::new(0.5, 0.3)]));
+
+        test_interval_cases(&RECT,
+                            &Rect::from_points(&[Point::new(0.5, 0.1), Point::new(0.7, 0.3)]),
+                            false,
+                            false,
+                            true,
+                            false,
+                            &Rect::from_points(&[Point::new(0., 0.1), Point::new(0.7, 0.75)]),
+                            &Rect::from_points(&[Point::new(0.5, 0.25), Point::new(0.5, 0.3)]));
+
+        test_interval_cases(&RECT,
+                            &Rect::from_points(&[Point::new(0.45, 0.1), Point::new(0.7, 0.25)]),
+                            false,
+                            false,
+                            true,
+                            false,
+                            &Rect::from_points(&[Point::new(0., 0.1), Point::new(0.7, 0.75)]),
+                            &Rect::from_points(&[Point::new(0.45, 0.25), Point::new(0.5, 0.25)]));
+
+        test_interval_cases(&Rect::from_points(&[Point::new(0.1, 0.2), Point::new(0.1, 0.3)]),
+                            &Rect::from_points(&[Point::new(0.15, 0.7), Point::new(0.2, 0.8)]),
+                            false,
+                            false,
+                            false,
+                            false,
+                            &Rect::from_points(&[Point::new(0.1, 0.2), Point::new(0.2, 0.8)]),
+                            &EMPTY);
+
+        // Check that the intersection of two rectangles that overlap in x but not y
+        // is valid, and vice versa.
+        test_interval_cases(&Rect::from_points(&[Point::new(0.1, 0.2), Point::new(0.4, 0.5)]),
+                            &Rect::from_points(&[Point::new(0., 0.), Point::new(0.2, 0.1)]),
+                            false,
+                            false,
+                            false,
+                            false,
+                            &Rect::from_points(&[Point::new(0., 0.), Point::new(0.4, 0.5)]),
+                            &EMPTY);
+
+        test_interval_cases(&Rect::from_points(&[Point::new(0., 0.), Point::new(0.1, 0.3)]),
+                            &Rect::from_points(&[Point::new(0.2, 0.1), Point::new(0.3, 0.4)]),
+                            false,
+                            false,
+                            false,
+                            false,
+                            &Rect::from_points(&[Point::new(0., 0.), Point::new(0.3, 0.4)]),
+                            &EMPTY);
+    }
+
+    #[test]
+    fn test_add_point() {
+        let r1 = RECT.clone();
+        let mut r2 = EMPTY.clone();
+
+        r2 = r2 + &SW;
+        r2 = r2 + &SE;
+        r2 = r2 + &NW;
+        r2 = r2 + &Point::new(0.1, 0.4);
+
+        assert!(r1.approx_eq(&r2));
+    }
+
+    fn test_clamp_cases(r: &Rect, p: &Point, want: &Point) {
+        assert_eq!(want, &r.clamp_point(p));
+    }
+
+    #[test]
+    fn test_clamp_point() {
+        let r = Rect {
+            x: Interval::new(0., 0.5),
+            y: Interval::new(0.25, 0.75),
+        };
+
+        test_clamp_cases(&r, &Point::new(-0.01, 0.24), &Point::new(0., 0.25));
+        test_clamp_cases(&r, &Point::new(-5.0, 0.48), &Point::new(0., 0.48));
+        test_clamp_cases(&r, &Point::new(-5.0, 2.48), &Point::new(0., 0.75));
+        test_clamp_cases(&r, &Point::new(0.17, 2.48), &Point::new(0.17, 0.75));
+
+        test_clamp_cases(&r, &Point::new(6.19, 2.48), &Point::new(0.5, 0.75));
+        test_clamp_cases(&r, &Point::new(6.19, 0.53), &Point::new(0.5, 0.53));
+        test_clamp_cases(&r, &Point::new(6.19, -2.53), &Point::new(0.5, 0.25));
+        test_clamp_cases(&r, &Point::new(0.33, 2.48), &Point::new(0.33, 0.75));
+        test_clamp_cases(&r, &Point::new(0.33, 0.37), &Point::new(0.33, 0.37));
+    }
+
+    #[test]
+    fn test_expanded_empty() {
+        assert!(EMPTY.expanded(&Point::new(0.1, 0.3)).is_empty());
+        assert!(EMPTY.expanded(&Point::new(-0.1, -0.3)).is_empty());
+        assert!(EMPTY.expanded(&Point::new(-0.1, 0.3)).is_empty());
+        assert!(EMPTY.expanded(&Point::new(0.1, -0.2)).is_empty());
+    }
+
+    #[test]
+    fn test_expanded_equals() {
+        assert!(Rect::from_points(&[Point::new(0.2, 0.4), Point::new(0.3, 0.7)])
+                    .expanded(&Point::new(0.1, 0.3))
+                    .approx_eq(&Rect::from_points(&[Point::new(0.1, 0.1),
+                                                    Point::new(0.4, 1.0)])));
+
+        assert!(Rect::from_points(&[Point::new(0.2, 0.4), Point::new(0.3, 0.7)])
+                    .expanded(&Point::new(0.1, -0.1))
+                    .approx_eq(&Rect::from_points(&[Point::new(0.1, 0.5),
+                                                    Point::new(0.4, 0.6)])));
+
+        assert!(Rect::from_points(&[Point::new(0.2, 0.4), Point::new(0.3, 0.7)])
+                    .expanded(&Point::new(0.1, 0.1))
+                    .approx_eq(&Rect::from_points(&[Point::new(0.1, 0.3),
+                                                    Point::new(0.4, 0.8)])));
+    }
 }
-
-
-/*
-func TestFromVariousTypes(t *testing.T) {
-	d1 := RectFromPoints(Point{0.1, 0}, Point{0.25, 1})
-	tests := []struct {
-		r1, r2 Rect
-	}{
-		{
-			RectFromCenterSize(Point{0.3, 0.5}, Point{0.2, 0.4}),
-			RectFromPoints(Point{0.2, 0.3}, Point{0.4, 0.7}),
-		},
-		{
-			RectFromCenterSize(Point{1, 0.1}, Point{0, 2}),
-			RectFromPoints(Point{1, -0.9}, Point{1, 1.1}),
-		},
-		{
-			d1,
-			Rect{d1.X, d1.Y},
-		},
-		{
-			RectFromPoints(Point{0.15, 0.3}, Point{0.35, 0.9}),
-			RectFromPoints(Point{0.15, 0.9}, Point{0.35, 0.3}),
-		},
-		{
-			RectFromPoints(Point{0.12, 0}, Point{0.83, 0.5}),
-			RectFromPoints(Point{0.83, 0}, Point{0.12, 0.5}),
-		},
-	}
-
-	for _, test := range tests {
-		if got := test.r1.ApproxEquals(test.r2); !got {
-			t.Errorf("%v.ApproxEquals(%v); got %v want true", test.r1, test.r2, got)
-		}
-	}
-}
-
-func TestCenter(t *testing.T) {
-	tests := []struct {
-		rect Rect
-		want Point
-	}{
-		{empty, Point{0.5, 0.5}},
-		{rect, Point{0.25, 0.5}},
-	}
-	for _, test := range tests {
-		if got := test.rect.Center(); got != test.want {
-			t.Errorf("%v.Center(); got %v want %v", test.rect, got, test.want)
-		}
-	}
-}
-
-func TestVertices(t *testing.T) {
-	want := [4]Point{sw, se, ne, nw}
-	got := rect.Vertices()
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("%v.Vertices(); got %v want %v", rect, got, want)
-	}
-}
-
-func TestContainsPoint(t *testing.T) {
-	tests := []struct {
-		rect Rect
-		p    Point
-		want bool
-	}{
-		{rect, Point{0.2, 0.4}, true},
-		{rect, Point{0.2, 0.8}, false},
-		{rect, Point{-0.1, 0.4}, false},
-		{rect, Point{0.6, 0.1}, false},
-		{rect, Point{rect.X.Lo, rect.Y.Lo}, true},
-		{rect, Point{rect.X.Hi, rect.Y.Hi}, true},
-	}
-	for _, test := range tests {
-		if got := test.rect.ContainsPoint(test.p); got != test.want {
-			t.Errorf("%v.ContainsPoint(%v); got %v want %v", test.rect, test.p, got, test.want)
-		}
-	}
-}
-
-func TestInteriorContainsPoint(t *testing.T) {
-	tests := []struct {
-		rect Rect
-		p    Point
-		want bool
-	}{
-		// Check corners are not contained.
-		{rect, sw, false},
-		{rect, ne, false},
-		// Check a point on the border is not contained.
-		{rect, Point{0, 0.5}, false},
-		{rect, Point{0.25, 0.25}, false},
-		{rect, Point{0.5, 0.5}, false},
-		// Check points inside are contained.
-		{rect, Point{0.125, 0.6}, true},
-	}
-	for _, test := range tests {
-		if got := test.rect.InteriorContainsPoint(test.p); got != test.want {
-			t.Errorf("%v.InteriorContainsPoint(%v); got %v want %v",
-				test.rect, test.p, got, test.want)
-		}
-	}
-}
-
-func TestIntervalOps(t *testing.T) {
-	tests := []struct {
-		r1, r2                                           Rect
-		contains, intContains, intersects, intIntersects bool
-		wantUnion, wantIntersection                      Rect
-	}{
-		{
-			rect, rectMid,
-			true, true, true, true,
-			rect, rectMid,
-		},
-		{
-			rect, rectSW,
-			true, false, true, false,
-			rect, rectSW,
-		},
-		{
-			rect, rectNE,
-			true, false, true, false,
-			rect, rectNE,
-		},
-		{
-			rect,
-			RectFromPoints(Point{0.45, 0.1}, Point{0.75, 0.3}),
-			false, false, true, true,
-			RectFromPoints(Point{0, 0.1}, Point{0.75, 0.75}),
-			RectFromPoints(Point{0.45, 0.25}, Point{0.5, 0.3}),
-		},
-		{
-			rect,
-			RectFromPoints(Point{0.5, 0.1}, Point{0.7, 0.3}),
-			false, false, true, false,
-			RectFromPoints(Point{0, 0.1}, Point{0.7, 0.75}),
-			RectFromPoints(Point{0.5, 0.25}, Point{0.5, 0.3}),
-		},
-		{
-			rect,
-			RectFromPoints(Point{0.45, 0.1}, Point{0.7, 0.25}),
-			false, false, true, false,
-			RectFromPoints(Point{0, 0.1}, Point{0.7, 0.75}),
-			RectFromPoints(Point{0.45, 0.25}, Point{0.5, 0.25}),
-		},
-		{
-			RectFromPoints(Point{0.1, 0.2}, Point{0.1, 0.3}),
-			RectFromPoints(Point{0.15, 0.7}, Point{0.2, 0.8}),
-			false, false, false, false,
-			RectFromPoints(Point{0.1, 0.2}, Point{0.2, 0.8}),
-			EmptyRect(),
-		},
-		// Check that the intersection of two rectangles that overlap in x but not y
-		// is valid, and vice versa.
-		{
-			RectFromPoints(Point{0.1, 0.2}, Point{0.4, 0.5}),
-			RectFromPoints(Point{0, 0}, Point{0.2, 0.1}),
-			false, false, false, false,
-			RectFromPoints(Point{0, 0}, Point{0.4, 0.5}),
-			EmptyRect(),
-		},
-		{
-			RectFromPoints(Point{0, 0}, Point{0.1, 0.3}),
-			RectFromPoints(Point{0.2, 0.1}, Point{0.3, 0.4}),
-			false, false, false, false,
-			RectFromPoints(Point{0, 0}, Point{0.3, 0.4}),
-			EmptyRect(),
-		},
-	}
-	for _, test := range tests {
-		if got := test.r1.Contains(test.r2); got != test.contains {
-			t.Errorf("%v.Contains(%v); got %v want %v",
-				test.r1, test.r2, got, test.contains)
-		}
-
-		if got := test.r1.InteriorContains(test.r2); got != test.intContains {
-			t.Errorf("%v.InteriorContains(%v); got %v want %v",
-				test.r1, test.r2, got, test.contains)
-		}
-
-		if got := test.r1.Intersects(test.r2); got != test.intersects {
-			t.Errorf("%v.Intersects(%v); got %v want %v",
-				test.r1, test.r2, got, test.intersects)
-		}
-
-		if got := test.r1.InteriorIntersects(test.r2); got != test.intIntersects {
-			t.Errorf("%v.InteriorIntersects(%v); got %v want %v",
-				test.r1, test.r2, got, test.intIntersects)
-		}
-
-		tCon := test.r1.Contains(test.r2)
-		if got := test.r1.Union(test.r2).ApproxEquals(test.r1); got != tCon {
-			t.Errorf("%v.Union(%v) == %v.Contains(%v); got %v want %v",
-				test.r1, test.r2, test.r1, test.r2, got, tCon)
-		}
-
-		tInter := test.r1.Intersects(test.r2)
-		if got := !test.r1.Intersection(test.r2).IsEmpty(); got != tInter {
-			t.Errorf("%v.Intersection(%v).IsEmpty() == %v.Intersects(%v); got %v want %v",
-				test.r1, test.r2, test.r1, test.r2, got, tInter)
-		}
-
-		if got := test.r1.Union(test.r2); got != test.wantUnion {
-			t.Errorf("%v.Union(%v); got %v want %v",
-				test.r1, test.r2, got, test.wantUnion)
-		}
-
-		if got := test.r1.Intersection(test.r2); got != test.wantIntersection {
-			t.Errorf("%v.Intersection(%v); got %v want %v",
-				test.r1, test.r2, got, test.wantIntersection)
-		}
-
-		r := test.r1.AddRect(test.r2)
-
-		if r != test.wantUnion {
-			t.Errorf("%v.AddRect(%v); got %v want %v", test.r1, test.r2, r, test.wantUnion)
-		}
-	}
-}
-
-func TestAddPoint(t *testing.T) {
-	r1 := rect
-	r2 := EmptyRect()
-
-	r2 = r2.AddPoint(sw)
-	r2 = r2.AddPoint(se)
-	r2 = r2.AddPoint(nw)
-	r2 = r2.AddPoint(Point{0.1, 0.4})
-
-	if !r1.ApproxEquals(r2) {
-		t.Errorf("%v.AddPoint(%v); got false want true", r1, r2)
-	}
-}
-
-func TestClampPoint(t *testing.T) {
-	r := Rect{r1.Interval{Lo: 0, Hi: 0.5}, r1.Interval{Lo: 0.25, Hi: 0.75}}
-	tests := []struct {
-		p    Point
-		want Point
-	}{
-		{Point{-0.01, 0.24}, Point{0, 0.25}},
-		{Point{-5.0, 0.48}, Point{0, 0.48}},
-		{Point{-5.0, 2.48}, Point{0, 0.75}},
-		{Point{0.19, 2.48}, Point{0.19, 0.75}},
-
-		{Point{6.19, 2.48}, Point{0.5, 0.75}},
-		{Point{6.19, 0.53}, Point{0.5, 0.53}},
-		{Point{6.19, -2.53}, Point{0.5, 0.25}},
-		{Point{0.33, -2.53}, Point{0.33, 0.25}},
-		{Point{0.33, 0.37}, Point{0.33, 0.37}},
-	}
-	for _, test := range tests {
-		if got := r.ClampPoint(test.p); got != test.want {
-			t.Errorf("%v.ClampPoint(%v); got %v want %v", r, test.p, got, test.want)
-		}
-	}
-}
-
-func TestExpandedEmpty(t *testing.T) {
-	tests := []struct {
-		rect Rect
-		p    Point
-	}{
-		{
-			EmptyRect(),
-			Point{0.1, 0.3},
-		},
-		{
-			EmptyRect(),
-			Point{-0.1, -0.3},
-		},
-		{
-			RectFromPoints(Point{0.2, 0.4}, Point{0.3, 0.7}),
-			Point{-0.1, 0.3},
-		},
-		{
-			RectFromPoints(Point{0.2, 0.4}, Point{0.3, 0.7}),
-			Point{0.1, -0.2},
-		},
-	}
-	for _, test := range tests {
-		if got := test.rect.Expanded(test.p); !got.IsEmpty() {
-			t.Errorf("%v.Expanded(%v); got %v want true", test.rect, test.p, got.IsEmpty())
-		}
-	}
-}
-
-func TestExpandedEquals(t *testing.T) {
-	tests := []struct {
-		rect Rect
-		p    Point
-		want Rect
-	}{
-		{
-			RectFromPoints(Point{0.2, 0.4}, Point{0.3, 0.7}),
-			Point{0.1, 0.3},
-			RectFromPoints(Point{0.1, 0.1}, Point{0.4, 1.0}),
-		},
-		{
-			RectFromPoints(Point{0.2, 0.4}, Point{0.3, 0.7}),
-			Point{0.1, -0.1},
-			RectFromPoints(Point{0.1, 0.5}, Point{0.4, 0.6}),
-		},
-		{
-			RectFromPoints(Point{0.2, 0.4}, Point{0.3, 0.7}),
-			Point{0.1, 0.1},
-			RectFromPoints(Point{0.1, 0.3}, Point{0.4, 0.8}),
-		},
-	}
-	for _, test := range tests {
-		if got := test.rect.Expanded(test.p); !got.ApproxEquals(test.want) {
-			t.Errorf("%v.Expanded(%v); got %v want %v", test.rect, test.p, got, test.want)
-		}
-	}
-}
-*/
