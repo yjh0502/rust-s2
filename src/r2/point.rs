@@ -16,6 +16,7 @@ limitations under the License.
 */
 
 use std;
+use consts::*;
 
 /// Point represents a point in ℝ².
 #[derive(Clone,Copy,PartialEq,Debug)]
@@ -120,19 +121,15 @@ impl Point {
             self * (1.0 / self.norm())
         }
     }
+
+    pub fn approx_eq(&self, other: &Self) -> bool {
+        f64_eq!(self.x, other.x) && f64_eq!(self.y, other.y)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn approx_eq(x: f64, y: f64) -> bool {
-        (x - y).abs() < 1e-14
-    }
-
-    fn point_approx_eq(a: &Point, b: &Point) -> bool {
-        approx_eq(a.x, b.x) && approx_eq(a.y, b.y)
-    }
 
     macro_rules! P {
         ($x: expr, $y: expr) => {
@@ -174,14 +171,14 @@ mod tests {
         assert_eq!(5., P!(3., 4.).norm());
         assert_eq!(5., P!(3., -4.).norm());
         assert_eq!(2. * 2f64.sqrt(), P!(2., 2.).norm());
-        assert!(approx_eq(2., P!(1., 3f64.sqrt()).norm()));
-        assert!(approx_eq(29. * 2., P!(29., 29. * 3f64.sqrt()).norm()));
-        assert!(approx_eq(1e15, P!(1., 1e15).norm()));
-        assert!(approx_eq(std::f64::MAX, P!(1e14, std::f64::MAX - 1.).norm()));
+        assert_f64_eq!(2., P!(1., 3f64.sqrt()).norm());
+        assert_f64_eq!(29. * 2., P!(29., 29. * 3f64.sqrt()).norm());
+        assert_f64_eq!(1e15, P!(1., 1e15).norm());
+        assert_f64_eq!(std::f64::MAX, P!(1e14, std::f64::MAX - 1.).norm());
     }
 
     fn test_normalize(p1: Point, p2: Point) {
-        point_approx_eq(&p1, &p2.normalize());
+        assert!(p1.normalize().approx_eq(&p2));
     }
 
     #[test]
