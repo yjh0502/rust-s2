@@ -534,7 +534,7 @@ impl RegionCoverer {
                 let mut best_index = -1isize;
                 let mut best_level = -1isize;
 
-                let mut v = &mut covering.0;
+                let v = &mut covering.0;
                 for i in 0..(v.len() - 1) {
                     if let Some(level) = v[i].common_ancestor_level(&v[i + 1]) {
                         let level = self.adjust_level(level as u8) as isize;

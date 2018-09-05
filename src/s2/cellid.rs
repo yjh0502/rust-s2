@@ -735,7 +735,7 @@ fn ij_to_stmin(i: i32) -> f64 {
 
 /// st_to_ij converts value in ST coordinates to a value in IJ coordinates.
 fn st_to_ij(s: f64) -> i32 {
-    clamp(((MAX_SIZE as f64 * s).floor() as i32), 0, MAX_SIZE_I32 - 1)
+    clamp((MAX_SIZE as f64 * s).floor() as i32, 0, MAX_SIZE_I32 - 1)
 }
 
 impl std::fmt::Debug for CellID {

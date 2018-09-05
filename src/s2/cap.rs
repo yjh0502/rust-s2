@@ -321,7 +321,7 @@ impl Region for Cap {
 
     /// intersects_cell reports whether the cap intersects the cell.
     fn intersects_cell(&self, cell: &Cell) -> bool {
-        /// If the cap contains any cell vertex, return true.
+        // If the cap contains any cell vertex, return true.
         let vertices = cell.vertices();
         for vert in &vertices {
             if self.contains_point(vert) {

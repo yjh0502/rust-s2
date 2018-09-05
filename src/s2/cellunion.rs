@@ -51,7 +51,7 @@ impl CellUnion {
 
     /// normalize normalizes the CellUnion.
     pub fn normalize(&mut self) {
-        let mut v = &mut self.0;
+        let v = &mut self.0;
         v.sort();
 
         let mut output: Vec<CellID> = Vec::with_capacity(v.len());
