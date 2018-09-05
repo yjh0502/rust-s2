@@ -1,7 +1,6 @@
-
-use s2::point::Point;
 use r3::vector::Vector;
 use s2::cellid::*;
+use s2::point::Point;
 
 const MAX_SITI: u64 = MAX_SIZE << 1;
 
@@ -119,7 +118,11 @@ fn face_xyz_to_uvw(face: u8, p: &Point) -> Point {
 
 #[cfg(test)]
 fn face_siti_to_xyz(face: u8, si: u64, ti: u64) -> Point {
-    Point(face_uv_to_xyz(face, st_to_uv(siti_to_st(si)), st_to_uv(siti_to_st(ti))))
+    Point(face_uv_to_xyz(
+        face,
+        st_to_uv(siti_to_st(si)),
+        st_to_uv(siti_to_st(ti)),
+    ))
 }
 
 #[cfg(test)]
@@ -181,30 +184,38 @@ pub fn vnorm(face: u8, v: f64) -> Vector {
 }
 
 macro_rules! V {
-    ($x: expr, $y: expr, $z: expr) => {
-        Vector{x:$x as f64, y:$y as f64, z: $z as f64}
-    }
+    ($x:expr, $y:expr, $z:expr) => {
+        Vector {
+            x: $x as f64,
+            y: $y as f64,
+            z: $z as f64,
+        }
+    };
 }
 macro_rules! P {
-    ($x: expr, $y: expr, $z: expr) => {
+    ($x:expr, $y:expr, $z:expr) => {
         Point(V!($x, $y, $z))
-    }
+    };
 }
 
-const FACE_UVW_AXES: [[Point; 3]; 6] = [[P!(0, 1, 0), P!(0, 0, 1), P!(1, 0, 0)],
-                                        [P!(-1, 0, 0), P!(0, 0, 1), P!(0, 1, 0)],
-                                        [P!(-1, 0, 0), P!(0, -1, 0), P!(0, 0, 1)],
-                                        [P!(0, 0, -1), P!(0, -1, 0), P!(-1, 0, 0)],
-                                        [P!(0, 0, -1), P!(1, 0, 0), P!(0, -1, 0)],
-                                        [P!(0, 1, 0), P!(1, 0, 0), P!(0, 0, -1)]];
+const FACE_UVW_AXES: [[Point; 3]; 6] = [
+    [P!(0, 1, 0), P!(0, 0, 1), P!(1, 0, 0)],
+    [P!(-1, 0, 0), P!(0, 0, 1), P!(0, 1, 0)],
+    [P!(-1, 0, 0), P!(0, -1, 0), P!(0, 0, 1)],
+    [P!(0, 0, -1), P!(0, -1, 0), P!(-1, 0, 0)],
+    [P!(0, 0, -1), P!(1, 0, 0), P!(0, -1, 0)],
+    [P!(0, 1, 0), P!(1, 0, 0), P!(0, 0, -1)],
+];
 
 #[cfg(test)]
-const FACE_UVW_FACES: [[[u8; 2]; 3]; 6] = [[[4, 1], [5, 2], [3, 0]],
-                                           [[0, 3], [5, 2], [4, 1]],
-                                           [[0, 3], [1, 4], [5, 2]],
-                                           [[2, 5], [1, 4], [0, 3]],
-                                           [[2, 5], [3, 0], [1, 4]],
-                                           [[4, 1], [3, 0], [2, 5]]];
+const FACE_UVW_FACES: [[[u8; 2]; 3]; 6] = [
+    [[4, 1], [5, 2], [3, 0]],
+    [[0, 3], [5, 2], [4, 1]],
+    [[0, 3], [1, 4], [5, 2]],
+    [[2, 5], [1, 4], [0, 3]],
+    [[2, 5], [3, 0], [1, 4]],
+    [[4, 1], [3, 0], [2, 5]],
+];
 
 fn uvw_axis(face: u8, axis: u8) -> Point {
     FACE_UVW_AXES[face as usize][axis as usize].clone()
@@ -234,11 +245,11 @@ pub const SWAP_MASK: u8 = 0x01;
 mod tests {
     extern crate rand;
 
-    use std;
     use self::rand::Rng;
     use super::*;
     use r3::vector::Axis;
     use s2::random;
+    use std;
 
     #[test]
     fn st_uv() {
@@ -282,11 +293,13 @@ mod tests {
             //TODO: implement += operator?
             sum = sum + center.abs();
 
-            assert_eq!(u_axis(face)
-                           .0
-                           .cross(&v_axis(face).0)
-                           .dot(&unit_norm(face).0),
-                       1.0);
+            assert_eq!(
+                u_axis(face)
+                    .0
+                    .cross(&v_axis(face).0)
+                    .dot(&unit_norm(face).0),
+                1.0
+            );
 
             let sign = if face & SWAP_MASK == 1 {
                 -1.0f64
@@ -294,8 +307,10 @@ mod tests {
                 1.0f64
             };
 
-            assert_eq!(face_uv_to_xyz(face, sign, -sign),
-                       face_uv_to_xyz((face + 1) % 6, -1., -1.));
+            assert_eq!(
+                face_uv_to_xyz(face, sign, -sign),
+                face_uv_to_xyz((face + 1) % 6, -1., -1.)
+            );
         }
 
         assert!(sum.approx_eq(&V!(2., 2., 2.)));
@@ -357,17 +372,23 @@ mod tests {
     #[test]
     fn test_uvw_axis() {
         for face in 0..6 {
-            assert_eq!(face_uv_to_xyz(face, 1., 0.) - face_uv_to_xyz(face, 0., 0.),
-                       u_axis(face).0);
-            assert_eq!(face_uv_to_xyz(face, 0., 1.) - face_uv_to_xyz(face, 0., 0.),
-                       v_axis(face).0);
+            assert_eq!(
+                face_uv_to_xyz(face, 1., 0.) - face_uv_to_xyz(face, 0., 0.),
+                u_axis(face).0
+            );
+            assert_eq!(
+                face_uv_to_xyz(face, 0., 1.) - face_uv_to_xyz(face, 0., 0.),
+                v_axis(face).0
+            );
             assert_eq!(face_uv_to_xyz(face, 0., 0.), unit_norm(face).0);
 
-            assert_eq!(1.,
-                       u_axis(face)
-                           .0
-                           .cross(&v_axis(face).0)
-                           .dot(&unit_norm(face).0));
+            assert_eq!(
+                1.,
+                u_axis(face)
+                    .0
+                    .cross(&v_axis(face).0)
+                    .dot(&unit_norm(face).0)
+            );
             assert_eq!(u_axis(face), uvw_axis(face, 0));
             assert_eq!(v_axis(face), uvw_axis(face, 1));
             assert_eq!(unit_norm(face), uvw_axis(face, 2));
@@ -411,8 +432,10 @@ mod tests {
                 let (f, si, ti, gotlevel) = xyz_to_face_siti(&Point::from(&ci));
                 assert_eq!(gotlevel, level as i8);
 
-                assert_eq!(ci,
-                           CellID::from_face_ij(f, (si / 2) as i32, (ti / 2) as i32).parent(level));
+                assert_eq!(
+                    ci,
+                    CellID::from_face_ij(f, (si / 2) as i32, (ti / 2) as i32).parent(level)
+                );
 
                 //TODO: add by ref
                 let p_moved = Point::from(ci) + shift.clone();
@@ -445,11 +468,13 @@ mod tests {
                     assert_eq!(si, si_random);
                     assert_eq!(ti, ti_random);
                     if gotlevel >= 0 {
-                        assert!(p_random.approx_eq(&CellID::from_face_ij(f,
-                                                                         si as i32 / 2,
-                                                                         ti as i32 / 2)
-                                                            .parent(gotlevel as u64)
-                                                            .into()));
+                        assert!(
+                            p_random.approx_eq(
+                                &CellID::from_face_ij(f, si as i32 / 2, ti as i32 / 2)
+                                    .parent(gotlevel as u64)
+                                    .into()
+                            )
+                        );
                     }
                 }
             }

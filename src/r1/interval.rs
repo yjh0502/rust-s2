@@ -22,7 +22,7 @@ use consts::EPSILON;
 /// Interval represents a closed interval on ℝ.
 /// Zero-length intervals (where Lo == Hi) represent single points.
 /// If Lo > Hi then the interval is empty.
-#[derive(Clone,Copy,Default)]
+#[derive(Clone, Copy, Default)]
 pub struct Interval {
     /// lower bound of the interval
     pub lo: f64,
@@ -192,7 +192,6 @@ impl<'a> std::ops::Add<f64> for &'a Interval {
     }
 }
 
-
 impl std::cmp::PartialEq<Interval> for Interval {
     /// returns true iff the interval contains the same points as other.
     fn eq(&self, other: &Interval) -> bool {
@@ -205,9 +204,9 @@ mod tests {
     use super::*;
 
     macro_rules! I {
-        ($lo: expr, $hi: expr) => {
-            Interval{lo: $lo, hi: $hi}
-        }
+        ($lo:expr, $hi:expr) => {
+            Interval { lo: $lo, hi: $hi }
+        };
     }
 
     const UNIT: Interval = I!{0., 1.};
@@ -249,12 +248,14 @@ mod tests {
         assert_eq!(false, UNIT.interior_contains(1.));
     }
 
-    fn test_interval_ops(have: &Interval,
-                         other: &Interval,
-                         contains: bool,
-                         interior_contains: bool,
-                         intersects: bool,
-                         interior_intersects: bool) {
+    fn test_interval_ops(
+        have: &Interval,
+        other: &Interval,
+        contains: bool,
+        interior_contains: bool,
+        intersects: bool,
+        interior_intersects: bool,
+    ) {
         assert_eq!(contains, have.contains_interval(other));
         assert_eq!(interior_contains, have.interior_contains_interval(other));
         assert_eq!(intersects, have.intersects(other));

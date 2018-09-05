@@ -55,7 +55,7 @@ const MAX_DETERMINANT_ERROR: f64 = 1.8274 * DBL_EPSILON;
 /// its sign with certainty.
 const DET_ERROR_MULTIPLIER: f64 = 3.2321 * DBL_EPSILON;
 
-#[derive(PartialEq,Eq)]
+#[derive(PartialEq, Eq)]
 pub enum Direction {
     Clockwise,
     Indeterminate,
@@ -117,7 +117,6 @@ pub fn robust_sign(a: &Point, b: &Point, c: &Point) -> Direction {
         sign
     }
 }
-
 
 /// stable_sign reports the direction sign of the points in a numerically stable way.
 /// Unlike triageSign, this method can usually compute the correct determinant sign

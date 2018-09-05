@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate lazy_static;
-extern crate float_extras;
 extern crate cgmath;
+extern crate float_extras;
 extern crate rand;
 
 #[macro_use]

@@ -15,11 +15,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
 //! This file implements functions for various S2 measurements.
 
-use float_extras::f64::{ldexp, ilogb};
-use std::f64::consts::{PI, SQRT_2};
+use float_extras::f64::{ilogb, ldexp};
+use std::f64::consts::{SQRT_2, PI};
 
 use s2::cellid::MAX_LEVEL;
 
@@ -38,9 +37,12 @@ pub struct Metric {
 }
 
 macro_rules! metric {
-    ($name: ident, $dim: expr, $deriv: expr) => {
-        pub const $name: Metric = Metric{dim:$dim, deriv:$deriv};
-    }
+    ($name:ident, $dim:expr, $deriv:expr) => {
+        pub const $name: Metric = Metric {
+            dim: $dim,
+            deriv: $deriv,
+        };
+    };
 }
 
 // Defined metrics.

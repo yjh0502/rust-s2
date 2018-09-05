@@ -24,8 +24,8 @@ use s2::cap::Cap;
 use s2::cell::Cell;
 use s2::cellid::*;
 use s2::cellunion::CellUnion;
-use s2::rect::Rect;
 use s2::metric::*;
+use s2::rect::Rect;
 
 /// A Region represents a two-dimensional region on the unit sphere.
 ///
@@ -35,7 +35,6 @@ use s2::metric::*;
 pub trait Region {
     /// cap_bound returns a bounding spherical cap. This is not guaranteed to be exact.
     fn cap_bound(&self) -> Cap;
-
 
     /// rect_bound returns a bounding latitude-longitude rectangle that contains
     /// the region. The bounds are not guaranteed to be tight.
@@ -111,7 +110,7 @@ pub trait Region {
 /// interior coverings - otherwise for regions with small or zero area, the
 /// algorithm may spend a lot of time subdividing cells all the way to leaf
 /// level to try to find contained cells.
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct RegionCoverer {
     /// the minimum cell level to be used.
     pub min_level: u8,
@@ -124,7 +123,8 @@ pub struct RegionCoverer {
 }
 
 struct Coverer<'a, R>
-    where R: Region + 'static
+where
+    R: Region + 'static,
 {
     constraint: &'a RegionCoverer,
     region: &'a R,
@@ -160,7 +160,8 @@ impl std::cmp::Ord for Candidate {
 }
 
 impl<'a, R> Coverer<'a, R>
-    where R: Region
+where
+    R: Region,
 {
     // new_candidate returns a new candidate with no children if the cell intersects the given region.
     // The candidate is marked as terminal if it should not be expanded further.
@@ -185,8 +186,9 @@ impl<'a, R> Coverer<'a, R>
                 } else if level + self.constraint.level_mod > self.constraint.max_level {
                     return None;
                 }
-            } else if level + self.constraint.level_mod > self.constraint.max_level ||
-                      self.region.contains_cell(&cell) {
+            } else if level + self.constraint.level_mod > self.constraint.max_level
+                || self.region.contains_cell(&cell)
+            {
                 cand.terminal = true;
             }
         };
@@ -243,8 +245,10 @@ impl<'a, R> Coverer<'a, R>
             return;
         }
 
-        if !self.interior_covering && num_terminals == (1 << max_children_shift) &&
-           level >= self.constraint.min_level {
+        if !self.interior_covering
+            && num_terminals == (1 << max_children_shift)
+            && level >= self.constraint.min_level
+        {
             // Optimization: add the parent cell rather than all of its children.
             // We can't do this for interior coverings, since the children just
             // intersect the region, but may not be contained by it - we need to
@@ -260,9 +264,8 @@ impl<'a, R> Coverer<'a, R>
         // of the same size, we prefer the cells with the fewest children.
         // Finally, among cells with equal numbers of children we prefer those
         // with the smallest number of children that cannot be refined further.
-        cand.priority = -((((((level as usize) << max_children_shift) + cand.children.len()) <<
-                            max_children_shift) + num_terminals) as
-                          isize);
+        cand.priority = -((((((level as usize) << max_children_shift) + cand.children.len())
+            << max_children_shift) + num_terminals) as isize);
         self.pq.push(cand)
     }
 
@@ -339,8 +342,9 @@ impl<'a, R> Coverer<'a, R>
     /// (fewest children first).
     fn covering_internal(&mut self) {
         self.initial_candidates();
-        while !self.pq.is_empty() &&
-              (!self.interior_covering || self.result.len() < self.constraint.max_cells) {
+        while !self.pq.is_empty()
+            && (!self.interior_covering || self.result.len() < self.constraint.max_cells)
+        {
             let mut cand = self.pq.pop().unwrap();
 
             // For interior covering we keep subdividing no matter how many children
@@ -351,9 +355,12 @@ impl<'a, R> Coverer<'a, R>
             // candidate.numChildren == 1 case takes care of the situation when we
             // already have more then MaxCells in result (minLevel is too high).
             // Subdividing of the candidate with one child does no harm in this case.
-            if self.interior_covering || cand.cell.level() < self.constraint.min_level ||
-               cand.num_children == 1 ||
-               self.result.len() + self.pq.len() + cand.num_children <= self.constraint.max_cells {
+            if self.interior_covering
+                || cand.cell.level() < self.constraint.min_level
+                || cand.num_children == 1
+                || self.result.len() + self.pq.len() + cand.num_children
+                    <= self.constraint.max_cells
+            {
                 for child in cand.children.into_iter() {
                     if !self.interior_covering || self.result.len() < self.constraint.max_cells {
                         self.add_candidate(child)
@@ -371,7 +378,8 @@ impl<'a, R> Coverer<'a, R>
 
 impl RegionCoverer {
     fn new_coverer<'a, R>(&'a self, region: &'a R) -> Coverer<'a, R>
-        where R: Region
+    where
+        R: Region,
     {
         Coverer {
             constraint: self,
@@ -386,22 +394,28 @@ impl RegionCoverer {
     /// covering returns a CellUnion that covers the given region and satisfies the various
     /// restrictions.
     pub fn covering<R>(&self, region: &R) -> CellUnion
-        where R: Region + 'static
+    where
+        R: Region + 'static,
     {
         let mut covering = self.cellunion(region);
-        covering.denormalize(clamp(0, self.min_level, MAX_LEVEL as u8).into(),
-                             clamp(self.level_mod, 1, 3).into());
+        covering.denormalize(
+            clamp(0, self.min_level, MAX_LEVEL as u8).into(),
+            clamp(self.level_mod, 1, 3).into(),
+        );
         covering
     }
 
     /// interior_covering returns a CellUnion that is contained within the given region and
     /// satisfies the various restrictions.
     pub fn interior_covering<R>(&self, region: &R) -> CellUnion
-        where R: Region + 'static
+    where
+        R: Region + 'static,
     {
         let mut int_covering = self.interior_cellunion(region);
-        int_covering.denormalize(clamp(0, self.min_level, MAX_LEVEL as u8).into(),
-                                 clamp(self.level_mod, 1, 3).into());
+        int_covering.denormalize(
+            clamp(0, self.min_level, MAX_LEVEL as u8).into(),
+            clamp(self.level_mod, 1, 3).into(),
+        );
         int_covering
     }
 
@@ -412,7 +426,8 @@ impl RegionCoverer {
     /// whenever possible. (Note that the list of cell ids passed to the CellUnion
     /// constructor does in fact satisfy all the given restrictions.)
     fn cellunion<'a, R>(&self, region: &'a R) -> CellUnion
-        where R: Region + 'static
+    where
+        R: Region + 'static,
     {
         let mut c = self.new_coverer(region);
         c.covering_internal();
@@ -428,7 +443,8 @@ impl RegionCoverer {
     /// whenever possible. (Note that the list of cell ids passed to the CellUnion
     /// constructor does in fact satisfy all the given restrictions.)
     pub fn interior_cellunion<'a, R>(&self, region: &'a R) -> CellUnion
-        where R: Region + 'static
+    where
+        R: Region + 'static,
     {
         let mut c = self.new_coverer(region);
         c.interior_covering = true;
@@ -460,16 +476,19 @@ fn raw_fast_covering(cap: &Cap) -> CellUnion {
     let mut v = Vec::new();
     // Find the maximum level such that the cap contains at most one cell vertex
     // and such that CellId.VertexNeighbors() can be called.
-    let level = min(MIN_WIDTHMETRIC.max_level(2. * cap.radius().rad()),
-                    MAX_LEVEL - 1);
+    let level = min(
+        MIN_WIDTHMETRIC.max_level(2. * cap.radius().rad()),
+        MAX_LEVEL - 1,
+    );
     if level == 0 {
         for face in 0..6 {
             v.push(CellID::from_face(face));
         }
     } else {
         for ci in CellID::from(&cap.center)
-                .vertex_neighbors(level)
-                .into_iter() {
+            .vertex_neighbors(level)
+            .into_iter()
+        {
             v.push(ci);
         }
     }
@@ -548,10 +567,10 @@ impl RegionCoverer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::f64::consts::PI;
+    use rand::Rng;
     use s2::cell::*;
     use s2::random;
-    use rand::Rng;
+    use std::f64::consts::PI;
 
     #[test]
     fn test_coverer_random_cells() {
@@ -575,7 +594,8 @@ mod tests {
     use std::collections::{hash_map, HashMap};
 
     fn check_covering<R>(rc: &RegionCoverer, r: &R, covering: &CellUnion, interior: bool)
-        where R: Region
+    where
+        R: Region,
     {
         // Keep track of how many cells have the same rc.min_level ancestor.
         let mut min_level_cells = HashMap::new();
@@ -618,7 +638,8 @@ mod tests {
     // If "check_tight" is true, also checks that it does not contain any cells that
     // do not intersect the given region. ("id" is only used internally.)
     fn check_covering_tight<R>(r: &R, cover: &CellUnion, check_tight: bool, id: CellID)
-        where R: Region
+    where
+        R: Region,
     {
         if !id.is_valid() {
             for f in 0..6 {

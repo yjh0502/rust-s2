@@ -14,16 +14,16 @@ pub const DBL_EPSILON: f64 = 2.220446049250313e-16;
 
 #[macro_export]
 macro_rules! f64_eq {
-    ($x: expr, $y: expr) => {
+    ($x:expr, $y:expr) => {
         ($x - $y).abs() < EPSILON
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! assert_f64_eq {
-    ($x: expr, $y: expr) => {
+    ($x:expr, $y:expr) => {
         assert!(($x - $y).abs() < EPSILON)
-    }
+    };
 }
 
 /// f64_eq reports whether the two values are within the default epsilon.
@@ -42,7 +42,8 @@ pub fn remainder(x: f64, y: f64) -> f64 {
 }
 
 pub fn clamp<T>(val: T, min: T, max: T) -> T
-    where T: PartialOrd
+where
+    T: PartialOrd,
 {
     if val < min {
         min
@@ -54,7 +55,8 @@ pub fn clamp<T>(val: T, min: T, max: T) -> T
 }
 
 pub fn search_lower_by<F>(len: usize, f: F) -> usize
-    where F: Fn(usize) -> bool
+where
+    F: Fn(usize) -> bool,
 {
     let mut i = 0;
     let mut j = len;

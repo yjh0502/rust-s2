@@ -21,18 +21,18 @@ use std::f64::consts::PI;
 use consts::*;
 use r1;
 use r3::vector::Vector;
-use s1::{self, Angle, Deg, Rad, ChordAngle, chordangle};
-use s2::rect::Rect;
-use s2::point::Point;
+use s1::{self, chordangle, Angle, ChordAngle, Deg, Rad};
 use s2::cell::Cell;
 use s2::edgeutil::*;
+use s2::point::Point;
+use s2::rect::Rect;
 use s2::region::Region;
 
 const CENTER_POINT: Point = Point(Vector {
-                                      x: 1.,
-                                      y: 0.,
-                                      z: 0.,
-                                  });
+    x: 1.,
+    y: 0.,
+    z: 0.,
+});
 
 /// Cap represents a disc-shaped region defined by a center and radius.
 /// Technically this shape is called a "spherical cap" (rather than disc)
@@ -73,10 +73,12 @@ pub struct Cap {
 }
 impl std::fmt::Debug for Cap {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f,
-               "[center={:?}, radius={:?}]",
-               self.center.0,
-               Deg::from(self.radius()).0)
+        write!(
+            f,
+            "[center={:?}, radius={:?}]",
+            self.center.0,
+            Deg::from(self.radius()).0
+        )
     }
 }
 
@@ -217,8 +219,10 @@ impl Cap {
         } else if self.is_empty() {
             Self::full()
         } else {
-            Cap::from_center_chordangle(&(self.center.clone() * -1.),
-                                        &(chordangle::STRAIGHT - self.radius))
+            Cap::from_center_chordangle(
+                &(self.center.clone() * -1.),
+                &(chordangle::STRAIGHT - self.radius),
+            )
         }
     }
 
@@ -227,9 +231,11 @@ impl Cap {
         const EPSILON: f64 = 1e-14;
         let r2 = self.radius.0;
         let other_r2 = other.radius.0;
-        self.center.approx_eq(&other.center) && (r2 - other_r2).abs() <= EPSILON ||
-        self.is_empty() && other_r2 <= EPSILON || other.is_empty() && r2 <= EPSILON ||
-        self.is_full() && other_r2 >= 2. - EPSILON || other.is_full() && r2 >= 2. - EPSILON
+        self.center.approx_eq(&other.center) && (r2 - other_r2).abs() <= EPSILON
+            || self.is_empty() && other_r2 <= EPSILON
+            || other.is_empty() && r2 <= EPSILON
+            || self.is_full() && other_r2 >= 2. - EPSILON
+            || other.is_full() && r2 >= 2. - EPSILON
     }
 
     /// expanded returns a new cap expanded by the given angle. If the cap is empty,
@@ -238,8 +244,10 @@ impl Cap {
         if self.is_empty() {
             Self::empty()
         } else {
-            Self::from_center_chordangle(&self.center,
-                                         &(&self.radius + &ChordAngle::from(distance)))
+            Self::from_center_chordangle(
+                &self.center,
+                &(&self.radius + &ChordAngle::from(distance)),
+            )
         }
     }
 }
@@ -274,7 +282,6 @@ impl Region for Cap {
             lat.hi = PI / 2.;
             all_longitudes = true;
         }
-
 
         if !all_longitudes {
             // Compute the range of longitudes covered by the cap. We use the law
@@ -399,10 +406,10 @@ impl Cap {
         // from the cap height.
         if self.is_empty() {
             Point(Vector {
-                      x: 0.,
-                      y: 0.,
-                      z: 0.,
-                  })
+                x: 0.,
+                y: 0.,
+                z: 0.,
+            })
         } else {
             let r = 1. - 0.5 * self.height();
             Point(self.center.clone().0 * (r * self.area()))
@@ -430,10 +437,11 @@ impl Cap {
             a.clone()
         } else {
             let res_radius = 0.5 * (distance + a_radius + b_radius);
-            let res_center =
-                interpolate_at_distance(&Angle::from(Rad(0.5 * (distance - a_radius + b_radius))),
-                                        &self.center,
-                                        &other.center);
+            let res_center = interpolate_at_distance(
+                &Angle::from(Rad(0.5 * (distance - a_radius + b_radius))),
+                &self.center,
+                &other.center,
+            );
             Cap::from_center_chordangle(&res_center, &ChordAngle(res_radius))
         }
     }
@@ -441,8 +449,9 @@ impl Cap {
 
 impl std::cmp::PartialEq for Cap {
     fn eq(&self, other: &Self) -> bool {
-        (self.radius == other.radius && self.center == other.center) ||
-        (self.is_empty() && other.is_empty()) || (self.is_full() && other.is_full())
+        (self.radius == other.radius && self.center == other.center)
+            || (self.is_empty() && other.is_empty())
+            || (self.is_full() && other.is_full())
     }
 }
 
@@ -490,10 +499,12 @@ impl std::ops::Add<Cap> for Cap {
 
 impl std::fmt::Display for Cap {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f,
-               "[center={:?}, radius={:?}]",
-               self.center.0,
-               Deg::from(self.radius()).0)
+        write!(
+            f,
+            "[center={:?}, radius={:?}]",
+            self.center.0,
+            Deg::from(self.radius()).0
+        )
     }
 }
 

@@ -21,7 +21,7 @@ use r1::interval::{self, Interval};
 use r2::point::Point;
 
 /// Rect represents a closed axis-aligned rectangle in the (x,y) plane.
-#[derive(Clone,Debug,Default,PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Rect {
     /// x interval of the rect
     pub x: Interval,
@@ -82,10 +82,12 @@ impl Rect {
     /// vertices returns all four vertices of the rectangle. Vertices are returned in
     /// CCW direction starting with the lower left corner.
     pub fn vertices(&self) -> [Point; 4] {
-        [Point::new(self.x.lo, self.y.lo),
-         Point::new(self.x.hi, self.y.lo),
-         Point::new(self.x.hi, self.y.hi),
-         Point::new(self.x.lo, self.y.hi)]
+        [
+            Point::new(self.x.lo, self.y.lo),
+            Point::new(self.x.hi, self.y.lo),
+            Point::new(self.x.hi, self.y.hi),
+            Point::new(self.x.lo, self.y.hi),
+        ]
     }
 
     /// vertex_ij returns the vertex in direction i along the X-axis (0=left, 1=right) and
@@ -270,23 +272,31 @@ mod tests {
     fn test_from_various_types() {
         let d1 = Rect::from_points(&[Point::new(0.1, 0.), Point::new(0.25, 0.1)]);
 
-        assert!(Rect::from_center_size(&Point::new(0.3, 0.5), &Point::new(0.2, 0.4))
-                    .approx_eq(&Rect::from_points(&[Point::new(0.2, 0.3),
-                                                    Point::new(0.4, 0.7)])));
+        assert!(
+            Rect::from_center_size(&Point::new(0.3, 0.5), &Point::new(0.2, 0.4)).approx_eq(
+                &Rect::from_points(&[Point::new(0.2, 0.3), Point::new(0.4, 0.7)])
+            )
+        );
 
-        assert!(Rect::from_center_size(&Point::new(1., 0.1), &Point::new(0., 2.))
-                    .approx_eq(&Rect::from_points(&[Point::new(1., -0.9),
-                                                    Point::new(1., 1.1)])));
+        assert!(
+            Rect::from_center_size(&Point::new(1., 0.1), &Point::new(0., 2.)).approx_eq(
+                &Rect::from_points(&[Point::new(1., -0.9), Point::new(1., 1.1)])
+            )
+        );
 
         assert!(d1.approx_eq(&Rect { x: d1.x, y: d1.y }));
 
-        assert!(Rect::from_points(&[Point::new(0.15, 0.3), Point::new(0.35, 0.9)])
-                    .approx_eq(&Rect::from_points(&[Point::new(0.15, 0.9),
-                                                    Point::new(0.35, 0.3)])));
+        assert!(
+            Rect::from_points(&[Point::new(0.15, 0.3), Point::new(0.35, 0.9)]).approx_eq(
+                &Rect::from_points(&[Point::new(0.15, 0.9), Point::new(0.35, 0.3)])
+            )
+        );
 
-        assert!(Rect::from_points(&[Point::new(0.12, 0.), Point::new(0.83, 0.5)])
-                    .approx_eq(&Rect::from_points(&[Point::new(0.83, 0.),
-                                                    Point::new(0.12, 0.5)])));
+        assert!(
+            Rect::from_points(&[Point::new(0.12, 0.), Point::new(0.83, 0.5)]).approx_eq(
+                &Rect::from_points(&[Point::new(0.83, 0.), Point::new(0.12, 0.5)])
+            )
+        );
     }
 
     #[test]
@@ -324,14 +334,16 @@ mod tests {
         assert_eq!(true, RECT.interior_contains_point(&Point::new(0.125, 0.6)));
     }
 
-    fn test_interval_cases(r1: &Rect,
-                           r2: &Rect,
-                           contains: bool,
-                           int_contains: bool,
-                           intersects: bool,
-                           int_intersects: bool,
-                           want_union: &Rect,
-                           want_intersection: &Rect) {
+    fn test_interval_cases(
+        r1: &Rect,
+        r2: &Rect,
+        contains: bool,
+        int_contains: bool,
+        intersects: bool,
+        int_intersects: bool,
+        want_union: &Rect,
+        want_intersection: &Rect,
+    ) {
         assert_eq!(contains, r1.contains(r2));
         assert_eq!(int_contains, r1.interior_contains(r2));
         assert_eq!(intersects, r1.intersects(r2));
@@ -349,61 +361,73 @@ mod tests {
         test_interval_cases(&RECT, &RECT_SW, true, false, true, false, &RECT, &RECT_SW);
         test_interval_cases(&RECT, &RECT_NE, true, false, true, false, &RECT, &RECT_NE);
 
-        test_interval_cases(&RECT,
-                            &Rect::from_points(&[Point::new(0.45, 0.1), Point::new(0.75, 0.3)]),
-                            false,
-                            false,
-                            true,
-                            true,
-                            &Rect::from_points(&[Point::new(0., 0.1), Point::new(0.75, 0.75)]),
-                            &Rect::from_points(&[Point::new(0.45, 0.25), Point::new(0.5, 0.3)]));
+        test_interval_cases(
+            &RECT,
+            &Rect::from_points(&[Point::new(0.45, 0.1), Point::new(0.75, 0.3)]),
+            false,
+            false,
+            true,
+            true,
+            &Rect::from_points(&[Point::new(0., 0.1), Point::new(0.75, 0.75)]),
+            &Rect::from_points(&[Point::new(0.45, 0.25), Point::new(0.5, 0.3)]),
+        );
 
-        test_interval_cases(&RECT,
-                            &Rect::from_points(&[Point::new(0.5, 0.1), Point::new(0.7, 0.3)]),
-                            false,
-                            false,
-                            true,
-                            false,
-                            &Rect::from_points(&[Point::new(0., 0.1), Point::new(0.7, 0.75)]),
-                            &Rect::from_points(&[Point::new(0.5, 0.25), Point::new(0.5, 0.3)]));
+        test_interval_cases(
+            &RECT,
+            &Rect::from_points(&[Point::new(0.5, 0.1), Point::new(0.7, 0.3)]),
+            false,
+            false,
+            true,
+            false,
+            &Rect::from_points(&[Point::new(0., 0.1), Point::new(0.7, 0.75)]),
+            &Rect::from_points(&[Point::new(0.5, 0.25), Point::new(0.5, 0.3)]),
+        );
 
-        test_interval_cases(&RECT,
-                            &Rect::from_points(&[Point::new(0.45, 0.1), Point::new(0.7, 0.25)]),
-                            false,
-                            false,
-                            true,
-                            false,
-                            &Rect::from_points(&[Point::new(0., 0.1), Point::new(0.7, 0.75)]),
-                            &Rect::from_points(&[Point::new(0.45, 0.25), Point::new(0.5, 0.25)]));
+        test_interval_cases(
+            &RECT,
+            &Rect::from_points(&[Point::new(0.45, 0.1), Point::new(0.7, 0.25)]),
+            false,
+            false,
+            true,
+            false,
+            &Rect::from_points(&[Point::new(0., 0.1), Point::new(0.7, 0.75)]),
+            &Rect::from_points(&[Point::new(0.45, 0.25), Point::new(0.5, 0.25)]),
+        );
 
-        test_interval_cases(&Rect::from_points(&[Point::new(0.1, 0.2), Point::new(0.1, 0.3)]),
-                            &Rect::from_points(&[Point::new(0.15, 0.7), Point::new(0.2, 0.8)]),
-                            false,
-                            false,
-                            false,
-                            false,
-                            &Rect::from_points(&[Point::new(0.1, 0.2), Point::new(0.2, 0.8)]),
-                            &EMPTY);
+        test_interval_cases(
+            &Rect::from_points(&[Point::new(0.1, 0.2), Point::new(0.1, 0.3)]),
+            &Rect::from_points(&[Point::new(0.15, 0.7), Point::new(0.2, 0.8)]),
+            false,
+            false,
+            false,
+            false,
+            &Rect::from_points(&[Point::new(0.1, 0.2), Point::new(0.2, 0.8)]),
+            &EMPTY,
+        );
 
         // Check that the intersection of two rectangles that overlap in x but not y
         // is valid, and vice versa.
-        test_interval_cases(&Rect::from_points(&[Point::new(0.1, 0.2), Point::new(0.4, 0.5)]),
-                            &Rect::from_points(&[Point::new(0., 0.), Point::new(0.2, 0.1)]),
-                            false,
-                            false,
-                            false,
-                            false,
-                            &Rect::from_points(&[Point::new(0., 0.), Point::new(0.4, 0.5)]),
-                            &EMPTY);
+        test_interval_cases(
+            &Rect::from_points(&[Point::new(0.1, 0.2), Point::new(0.4, 0.5)]),
+            &Rect::from_points(&[Point::new(0., 0.), Point::new(0.2, 0.1)]),
+            false,
+            false,
+            false,
+            false,
+            &Rect::from_points(&[Point::new(0., 0.), Point::new(0.4, 0.5)]),
+            &EMPTY,
+        );
 
-        test_interval_cases(&Rect::from_points(&[Point::new(0., 0.), Point::new(0.1, 0.3)]),
-                            &Rect::from_points(&[Point::new(0.2, 0.1), Point::new(0.3, 0.4)]),
-                            false,
-                            false,
-                            false,
-                            false,
-                            &Rect::from_points(&[Point::new(0., 0.), Point::new(0.3, 0.4)]),
-                            &EMPTY);
+        test_interval_cases(
+            &Rect::from_points(&[Point::new(0., 0.), Point::new(0.1, 0.3)]),
+            &Rect::from_points(&[Point::new(0.2, 0.1), Point::new(0.3, 0.4)]),
+            false,
+            false,
+            false,
+            false,
+            &Rect::from_points(&[Point::new(0., 0.), Point::new(0.3, 0.4)]),
+            &EMPTY,
+        );
     }
 
     #[test]
@@ -452,19 +476,31 @@ mod tests {
 
     #[test]
     fn test_expanded_equals() {
-        assert!(Rect::from_points(&[Point::new(0.2, 0.4), Point::new(0.3, 0.7)])
-                    .expanded(&Point::new(0.1, 0.3))
-                    .approx_eq(&Rect::from_points(&[Point::new(0.1, 0.1),
-                                                    Point::new(0.4, 1.0)])));
+        assert!(
+            Rect::from_points(&[Point::new(0.2, 0.4), Point::new(0.3, 0.7)])
+                .expanded(&Point::new(0.1, 0.3))
+                .approx_eq(&Rect::from_points(&[
+                    Point::new(0.1, 0.1),
+                    Point::new(0.4, 1.0)
+                ]))
+        );
 
-        assert!(Rect::from_points(&[Point::new(0.2, 0.4), Point::new(0.3, 0.7)])
-                    .expanded(&Point::new(0.1, -0.1))
-                    .approx_eq(&Rect::from_points(&[Point::new(0.1, 0.5),
-                                                    Point::new(0.4, 0.6)])));
+        assert!(
+            Rect::from_points(&[Point::new(0.2, 0.4), Point::new(0.3, 0.7)])
+                .expanded(&Point::new(0.1, -0.1))
+                .approx_eq(&Rect::from_points(&[
+                    Point::new(0.1, 0.5),
+                    Point::new(0.4, 0.6)
+                ]))
+        );
 
-        assert!(Rect::from_points(&[Point::new(0.2, 0.4), Point::new(0.3, 0.7)])
-                    .expanded(&Point::new(0.1, 0.1))
-                    .approx_eq(&Rect::from_points(&[Point::new(0.1, 0.3),
-                                                    Point::new(0.4, 0.8)])));
+        assert!(
+            Rect::from_points(&[Point::new(0.2, 0.4), Point::new(0.3, 0.7)])
+                .expanded(&Point::new(0.1, 0.1))
+                .approx_eq(&Rect::from_points(&[
+                    Point::new(0.1, 0.3),
+                    Point::new(0.4, 0.8)
+                ]))
+        );
     }
 }

@@ -17,12 +17,12 @@ limitations under the License.
 
 use consts::search_lower_by;
 use r3::vector::Vector;
-use s2::cellid::*;
-use s2::cell::Cell;
-use s2::rect::Rect;
 use s2::cap::Cap;
-use s2::point::Point;
+use s2::cell::Cell;
+use s2::cellid::*;
 use s2::metric::*;
+use s2::point::Point;
+use s2::rect::Rect;
 use s2::region::Region;
 
 /// A CellUnion is a collection of CellIDs.
@@ -31,7 +31,7 @@ use s2::region::Region;
 /// Specifically, it may not contain the same CellID twice, nor a CellID that
 /// is contained by another, nor the four sibling CellIDs that are children of
 /// a single higher level CellID.
-#[derive(Debug,Clone,PartialEq,Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CellUnion(pub Vec<CellID>);
 
 impl CellUnion {
@@ -95,8 +95,11 @@ impl CellUnion {
                     let mut mask = ci.lsb() << 1;
                     mask = !(mask + (mask << 1));
                     let should = ci.0 & mask;
-                    if (fin[0].0 & mask != should) || (fin[1].0 & mask != should) ||
-                       (fin[2].0 & mask != should) || ci.is_face() {
+                    if (fin[0].0 & mask != should)
+                        || (fin[1].0 & mask != should)
+                        || (fin[2].0 & mask != should)
+                        || ci.is_face()
+                    {
                         break;
                     }
                 }
@@ -140,7 +143,6 @@ impl CellUnion {
         }
         i != 0 && v[i - 1].range_max().0 >= id.0
     }
-
 
     /// denormalize replaces this CellUnion with an expanded version of the
     /// CellUnion where any cell whose level is less than minLevel or where
@@ -194,10 +196,10 @@ impl Region for CellUnion {
         // Compute the approximate centroid of the region. This won't produce the
         // bounding cap of minimal area, but it should be close enough.
         let mut centroid = Point(Vector {
-                                     x: 0.,
-                                     y: 0.,
-                                     z: 0.,
-                                 });
+            x: 0.,
+            y: 0.,
+            z: 0.,
+        });
 
         for ci in self.0.iter() {
             let area = AVG_AREAMETRIC.value(ci.level() as u8);
@@ -248,14 +250,14 @@ mod tests {
     #[test]
     fn test_cellunion_normalization() {
         let mut cu = CellUnion(vec![
-		CellID(0x80855c0000000000), // A: a cell over Pittsburg CA
-		CellID(0x80855d0000000000), // B, a child of A
-		CellID(0x8085634000000000), // first child of X, disjoint from A
-		CellID(0x808563c000000000), // second child of X
-		CellID(0x80855dc000000000), // a child of B
-		CellID(0x808562c000000000), // third child of X
-		CellID(0x8085624000000000), // fourth child of X
-		CellID(0x80855d0000000000), // B again
+            CellID(0x80855c0000000000), // A: a cell over Pittsburg CA
+            CellID(0x80855d0000000000), // B, a child of A
+            CellID(0x8085634000000000), // first child of X, disjoint from A
+            CellID(0x808563c000000000), // second child of X
+            CellID(0x80855dc000000000), // a child of B
+            CellID(0x808562c000000000), // third child of X
+            CellID(0x8085624000000000), // fourth child of X
+            CellID(0x80855d0000000000), // B again
         ]);
 
         let exp = CellUnion(vec![
@@ -273,8 +275,7 @@ mod tests {
         if !reflect.DeepEqual(cu, exp) {
             t.Errorf("after redundant add, got %v, want %v", cu, exp)
         }
-        */
-    }
+        */    }
 
     #[test]
     fn test_cellunion_basic() {
@@ -301,10 +302,12 @@ mod tests {
         assert_eq!(false, face1_union.contains_cell(&face2_cell));
     }
 
-    fn test_cellunion_case(cells: &[CellID],
-                           contained: &[CellID],
-                           overlaps: &[CellID],
-                           disjoint: &[CellID]) {
+    fn test_cellunion_case(
+        cells: &[CellID],
+        contained: &[CellID],
+        overlaps: &[CellID],
+        disjoint: &[CellID],
+    ) {
         let mut v = Vec::with_capacity(cells.len());
         v.extend_from_slice(cells);
         let mut union = CellUnion(v);
@@ -337,99 +340,117 @@ mod tests {
 
     #[test]
     fn test_cellunion() {
-        test_cellunion_case(&[// Single cell around NYC, and some simple nearby probes
-                              CellID(0x89c25c0000000000)],
-                            &[CellID(0x89c25c0000000000).child_begin(),
-                              CellID(0x89c25c0000000000).child_begin_at_level(28)],
-                            &[CellID(0x89c25c0000000000).immediate_parent(),
-                              // the whole face
-                              CellID::from_face(CellID(0x89c25c0000000000).face() as u64)],
-                            &[// Cell next to this one at same level
-                              CellID(0x89c25c0000000000).next(),
-                              // Cell next to this one at deep level
-                              CellID(0x89c25c0000000000).next().child_begin_at_level(28),
-                              // Big(er) neighbor cell
-                              CellID(0x89c2700000000000),
-                              // Very big next door cell.
-                              CellID(0x89e9000000000000),
-                              // Very big cell, smaller value than probe
-                              CellID(0x89c1000000000000)]);
+        test_cellunion_case(
+            &[
+                // Single cell around NYC, and some simple nearby probes
+                CellID(0x89c25c0000000000),
+            ],
+            &[
+                CellID(0x89c25c0000000000).child_begin(),
+                CellID(0x89c25c0000000000).child_begin_at_level(28),
+            ],
+            &[
+                CellID(0x89c25c0000000000).immediate_parent(),
+                // the whole face
+                CellID::from_face(CellID(0x89c25c0000000000).face() as u64),
+            ],
+            &[
+                // Cell next to this one at same level
+                CellID(0x89c25c0000000000).next(),
+                // Cell next to this one at deep level
+                CellID(0x89c25c0000000000).next().child_begin_at_level(28),
+                // Big(er) neighbor cell
+                CellID(0x89c2700000000000),
+                // Very big next door cell.
+                CellID(0x89e9000000000000),
+                // Very big cell, smaller value than probe
+                CellID(0x89c1000000000000),
+            ],
+        );
 
-        test_cellunion_case(&[
-			// NYC and SFO:
-				CellID(0x89c25b0000000000), // NYC
-				CellID(0x89c2590000000000), // NYC
-				CellID(0x89c2f70000000000), // NYC
-				CellID(0x89c2f50000000000), // NYC
-				CellID(0x8085870000000000), // SFO
-				CellID(0x8085810000000000), // SFO
-				CellID(0x808f7d0000000000), // SFO
-				CellID(0x808f7f0000000000), // SFO
-        ],
-                            &[
-				CellID(0x808f7ef300000000), // SFO
-				CellID(0x808f7e5cf0000000), // SFO
-				CellID(0x808587f000000000), // SFO
-				CellID(0x89c25ac000000000), // NYC
-				CellID(0x89c259a400000000), // NYC
-				CellID(0x89c258fa10000000), // NYC
-				CellID(0x89c258f174007000), // NYC
-        ],
-                            &[
-				CellID(0x808c000000000000), // Big SFO
-				CellID(0x89c4000000000000), // Big NYC
-        ],
-                            &[
-				CellID(0x89c15a4fcb1bb000), // outside NYC
-				CellID(0x89c15a4e4aa95000), // outside NYC
-				CellID(0x8094000000000000), // outside SFO (big)
-				CellID(0x8096f10000000000), // outside SFO (smaller)
+        test_cellunion_case(
+            &[
+                // NYC and SFO:
+                CellID(0x89c25b0000000000), // NYC
+                CellID(0x89c2590000000000), // NYC
+                CellID(0x89c2f70000000000), // NYC
+                CellID(0x89c2f50000000000), // NYC
+                CellID(0x8085870000000000), // SFO
+                CellID(0x8085810000000000), // SFO
+                CellID(0x808f7d0000000000), // SFO
+                CellID(0x808f7f0000000000), // SFO
+            ],
+            &[
+                CellID(0x808f7ef300000000), // SFO
+                CellID(0x808f7e5cf0000000), // SFO
+                CellID(0x808587f000000000), // SFO
+                CellID(0x89c25ac000000000), // NYC
+                CellID(0x89c259a400000000), // NYC
+                CellID(0x89c258fa10000000), // NYC
+                CellID(0x89c258f174007000), // NYC
+            ],
+            &[
+                CellID(0x808c000000000000), // Big SFO
+                CellID(0x89c4000000000000), // Big NYC
+            ],
+            &[
+                CellID(0x89c15a4fcb1bb000), // outside NYC
+                CellID(0x89c15a4e4aa95000), // outside NYC
+                CellID(0x8094000000000000), // outside SFO (big)
+                CellID(0x8096f10000000000), // outside SFO (smaller)
+                CellID(0x87c0000000000000), // Midwest very big
+            ],
+        );
 
-				CellID(0x87c0000000000000), // Midwest very big
-        ]);
-
-        test_cellunion_case(&[
-				CellID(0x8100000000000000), // starting around california
-				CellID(0x8740000000000000), // adjacent cells at increasing
-				CellID(0x8790000000000000), // levels, moving eastward.
-				CellID(0x87f4000000000000),
-				CellID(0x87f9000000000000), // going down across the midwest
-				CellID(0x87ff400000000000),
-				CellID(0x87ff900000000000),
-				CellID(0x87fff40000000000),
-				CellID(0x87fff90000000000),
-				CellID(0x87ffff4000000000),
-				CellID(0x87ffff9000000000),
-				CellID(0x87fffff400000000),
-				CellID(0x87fffff900000000),
-				CellID(0x87ffffff40000000),
-				CellID(0x87ffffff90000000),
-				CellID(0x87fffffff4000000),
-				CellID(0x87fffffff9000000),
-				CellID(0x87ffffffff400000), // to a very small cell in Wisconsin
-        ],
-                            &[CellID(0x808f400000000000),
-                              CellID(0x80eb118b00000000),
-                              CellID(0x8136a7a11d000000),
-                              CellID(0x8136a7a11dac0000),
-                              CellID(0x876c7c0000000000),
-                              CellID(0x87f96d0000000000),
-                              CellID(0x87ffffffff400000)],
-                            &[CellID(0x8100000000000000).immediate_parent(),
-                              CellID(0x8740000000000000).immediate_parent()],
-                            &[CellID(0x52aaaaaaab300000),
-                              CellID(0x52aaaaaaacd00000),
-                              CellID(0x87fffffffa100000),
-                              CellID(0x87ffffffed500000),
-                              CellID(0x87ffffffa0100000),
-                              CellID(0x87fffffed5540000),
-                              CellID(0x87fffffed6240000),
-                              CellID(0x52aaaacccb340000),
-                              CellID(0x87a0000400000000),
-                              CellID(0x87a000001f000000),
-                              CellID(0x87a0000029d00000),
-                              CellID(0x9500000000000000)]);
-
+        test_cellunion_case(
+            &[
+                CellID(0x8100000000000000), // starting around california
+                CellID(0x8740000000000000), // adjacent cells at increasing
+                CellID(0x8790000000000000), // levels, moving eastward.
+                CellID(0x87f4000000000000),
+                CellID(0x87f9000000000000), // going down across the midwest
+                CellID(0x87ff400000000000),
+                CellID(0x87ff900000000000),
+                CellID(0x87fff40000000000),
+                CellID(0x87fff90000000000),
+                CellID(0x87ffff4000000000),
+                CellID(0x87ffff9000000000),
+                CellID(0x87fffff400000000),
+                CellID(0x87fffff900000000),
+                CellID(0x87ffffff40000000),
+                CellID(0x87ffffff90000000),
+                CellID(0x87fffffff4000000),
+                CellID(0x87fffffff9000000),
+                CellID(0x87ffffffff400000), // to a very small cell in Wisconsin
+            ],
+            &[
+                CellID(0x808f400000000000),
+                CellID(0x80eb118b00000000),
+                CellID(0x8136a7a11d000000),
+                CellID(0x8136a7a11dac0000),
+                CellID(0x876c7c0000000000),
+                CellID(0x87f96d0000000000),
+                CellID(0x87ffffffff400000),
+            ],
+            &[
+                CellID(0x8100000000000000).immediate_parent(),
+                CellID(0x8740000000000000).immediate_parent(),
+            ],
+            &[
+                CellID(0x52aaaaaaab300000),
+                CellID(0x52aaaaaaacd00000),
+                CellID(0x87fffffffa100000),
+                CellID(0x87ffffffed500000),
+                CellID(0x87ffffffa0100000),
+                CellID(0x87fffffed5540000),
+                CellID(0x87fffffed6240000),
+                CellID(0x52aaaacccb340000),
+                CellID(0x87a0000400000000),
+                CellID(0x87a000001f000000),
+                CellID(0x87a0000029d00000),
+                CellID(0x9500000000000000),
+            ],
+        );
     }
 
     /*
@@ -623,11 +644,13 @@ func TestCellUnionNormalizePseudoRandom(t *testing.T) {
 }
 */
 
-    fn test_denorm_case(name: &str,
-                        min_level: u64,
-                        level_mod: u64,
-                        mut cu: CellUnion,
-                        exp: CellUnion) {
+    fn test_denorm_case(
+        name: &str,
+        min_level: u64,
+        level_mod: u64,
+        mut cu: CellUnion,
+        exp: CellUnion,
+    ) {
         cu.denormalize(min_level, level_mod);
         assert_eq!(exp, cu, "{}", name);
     }
@@ -638,52 +661,63 @@ func TestCellUnionNormalizePseudoRandom(t *testing.T) {
 
     #[test]
     fn test_cellunion_denormalize() {
-        test_denorm_case("not expanded, level mod == 1",
-                         10,
-                         1,
-                         CellUnion(vec![cfbl(2, 11), cfbl(2, 11), cfbl(3, 14), cfbl(0, 10)]),
-                         CellUnion(vec![cfbl(2, 11), cfbl(2, 11), cfbl(3, 14), cfbl(0, 10)]));
+        test_denorm_case(
+            "not expanded, level mod == 1",
+            10,
+            1,
+            CellUnion(vec![cfbl(2, 11), cfbl(2, 11), cfbl(3, 14), cfbl(0, 10)]),
+            CellUnion(vec![cfbl(2, 11), cfbl(2, 11), cfbl(3, 14), cfbl(0, 10)]),
+        );
 
-        test_denorm_case("not expanded, level mod > 1",
-                         10,
-                         2,
-                         CellUnion(vec![cfbl(2, 12), cfbl(2, 12), cfbl(3, 14), cfbl(0, 10)]),
-                         CellUnion(vec![cfbl(2, 12), cfbl(2, 12), cfbl(3, 14), cfbl(0, 10)]));
+        test_denorm_case(
+            "not expanded, level mod > 1",
+            10,
+            2,
+            CellUnion(vec![cfbl(2, 12), cfbl(2, 12), cfbl(3, 14), cfbl(0, 10)]),
+            CellUnion(vec![cfbl(2, 12), cfbl(2, 12), cfbl(3, 14), cfbl(0, 10)]),
+        );
 
-        test_denorm_case("expended, (level - min_level) is not multiple of level mod",
-                         10,
-                         3,
-                         CellUnion(vec![cfbl(2, 12), cfbl(5, 11)]),
-                         CellUnion(vec![cfbl(2, 12).children()[0],
-                                        cfbl(2, 12).children()[1],
-                                        cfbl(2, 12).children()[2],
-                                        cfbl(2, 12).children()[3],
-                                        cfbl(5, 11).children()[0].children()[0],
-                                        cfbl(5, 11).children()[0].children()[1],
-                                        cfbl(5, 11).children()[0].children()[2],
-                                        cfbl(5, 11).children()[0].children()[3],
-                                        cfbl(5, 11).children()[1].children()[0],
-                                        cfbl(5, 11).children()[1].children()[1],
-                                        cfbl(5, 11).children()[1].children()[2],
-                                        cfbl(5, 11).children()[1].children()[3],
-                                        cfbl(5, 11).children()[2].children()[0],
-                                        cfbl(5, 11).children()[2].children()[1],
-                                        cfbl(5, 11).children()[2].children()[2],
-                                        cfbl(5, 11).children()[2].children()[3],
-                                        cfbl(5, 11).children()[3].children()[0],
-                                        cfbl(5, 11).children()[3].children()[1],
-                                        cfbl(5, 11).children()[3].children()[2],
-                                        cfbl(5, 11).children()[3].children()[3]]));
+        test_denorm_case(
+            "expended, (level - min_level) is not multiple of level mod",
+            10,
+            3,
+            CellUnion(vec![cfbl(2, 12), cfbl(5, 11)]),
+            CellUnion(vec![
+                cfbl(2, 12).children()[0],
+                cfbl(2, 12).children()[1],
+                cfbl(2, 12).children()[2],
+                cfbl(2, 12).children()[3],
+                cfbl(5, 11).children()[0].children()[0],
+                cfbl(5, 11).children()[0].children()[1],
+                cfbl(5, 11).children()[0].children()[2],
+                cfbl(5, 11).children()[0].children()[3],
+                cfbl(5, 11).children()[1].children()[0],
+                cfbl(5, 11).children()[1].children()[1],
+                cfbl(5, 11).children()[1].children()[2],
+                cfbl(5, 11).children()[1].children()[3],
+                cfbl(5, 11).children()[2].children()[0],
+                cfbl(5, 11).children()[2].children()[1],
+                cfbl(5, 11).children()[2].children()[2],
+                cfbl(5, 11).children()[2].children()[3],
+                cfbl(5, 11).children()[3].children()[0],
+                cfbl(5, 11).children()[3].children()[1],
+                cfbl(5, 11).children()[3].children()[2],
+                cfbl(5, 11).children()[3].children()[3],
+            ]),
+        );
 
-        test_denorm_case("expended, level < min_level",
-                         10,
-                         3,
-                         CellUnion(vec![cfbl(2, 9)]),
-                         CellUnion(vec![cfbl(2, 9).children()[0],
-                                        cfbl(2, 9).children()[1],
-                                        cfbl(2, 9).children()[2],
-                                        cfbl(2, 9).children()[3]]));
-
+        test_denorm_case(
+            "expended, level < min_level",
+            10,
+            3,
+            CellUnion(vec![cfbl(2, 9)]),
+            CellUnion(vec![
+                cfbl(2, 9).children()[0],
+                cfbl(2, 9).children()[1],
+                cfbl(2, 9).children()[2],
+                cfbl(2, 9).children()[3],
+            ]),
+        );
     }
 }
 

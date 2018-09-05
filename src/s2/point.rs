@@ -1,24 +1,23 @@
-
 use std;
 
-use cgmath::{Vector3, Matrix, Matrix3};
+use cgmath::{Matrix, Matrix3, Vector3};
 
 use consts::*;
-use std::f64::consts::PI;
 use r3::vector::Vector;
 use s1;
-use s1::*;
 use s1::ChordAngle;
-use s2::predicates::*;
-use s2::region::Region;
-use s2::latlng::LatLng;
-use s2::rect::Rect;
+use s1::*;
 use s2::cap::Cap;
 use s2::cell::Cell;
+use s2::latlng::LatLng;
+use s2::predicates::*;
+use s2::rect::Rect;
+use s2::region::Region;
+use std::f64::consts::PI;
 
 /// Point represents a point on the unit sphere as a normalized 3D vector.
 /// Fields should be treated as read-only. Use one of the factory methods for creation.
-#[derive(Clone,Copy,PartialEq,Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Point(pub Vector);
 
 impl std::ops::Add<Point> for Point {
@@ -95,10 +94,10 @@ impl<'a> From<&'a Vector3<f64>> for Point {
 }
 
 pub const ORIGIN: Point = Point(Vector {
-                                    x: -0.0099994664350250197,
-                                    y: 0.0025924542609324121,
-                                    z: 0.99994664350250195,
-                                });
+    x: -0.0099994664350250197,
+    y: 0.0025924542609324121,
+    z: 0.99994664350250195,
+});
 
 impl Point {
     /// form_coords creates a new normalized point from coordinates.
@@ -293,8 +292,10 @@ pub fn point_area(a: &Point, b: &Point, c: &Point) -> f64 {
     }
 
     // Use l'Huilier's formula.
-    4. *
-    ((0.5 * s).tan() * (0.5 * (s - sa)).tan() * (0.5 * (s - sb)).tan() * (0.5 * (s - sc)).tan())
+    4. * ((0.5 * s).tan()
+        * (0.5 * (s - sa)).tan()
+        * (0.5 * (s - sb)).tan()
+        * (0.5 * (s - sc)).tan())
         .max(0.)
         .sqrt()
         .atan()
@@ -343,9 +344,11 @@ pub fn true_centroid(a: &Point, b: &Point, c: &Point) -> Point {
     let z = Vector::new(a.0.z, b.0.z - a.0.z, c.0.z - a.0.z);
     let r = Vector::new(ra, rb - ra, rc - ra);
 
-    Point(Vector::new(y.cross(&z).dot(&r),
-                      z.cross(&x).dot(&r),
-                      x.cross(&y).dot(&r))) * 0.5
+    Point(Vector::new(
+        y.cross(&z).dot(&r),
+        z.cross(&x).dot(&r),
+        x.cross(&y).dot(&r),
+    )) * 0.5
 }
 
 /// planar_centroid returns the centroid of the planar triangle ABC, which is not normalized.
@@ -388,10 +391,11 @@ pub fn regular_points(center: &Point, radius: Angle, num_vertices: usize) -> Vec
 /// with numVertices vertices, all on a circle of the specified angular radius around
 /// the center. The radius is the actual distance from the center to each vertex.
 /// TODO: private?
-fn regular_points_for_frame(frame: &Matrix3<f64>,
-                            radius: Angle,
-                            num_vertices: usize)
-                            -> Vec<Point> {
+fn regular_points_for_frame(
+    frame: &Matrix3<f64>,
+    radius: Angle,
+    num_vertices: usize,
+) -> Vec<Point> {
     // We construct the loop in the given frame coordinates, with the center at
     // (0, 0, 1). For a loop of radius r, the loop vertices have the form
     // (x, y, z) where x^2 + y^2 = sin(r) and z = cos(r). The distance on the
@@ -450,8 +454,8 @@ impl Point {
 mod tests {
     use super::*;
 
-    use std::f64::consts::PI;
     use s2::stuv::st_to_uv;
+    use std::f64::consts::PI;
 
     #[test]
     fn test_origin_point() {
@@ -487,9 +491,11 @@ mod tests {
         test_point_cross_case(1., Vector::new(1., 0., 0.), Vector::new(1., 0., 0.));
         test_point_cross_case(2., Vector::new(1., 0., 0.), Vector::new(0., 1., 0.));
         test_point_cross_case(2., Vector::new(0., 1., 0.), Vector::new(1., 0., 0.));
-        test_point_cross_case(2. * 934f64.sqrt(),
-                              Vector::new(1., 2., 3.),
-                              Vector::new(-4., 5., -6.));
+        test_point_cross_case(
+            2. * 934f64.sqrt(),
+            Vector::new(1., 2., 3.),
+            Vector::new(-4., 5., -6.),
+        );
     }
 
     fn test_point_distance_case(expected: f64, v1: Vector, v2: Vector) {
@@ -505,13 +511,15 @@ mod tests {
         test_point_distance_case(0., Vector::new(1., 0., 0.), Vector::new(1., 0., 0.));
         test_point_distance_case(PI / 2., Vector::new(1., 0., 0.), Vector::new(0., 1., 0.));
         test_point_distance_case(PI / 2., Vector::new(1., 0., 0.), Vector::new(0., 1., 1.));
-        test_point_distance_case(1.2055891055045298,
-                                 Vector::new(1., 2., 3.),
-                                 Vector::new(2., 3., -1.));
+        test_point_distance_case(
+            1.2055891055045298,
+            Vector::new(1., 2., 3.),
+            Vector::new(2., 3., -1.),
+        );
     }
 
-    use s2::random;
     use s1::Angle;
+    use s2::random;
 
     #[test]
     fn test_chordangle_between_points() {
@@ -524,10 +532,12 @@ mod tests {
             let z: Point = m.z.into();
 
             assert_eq!(0., Angle::from(z.chordangle(&z)).rad());
-            assert!(f64_near(PI, Angle::from((&z * -1.).chordangle(&z)).rad(), 1e-7),
-                    "{} != {}",
-                    PI,
-                    Angle::from((&z * -1.).chordangle(&z)).rad());
+            assert!(
+                f64_near(PI, Angle::from((&z * -1.).chordangle(&z)).rad(), 1e-7),
+                "{} != {}",
+                PI,
+                Angle::from((&z * -1.).chordangle(&z)).rad()
+            );
             assert_f64_eq!(PI / 2., Angle::from(x.chordangle(&z)).rad());
 
             let w = (&y + &z).normalize();
@@ -541,85 +551,109 @@ mod tests {
 
     #[test]
     fn test_point_approx_eq() {
-        approx_eq_case(true,
-                       Point::from_coords(1., 0., 0.),
-                       Point::from_coords(1., 0., 0.));
-        approx_eq_case(false,
-                       Point::from_coords(1., 0., 0.),
-                       Point::from_coords(0., 1., 0.));
-        approx_eq_case(false,
-                       Point::from_coords(1., 0., 0.),
-                       Point::from_coords(0., 1., 1.));
-        approx_eq_case(false,
-                       Point::from_coords(1., 0., 0.),
-                       Point::from_coords(-1., 0., 0.));
-        approx_eq_case(false,
-                       Point::from_coords(1., 2., 3.),
-                       Point::from_coords(2., 3., -1.));
-        approx_eq_case(true,
-                       Point::from_coords(1., 0., 0.),
-                       Point::from_coords(1. * (1. + EPSILON), 0., 0.));
-        approx_eq_case(true,
-                       Point::from_coords(1., 0., 0.),
-                       Point::from_coords(1. * (1. - EPSILON), 0., 0.));
-        approx_eq_case(true,
-                       Point::from_coords(1., 0., 0.),
-                       Point::from_coords(1. + EPSILON, 0., 0.));
-        approx_eq_case(true,
-                       Point::from_coords(1., 0., 0.),
-                       Point::from_coords(1. - EPSILON, 0., 0.));
-        approx_eq_case(true,
-                       Point::from_coords(1., 0., 0.),
-                       Point::from_coords(1., EPSILON, 0.));
-        approx_eq_case(false,
-                       Point::from_coords(1., 0., 0.),
-                       Point::from_coords(1., EPSILON, EPSILON));
-        approx_eq_case(false,
-                       Point::from_coords(1., EPSILON, 0.),
-                       Point::from_coords(1., -EPSILON, EPSILON));
+        approx_eq_case(
+            true,
+            Point::from_coords(1., 0., 0.),
+            Point::from_coords(1., 0., 0.),
+        );
+        approx_eq_case(
+            false,
+            Point::from_coords(1., 0., 0.),
+            Point::from_coords(0., 1., 0.),
+        );
+        approx_eq_case(
+            false,
+            Point::from_coords(1., 0., 0.),
+            Point::from_coords(0., 1., 1.),
+        );
+        approx_eq_case(
+            false,
+            Point::from_coords(1., 0., 0.),
+            Point::from_coords(-1., 0., 0.),
+        );
+        approx_eq_case(
+            false,
+            Point::from_coords(1., 2., 3.),
+            Point::from_coords(2., 3., -1.),
+        );
+        approx_eq_case(
+            true,
+            Point::from_coords(1., 0., 0.),
+            Point::from_coords(1. * (1. + EPSILON), 0., 0.),
+        );
+        approx_eq_case(
+            true,
+            Point::from_coords(1., 0., 0.),
+            Point::from_coords(1. * (1. - EPSILON), 0., 0.),
+        );
+        approx_eq_case(
+            true,
+            Point::from_coords(1., 0., 0.),
+            Point::from_coords(1. + EPSILON, 0., 0.),
+        );
+        approx_eq_case(
+            true,
+            Point::from_coords(1., 0., 0.),
+            Point::from_coords(1. - EPSILON, 0., 0.),
+        );
+        approx_eq_case(
+            true,
+            Point::from_coords(1., 0., 0.),
+            Point::from_coords(1., EPSILON, 0.),
+        );
+        approx_eq_case(
+            false,
+            Point::from_coords(1., 0., 0.),
+            Point::from_coords(1., EPSILON, EPSILON),
+        );
+        approx_eq_case(
+            false,
+            Point::from_coords(1., EPSILON, 0.),
+            Point::from_coords(1., -EPSILON, EPSILON),
+        );
     }
 
     const pz: Point = Point(Vector {
-                                x: 0.,
-                                y: 0.,
-                                z: 1.,
-                            });
+        x: 0.,
+        y: 0.,
+        z: 1.,
+    });
     const p000: Point = Point(Vector {
-                                  x: 1.,
-                                  y: 0.,
-                                  z: 0.,
-                              });
+        x: 1.,
+        y: 0.,
+        z: 0.,
+    });
     const p045: Point = Point(Vector {
-                                  x: 1.,
-                                  y: 1.,
-                                  z: 0.,
-                              });
+        x: 1.,
+        y: 1.,
+        z: 0.,
+    });
     const p090: Point = Point(Vector {
-                                  x: 0.,
-                                  y: 1.,
-                                  z: 0.,
-                              });
+        x: 0.,
+        y: 1.,
+        z: 0.,
+    });
     const p180: Point = Point(Vector {
-                                  x: -1.,
-                                  y: 0.,
-                                  z: 0.,
-                              });
+        x: -1.,
+        y: 0.,
+        z: 0.,
+    });
     // Degenerate triangles.
     const pr: Point = Point(Vector {
-                                x: 0.257,
-                                y: -0.5723,
-                                z: 0.112,
-                            });
+        x: 0.257,
+        y: -0.5723,
+        z: 0.112,
+    });
     const pq: Point = Point(Vector {
-                                x: -0.747,
-                                y: 0.401,
-                                z: 0.2235,
-                            });
+        x: -0.747,
+        y: 0.401,
+        z: 0.2235,
+    });
     const g1: Point = Point(Vector {
-                                x: 1.,
-                                y: 1.,
-                                z: 1.,
-                            });
+        x: 1.,
+        y: 1.,
+        z: 1.,
+    });
     lazy_static! {
         // For testing the Girard area fall through case.
         static ref g2: Point = (g1 + (pr * 1e-15)).normalize();
@@ -639,21 +673,25 @@ mod tests {
         // places into the result, so it is not quite a difference of 0.
         point_area_case(&p045, &pz, &p180, 3.0 * PI / 4.0, 1e-14);
         // Make sure that Area has good *relative* accuracy even for very small areas.
-        point_area_case(&Point(Vector::new(EPSILON, 0., 1.)),
-                        &Point(Vector::new(0., EPSILON, 1.)),
-                        &pz,
-                        0.5 * EPSILON * EPSILON,
-                        1e-14);
+        point_area_case(
+            &Point(Vector::new(EPSILON, 0., 1.)),
+            &Point(Vector::new(0., EPSILON, 1.)),
+            &pz,
+            0.5 * EPSILON * EPSILON,
+            1e-14,
+        );
         // Make sure that it can handle degenerate triangles.
         point_area_case(&pr, &pr, &pr, 0., 0.);
         point_area_case(&pr, &pq, &pr, 0., 1e-15);
         point_area_case(&p000, &p045, &p090, 0., 0.);
         // Try a very long and skinny triangle.
-        point_area_case(&p000,
-                        &Point(Vector::new(1., 1., EPSILON)),
-                        &p090,
-                        5.8578643762690495119753e-11,
-                        1e-9);
+        point_area_case(
+            &p000,
+            &Point(Vector::new(1., 1., EPSILON)),
+            &p090,
+            5.8578643762690495119753e-11,
+            1e-9,
+        );
         // TODO(roberts):
         // C++ includes a 10,000 loop of perterbations to test out the Girard area
         // computation is less than some noise threshold.
@@ -662,27 +700,31 @@ mod tests {
     }
 
     fn area_quater_hemi_case(a: &Point, b: &Point, c: &Point, d: &Point, e: &Point, want: f64) {
-        let area = point_area(a, b, c) + point_area(a, c, d) + point_area(a, d, e) +
-                   point_area(a, e, b);
+        let area =
+            point_area(a, b, c) + point_area(a, c, d) + point_area(a, d, e) + point_area(a, e, b);
         assert_f64_eq!(want, area);
     }
 
     #[test]
     fn test_point_area_quater_hemisphere() {
         // Triangles with near-180 degree edges that sum to a quarter-sphere.
-        area_quater_hemi_case(&Point(Vector::new(1., 0.1 * EPSILON, EPSILON)),
-                              &p000,
-                              &p045,
-                              &p180,
-                              &pz,
-                              PI);
+        area_quater_hemi_case(
+            &Point(Vector::new(1., 0.1 * EPSILON, EPSILON)),
+            &p000,
+            &p045,
+            &p180,
+            &pz,
+            PI,
+        );
         // Four other triangles that sum to a quarter-sphere.
-        area_quater_hemi_case(&Point(Vector::new(1., 1., EPSILON)),
-                              &p000,
-                              &p045,
-                              &p180,
-                              &pz,
-                              PI);
+        area_quater_hemi_case(
+            &Point(Vector::new(1., 1., EPSILON)),
+            &p000,
+            &p045,
+            &p180,
+            &pz,
+            PI,
+        );
         // TODO(roberts):
         // C++ Includes a loop of 100 perturbations on a hemisphere for more tests.
     }
@@ -694,16 +736,20 @@ mod tests {
     #[test]
     fn test_point_planar_centroid() {
         // xyz axis
-        planar_centroid_case(&Point(Vector::new(0., 0., 1.)),
-                             &Point(Vector::new(0., 1., 0.)),
-                             &Point(Vector::new(1., 0., 0.)),
-                             &Point(Vector::new(1. / 3., 1. / 3., 1. / 3.)));
+        planar_centroid_case(
+            &Point(Vector::new(0., 0., 1.)),
+            &Point(Vector::new(0., 1., 0.)),
+            &Point(Vector::new(1., 0., 0.)),
+            &Point(Vector::new(1. / 3., 1. / 3., 1. / 3.)),
+        );
 
         // same point
-        planar_centroid_case(&Point(Vector::new(1., 0., 0.)),
-                             &Point(Vector::new(1., 0., 0.)),
-                             &Point(Vector::new(1., 0., 0.)),
-                             &Point(Vector::new(1., 0., 0.)));
+        planar_centroid_case(
+            &Point(Vector::new(1., 0., 0.)),
+            &Point(Vector::new(1., 0., 0.)),
+            &Point(Vector::new(1., 0., 0.)),
+            &Point(Vector::new(1., 0., 0.)),
+        );
     }
 
     use rand::Rng;
@@ -771,7 +817,11 @@ mod tests {
             let v0 = pts[(4 + i + 1) % 4];
             let v1 = pts[(4 + i) % 4];
             let v2 = pts[(4 + i - 1) % 4];
-            assert!(f64_near(want_angle, ((v0 - v1).0.angle(&(v2 - v1).0)).rad(), EPSILON));
+            assert!(f64_near(
+                want_angle,
+                ((v0 - v1).0.angle(&(v2 - v1).0)).rad(),
+                EPSILON
+            ));
         }
 
         // Make sure that all edges of the polygon have the same length.

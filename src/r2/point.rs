@@ -15,11 +15,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-use std;
 use consts::*;
+use std;
 
 /// Point represents a point in ℝ².
-#[derive(Clone,Copy,PartialEq,Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Point {
     /// x coordinate of the point
     pub x: f64,
@@ -132,9 +132,9 @@ mod tests {
     use super::*;
 
     macro_rules! P {
-        ($x: expr, $y: expr) => {
-            Point{x: $x, y: $y}
-        }
+        ($x:expr, $y:expr) => {
+            Point { x: $x, y: $y }
+        };
     }
 
     #[test]

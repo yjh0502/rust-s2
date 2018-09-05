@@ -15,14 +15,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
 use std;
 
 use consts::EPSILON;
 use s1::angle::*;
 
 /// Vector represents a point in ℝ³.
-#[derive(Clone,Copy,PartialEq,PartialOrd)]
+#[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub struct Vector {
     pub x: f64,
     pub y: f64,
@@ -113,8 +112,9 @@ impl Vector {
 
     /// approx_eq reports whether v and ov are equal within a small epsilon.
     pub fn approx_eq(&self, other: &Vector) -> bool {
-        (self.x - other.x).abs() < EPSILON && (self.y - other.y).abs() < EPSILON &&
-        (self.z - other.z).abs() < EPSILON
+        (self.x - other.x).abs() < EPSILON
+            && (self.y - other.y).abs() < EPSILON
+            && (self.z - other.z).abs() < EPSILON
     }
 
     /// norm returns the vector's norm.
@@ -195,9 +195,17 @@ impl Vector {
     pub fn largest_component(&self) -> Axis {
         let a = self.abs();
         if a.x > a.y {
-            if a.x > a.z { Axis::X } else { Axis::Z }
+            if a.x > a.z {
+                Axis::X
+            } else {
+                Axis::Z
+            }
         } else {
-            if a.y > a.z { Axis::Y } else { Axis::Z }
+            if a.y > a.z {
+                Axis::Y
+            } else {
+                Axis::Z
+            }
         }
     }
 
@@ -205,15 +213,23 @@ impl Vector {
     pub fn smallest_component(&self) -> Axis {
         let t = self.abs();
         if t.x < t.y {
-            if t.x < t.z { Axis::X } else { Axis::Z }
+            if t.x < t.z {
+                Axis::X
+            } else {
+                Axis::Z
+            }
         } else {
-            if t.y < t.z { Axis::Y } else { Axis::Z }
+            if t.y < t.z {
+                Axis::Y
+            } else {
+                Axis::Z
+            }
         }
     }
 }
 
 /// Axis enumerates the 3 axes of ℝ³.
-#[derive(PartialEq,Eq,Debug)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum Axis {
     X,
     Y,
@@ -227,9 +243,13 @@ mod tests {
     use std::f64::consts::PI;
 
     macro_rules! V {
-        ($x: expr, $y: expr, $z: expr) => {
-            Vector{x: $x, y: $y , z: $z }
-        }
+        ($x:expr, $y:expr, $z:expr) => {
+            Vector {
+                x: $x,
+                y: $y,
+                z: $z,
+            }
+        };
     }
 
     #[test]
@@ -294,18 +314,26 @@ mod tests {
 
     #[test]
     fn test_vector_cross() {
-        assert!(V!(1., 0., 0.)
-                    .cross(&V!(1., 0., 0.))
-                    .approx_eq(&V!(0., 0., 0.)));
-        assert!(V!(1., 0., 0.)
-                    .cross(&V!(0., 1., 0.))
-                    .approx_eq(&V!(0., 0., 1.)));
-        assert!(V!(0., 1., 0.)
-                    .cross(&V!(1., 0., 0.))
-                    .approx_eq(&V!(0., 0., -1.)));
-        assert!(V!(1., 2., 3.)
-                    .cross(&V!(-4., 5., -6.))
-                    .approx_eq(&V!(-27., -6., 13.)));
+        assert!(
+            V!(1., 0., 0.)
+                .cross(&V!(1., 0., 0.))
+                .approx_eq(&V!(0., 0., 0.))
+        );
+        assert!(
+            V!(1., 0., 0.)
+                .cross(&V!(0., 1., 0.))
+                .approx_eq(&V!(0., 0., 1.))
+        );
+        assert!(
+            V!(0., 1., 0.)
+                .cross(&V!(1., 0., 0.))
+                .approx_eq(&V!(0., 0., -1.))
+        );
+        assert!(
+            V!(1., 2., 3.)
+                .cross(&V!(-4., 5., -6.))
+                .approx_eq(&V!(-27., -6., 13.))
+        );
     }
 
     #[test]
@@ -329,10 +357,14 @@ mod tests {
         assert_f64_eq!(V!(1., 0., 0.).distance(&V!(1., 0., 0.)), 0.);
         assert_f64_eq!(V!(1., 0., 0.).distance(&V!(0., 1., 0.)), 1.41421356237310);
         assert_f64_eq!(V!(1., 0., 0.).distance(&V!(0., 1., 1.)), 1.73205080756888);
-        assert_f64_eq!(V!(1., 1., 1.).distance(&V!(-1., -1., -1.)),
-                       3.46410161513775);
-        assert_f64_eq!(V!(1., 2., 2.).distance(&V!(-0.3, 0.4, -1.2)),
-                       3.80657326213486);
+        assert_f64_eq!(
+            V!(1., 1., 1.).distance(&V!(-1., -1., -1.)),
+            3.46410161513775
+        );
+        assert_f64_eq!(
+            V!(1., 2., 2.).distance(&V!(-0.3, 0.4, -1.2)),
+            3.80657326213486
+        );
     }
 
     #[test]
@@ -351,8 +383,10 @@ mod tests {
         assert_f64_eq!(V!(1., 0., 0.).angle(&V!(0., 1., 0.)).rad(), PI / 2.);
         assert_f64_eq!(V!(1., 0., 0.).angle(&V!(0., 1., 1.)).rad(), PI / 2.);
         assert_f64_eq!(V!(1., 0., 0.).angle(&V!(-1., 0., 0.)).rad(), PI);
-        assert_f64_eq!(V!(1., 2., 3.).angle(&V!(2., 3., -1.)).rad(),
-                       1.2055891055045298);
+        assert_f64_eq!(
+            V!(1., 2., 3.).angle(&V!(2., 3., -1.)).rad(),
+            1.2055891055045298
+        );
     }
 
     fn test_vector_ortho_case(v: Vector) {

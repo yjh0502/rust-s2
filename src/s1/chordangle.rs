@@ -37,7 +37,7 @@ use s1::angle::*;
 ///
 /// ChordAngles are represented by the squared chord length, which can
 /// range from 0 to 4. Positive infinity represents an infinite squared length.
-#[derive(Clone,Copy,PartialEq,PartialOrd,Debug,Default)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Debug, Default)]
 pub struct ChordAngle(pub f64);
 
 /// NEGATIVE represents a chord angle smaller than the zero angle.
@@ -93,7 +93,6 @@ impl<'a> From<&'a ChordAngle> for Angle {
         } else {
             Rad(2. * (0.5 * ca.0.sqrt()).asin()).into()
         }
-
     }
 }
 impl From<ChordAngle> for Angle {
@@ -254,10 +253,7 @@ impl ChordAngle {
 mod tests {
     use super::*;
 
-    fn test_chordangle_basics_case(ca1: ChordAngle,
-                                   ca2: ChordAngle,
-                                   less_than: bool,
-                                   equal: bool) {
+    fn test_chordangle_basics_case(ca1: ChordAngle, ca2: ChordAngle, less_than: bool, equal: bool) {
         assert_eq!(less_than, ca1 < ca2);
         assert_eq!(equal, ca1 == ca2);
     }
@@ -282,11 +278,13 @@ mod tests {
         test_chordangle_basics_case(ChordAngle::inf(), ChordAngle::inf(), false, true);
     }
 
-    fn test_chordangle_is_functions_case(ca: ChordAngle,
-                                         is_neg: bool,
-                                         is_zero: bool,
-                                         is_inf: bool,
-                                         is_special: bool) {
+    fn test_chordangle_is_functions_case(
+        ca: ChordAngle,
+        is_neg: bool,
+        is_zero: bool,
+        is_inf: bool,
+        is_special: bool,
+    ) {
         assert_eq!(is_neg, ca.0 < 0.);
         assert_eq!(is_zero, ca.0 == 0.);
         assert_eq!(is_inf, ca.is_infinite());
@@ -305,10 +303,12 @@ mod tests {
 
     #[test]
     fn test_chordangle_from_angle() {
-        let angles = vec![Angle::from(Rad(0.)),
-                          Angle::from(Rad(1.)),
-                          Angle::from(Rad(-1.)),
-                          Angle::from(Rad(PI))];
+        let angles = vec![
+            Angle::from(Rad(0.)),
+            Angle::from(Rad(1.)),
+            Angle::from(Rad(-1.)),
+            Angle::from(Rad(PI)),
+        ];
 
         for angle in angles.into_iter() {
             let ca = ChordAngle::from(angle);
@@ -332,7 +332,6 @@ mod tests {
         let deg_90 = ChordAngle::from(Deg(90.));
         let deg_120 = ChordAngle::from(Deg(120.));
         let deg_180 = STRAIGHT;
-
 
         chordangle_eq(zero + zero, zero);
         chordangle_eq(deg_60 + zero, deg_60);
@@ -359,7 +358,6 @@ mod tests {
 
     #[test]
     fn test_chordangle_trigonometry() {
-
         let iters = 40usize;
         for i in 0..(iters + 1) {
             let radians = PI * (i as f64) / (iters as f64);
@@ -384,7 +382,6 @@ mod tests {
         assert_f64_eq!(0., angle_180.sin());
         assert_f64_eq!(-1., angle_180.cos());
         assert_f64_eq!(0., angle_180.tan());
-
     }
 
     #[test]
@@ -393,9 +390,13 @@ mod tests {
         assert_eq!(NEGATIVE.expanded(5.), NEGATIVE.expanded(5.));
         assert_eq!(ChordAngle::inf().expanded(-5.), ChordAngle::inf());
         assert_eq!(zero.expanded(-5.), zero);
-        assert_eq!(ChordAngle::from_squared_length(1.25).expanded(0.25),
-                   ChordAngle::from_squared_length(1.5));
-        assert_eq!(ChordAngle::from_squared_length(0.75).expanded(0.25),
-                   ChordAngle::from_squared_length(1.));
+        assert_eq!(
+            ChordAngle::from_squared_length(1.25).expanded(0.25),
+            ChordAngle::from_squared_length(1.5)
+        );
+        assert_eq!(
+            ChordAngle::from_squared_length(0.75).expanded(0.25),
+            ChordAngle::from_squared_length(1.)
+        );
     }
 }

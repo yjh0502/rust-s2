@@ -19,25 +19,25 @@ use consts::*;
 use r1;
 use r2;
 use s1;
-use s2;
 use s1::*;
-use s2::stuv::*;
+use s2;
+use s2::cap::Cap;
 use s2::cellid::*;
-use s2::point::*;
 use s2::latlng::*;
 use s2::metric::*;
-use s2::cap::Cap;
+use s2::point::*;
 use s2::region::Region;
+use s2::stuv::*;
 use std::f64::consts::PI;
 
 lazy_static! {
-    static ref POLE_MIN_LAT: f64 = (1./3f64).sqrt().asin() - 0.5*DBL_EPSILON;
+    static ref POLE_MIN_LAT: f64 = (1. / 3f64).sqrt().asin() - 0.5 * DBL_EPSILON;
 }
 
 /// Cell is an S2 region object that represents a cell. Unlike CellIDs,
 /// it supports efficient containment and intersection tests. However, it is
 /// also a more expensive representation.
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Cell {
     face: u8,
     level: u8,
@@ -125,10 +125,12 @@ impl Cell {
 
     pub fn vertices(&self) -> [Point; 4] {
         let verts = self.uv.vertices();
-        [Point(face_uv_to_xyz(self.face, verts[0].x, verts[0].y).normalize()),
-         Point(face_uv_to_xyz(self.face, verts[1].x, verts[1].y).normalize()),
-         Point(face_uv_to_xyz(self.face, verts[2].x, verts[2].y).normalize()),
-         Point(face_uv_to_xyz(self.face, verts[3].x, verts[3].y).normalize())]
+        [
+            Point(face_uv_to_xyz(self.face, verts[0].x, verts[0].y).normalize()),
+            Point(face_uv_to_xyz(self.face, verts[1].x, verts[1].y).normalize()),
+            Point(face_uv_to_xyz(self.face, verts[2].x, verts[2].y).normalize()),
+            Point(face_uv_to_xyz(self.face, verts[3].x, verts[3].y).normalize()),
+        ]
     }
 
     /// edge returns the inward-facing normal of the great circle passing through
@@ -226,11 +228,10 @@ impl Cell {
         // perpendicular to its normal. The cross product of its diagonals gives
         // the normal, and the length of the normal is twice the projected area.
         let verts = self.vertices();
-        let flat_area = 0.5 *
-                        (&verts[2] - &verts[0])
-                            .0
-                            .cross(&(&verts[3] - &verts[1]).0)
-                            .norm();
+        let flat_area = 0.5 * (&verts[2] - &verts[0])
+            .0
+            .cross(&(&verts[3] - &verts[1]).0)
+            .norm();
 
         // Now, compensate for the curvature of the cell surface by pretending
         // that the cell is shaped like a spherical cap. The ratio of the
@@ -289,20 +290,37 @@ impl Cell {
             let u = self.uv.x.lo + self.uv.x.hi;
             let v = self.uv.y.lo + self.uv.y.hi;
             let i = if u_axis(self.face).0.z == 0. {
-                if u < 0. { 1 } else { 0 }
+                if u < 0. {
+                    1
+                } else {
+                    0
+                }
             } else {
-                if u > 0. { 1 } else { 0 }
+                if u > 0. {
+                    1
+                } else {
+                    0
+                }
             };
             let j = if v_axis(self.face).0.z == 0. {
-                if v < 0. { 1 } else { 0 }
+                if v < 0. {
+                    1
+                } else {
+                    0
+                }
             } else {
-                if v > 0. { 1 } else { 0 }
+                if v > 0. {
+                    1
+                } else {
+                    0
+                }
             };
 
-            let lat = r1::interval::Interval::from_point(self.latitude(i, j).rad()) +
-                      self.latitude(1 - i, 1 - j).rad();
-            let lng = s1::interval::EMPTY + self.longitude(i, 1 - j).rad() +
-                      self.longitude(1 - i, j).rad();
+            let lat = r1::interval::Interval::from_point(self.latitude(i, j).rad())
+                + self.latitude(1 - i, 1 - j).rad();
+            let lng = s1::interval::EMPTY
+                + self.longitude(i, 1 - j).rad()
+                + self.longitude(1 - i, j).rad();
 
             // We grow the bounds slightly to make sure that the bounding rectangle
             // contains LatLngFromPoint(P) for any point P inside the loop L defined by the
@@ -322,14 +340,13 @@ impl Cell {
             // leads to a maximum difference of 2 * DBL_EPSILON.
             let max_err = Angle::from(Rad(2. * DBL_EPSILON));
             return s2::rect::Rect {
-                           lat: lat.into(),
-                           lng: lng.into(),
-                       }
-                       .expanded(&LatLng {
-                                     lat: max_err,
-                                     lng: max_err,
-                                 })
-                       .polar_closure();
+                lat: lat.into(),
+                lng: lng.into(),
+            }.expanded(&LatLng {
+                lat: max_err,
+                lng: max_err,
+            })
+                .polar_closure();
         }
 
         // The 4 cells around the equator extend to +/-45 degrees latitude at the
@@ -338,42 +355,30 @@ impl Cell {
         // error in this calculation is 0.5 * DBL_EPSILON.
         const PI_4: f64 = PI / 4.;
         let bound = match self.face {
-            0 => {
-                s2::rect::Rect {
-                    lat: r1::interval::Interval::new(-PI_4, PI_4),
-                    lng: s1::Interval::new(-PI_4, PI_4),
-                }
-            }
-            1 => {
-                s2::rect::Rect {
-                    lat: r1::interval::Interval::new(-PI_4, PI_4),
-                    lng: s1::Interval::new(PI_4, 3. * PI_4),
-                }
-            }
-            2 => {
-                s2::rect::Rect {
-                    lat: r1::interval::Interval::new(*POLE_MIN_LAT, PI / 2.),
-                    lng: s1::interval::FULL,
-                }
-            }
-            3 => {
-                s2::rect::Rect {
-                    lat: r1::interval::Interval::new(-PI_4, PI_4),
-                    lng: s1::Interval::new(3. * PI_4, -3. * PI_4),
-                }
-            }
-            4 => {
-                s2::rect::Rect {
-                    lat: r1::interval::Interval::new(-PI_4, PI_4),
-                    lng: s1::Interval::new(-3. * PI_4, -PI_4),
-                }
-            }
-            5 => {
-                s2::rect::Rect {
-                    lat: r1::interval::Interval::new(-PI / 2., -1. * (*POLE_MIN_LAT)),
-                    lng: s1::interval::FULL,
-                }
-            }
+            0 => s2::rect::Rect {
+                lat: r1::interval::Interval::new(-PI_4, PI_4),
+                lng: s1::Interval::new(-PI_4, PI_4),
+            },
+            1 => s2::rect::Rect {
+                lat: r1::interval::Interval::new(-PI_4, PI_4),
+                lng: s1::Interval::new(PI_4, 3. * PI_4),
+            },
+            2 => s2::rect::Rect {
+                lat: r1::interval::Interval::new(*POLE_MIN_LAT, PI / 2.),
+                lng: s1::interval::FULL,
+            },
+            3 => s2::rect::Rect {
+                lat: r1::interval::Interval::new(-PI_4, PI_4),
+                lng: s1::Interval::new(3. * PI_4, -3. * PI_4),
+            },
+            4 => s2::rect::Rect {
+                lat: r1::interval::Interval::new(-PI_4, PI_4),
+                lng: s1::Interval::new(-3. * PI_4, -PI_4),
+            },
+            5 => s2::rect::Rect {
+                lat: r1::interval::Interval::new(-PI / 2., -1. * (*POLE_MIN_LAT)),
+                lng: s1::interval::FULL,
+            },
             _ => panic!("invalid face"),
         };
 
@@ -384,9 +389,9 @@ impl Cell {
         // longitude because longitude is calculated via a single call to math.Atan2,
         // which is guaranteed to be semi-monotoniself.
         return bound.expanded(&LatLng {
-                                  lat: Rad(DBL_EPSILON).into(),
-                                  lng: Rad(0.).into(),
-                              });
+            lat: Rad(DBL_EPSILON).into(),
+            lng: Rad(0.).into(),
+        });
     }
 
     // ContainsPoint reports whether this cell contains the given point. Note that
@@ -453,9 +458,9 @@ impl Region for Cell {
 mod tests {
     extern crate rand;
 
-    use std;
-    use rand::Rng;
     use super::*;
+    use rand::Rng;
+    use std;
 
     use s2::random;
 
@@ -570,8 +575,9 @@ mod tests {
             let parent_cap = cell.cap_bound();
             let parent_rect = cell.rect_bound();
 
-            if cell.contains_point(&Point::from_coords(0., 0., 1.)) ||
-               cell.contains_point(&Point::from_coords(0., 0., -1.)) {
+            if cell.contains_point(&Point::from_coords(0., 0., 1.))
+                || cell.contains_point(&Point::from_coords(0., 0., -1.))
+            {
                 assert_eq!(true, parent_rect.lng.is_full());
             }
 
@@ -580,11 +586,13 @@ mod tests {
             let child_center = child.center();
 
             assert_eq!(true, child_cap.contains_point(&child_center));
-            assert_eq!(true,
-                       child_rect.contains_point(&child_center),
-                       "child_rect {:?}.contains_point({:?}.center()) = false, want true",
-                       child_rect,
-                       child);
+            assert_eq!(
+                true,
+                child_rect.contains_point(&child_center),
+                "child_rect {:?}.contains_point({:?}.center()) = false, want true",
+                child_rect,
+                child
+            );
             assert_eq!(true, parent_cap.contains_point(&child_center));
             assert_eq!(true, parent_rect.contains_point(&child_center));
 
@@ -615,7 +623,6 @@ mod tests {
                         assert!(rect_count < 3);
                     }
                 }
-
             }
 
             // Check all children for the first few levels, and then sample randomly.
@@ -625,11 +632,11 @@ mod tests {
             // where the cell size at a given level is maximal.
             let max_size_uv = 0.3964182625366691;
             let special_uv = [
-                r2::point::Point::new(DBL_EPSILON, DBL_EPSILON),// Face center
-                r2::point::Point::new(DBL_EPSILON, 1.),// Edge midpoint
-                r2::point::Point::new(1., 1.),// Face corner
-                r2::point::Point::new(max_size_uv, max_size_uv),// Largest cell area
-                r2::point::Point::new(DBL_EPSILON, max_size_uv),// Longest edge/diagonal
+                r2::point::Point::new(DBL_EPSILON, DBL_EPSILON), // Face center
+                r2::point::Point::new(DBL_EPSILON, 1.),          // Edge midpoint
+                r2::point::Point::new(1., 1.),                   // Face corner
+                r2::point::Point::new(max_size_uv, max_size_uv), // Largest cell area
+                r2::point::Point::new(DBL_EPSILON, max_size_uv), // Longest edge/diagonal
             ];
 
             let mut force_subdivide = false;
@@ -708,28 +715,35 @@ mod tests {
 
     fn test_cell_intersects_cell_case(a: CellID, b: CellID, want: bool) {
         assert_eq!(want, Cell::from(a).intersects_cell(&Cell::from(b)));
-
     }
 
     #[test]
     fn test_cell_intersects_cell() {
-        test_cell_intersects_cell_case(CellID::from_face(0).child_begin_at_level(2),
-                                       CellID::from_face(0).child_begin_at_level(2),
-                                       true);
+        test_cell_intersects_cell_case(
+            CellID::from_face(0).child_begin_at_level(2),
+            CellID::from_face(0).child_begin_at_level(2),
+            true,
+        );
 
-        test_cell_intersects_cell_case(CellID::from_face(0).child_begin_at_level(2),
-                                       CellID::from_face(0)
-                                           .child_begin_at_level(2)
-                                           .child_begin_at_level(5),
-                                       true);
+        test_cell_intersects_cell_case(
+            CellID::from_face(0).child_begin_at_level(2),
+            CellID::from_face(0)
+                .child_begin_at_level(2)
+                .child_begin_at_level(5),
+            true,
+        );
 
-        test_cell_intersects_cell_case(CellID::from_face(0).child_begin_at_level(2),
-                                       CellID::from_face(0).child_begin_at_level(2).next(),
-                                       false);
+        test_cell_intersects_cell_case(
+            CellID::from_face(0).child_begin_at_level(2),
+            CellID::from_face(0).child_begin_at_level(2).next(),
+            false,
+        );
 
-        test_cell_intersects_cell_case(CellID::from_face(0).child_begin_at_level(2).next(),
-                                       CellID::from_face(0).child_begin_at_level(2),
-                                       false);
+        test_cell_intersects_cell_case(
+            CellID::from_face(0).child_begin_at_level(2).next(),
+            CellID::from_face(0).child_begin_at_level(2),
+            false,
+        );
     }
 
     fn test_cell_rect_bound_case(lat: f64, lng: f64) {
@@ -771,25 +785,23 @@ mod tests {
     fn test_cell_contains_point() {
         let id = CellID::from_face(0);
 
-        test_cell_contains_point_case(&Cell::from(id.child_begin_at_level(2)),
-                                      &Cell::from(id.child_begin_at_level(2)
-                                                      .child_begin_at_level(5))
-                                               .vertices()
-                                           [1],
-                                      true);
+        test_cell_contains_point_case(
+            &Cell::from(id.child_begin_at_level(2)),
+            &Cell::from(id.child_begin_at_level(2).child_begin_at_level(5)).vertices()[1],
+            true,
+        );
 
-        test_cell_contains_point_case(&Cell::from(id.child_begin_at_level(2)),
-                                      &Cell::from(id.child_begin_at_level(2)).vertices()[1],
-                                      true);
+        test_cell_contains_point_case(
+            &Cell::from(id.child_begin_at_level(2)),
+            &Cell::from(id.child_begin_at_level(2)).vertices()[1],
+            true,
+        );
 
-        test_cell_contains_point_case(&Cell::from(id.child_begin_at_level(2)
-                                                      .child_begin_at_level(5)),
-                                      &Cell::from(id.child_begin_at_level(2)
-                                                      .next()
-                                                      .child_begin_at_level(5))
-                                               .vertices()
-                                           [1],
-                                      false);
+        test_cell_contains_point_case(
+            &Cell::from(id.child_begin_at_level(2).child_begin_at_level(5)),
+            &Cell::from(id.child_begin_at_level(2).next().child_begin_at_level(5)).vertices()[1],
+            false,
+        );
     }
 
     use s2::edgeutil;
@@ -806,10 +818,10 @@ mod tests {
             let i2 = (i1 + 1) & 3;
             let v1 = &cell.vertices()[i1];
 
-            let v2 =
-                random::sample_point_from_cap(&mut rng,
-                                              Cap::from_center_angle(&cell.vertex(i2),
-                                                                     &Angle::from(Rad(EPSILON))));
+            let v2 = random::sample_point_from_cap(
+                &mut rng,
+                Cap::from_center_angle(&cell.vertex(i2), &Angle::from(Rad(EPSILON))),
+            );
             let p = edgeutil::interpolate(rng.gen_range(0., 1.), &v1, &v2);
 
             assert!(Cell::from(&CellID::from(&p)).contains_point(&p));

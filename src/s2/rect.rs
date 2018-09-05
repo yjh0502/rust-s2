@@ -1,4 +1,3 @@
-
 use std;
 use std::f64::consts::PI;
 
@@ -49,8 +48,10 @@ impl Rect {
     }
 
     pub fn is_valid(&self) -> bool {
-        self.lat.lo.abs() <= PI / 2. && self.lat.hi <= PI / 2. && self.lng.is_valid() &&
-        self.lat.is_empty() == self.lng.is_empty()
+        self.lat.lo.abs() <= PI / 2.
+            && self.lat.hi <= PI / 2.
+            && self.lng.is_valid()
+            && self.lat.is_empty() == self.lng.is_empty()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -156,8 +157,10 @@ impl Rect {
 
     // extra functions
     pub fn approx_eq(&self, other: &Self) -> bool {
-        f64_eq(self.lat.lo, other.lat.lo) && f64_eq(self.lat.hi, other.lat.hi) &&
-        f64_eq(self.lng.lo, other.lng.lo) && f64_eq(self.lng.hi, other.lng.hi)
+        f64_eq(self.lat.lo, other.lat.lo)
+            && f64_eq(self.lat.hi, other.lat.hi)
+            && f64_eq(self.lng.lo, other.lng.lo)
+            && f64_eq(self.lng.hi, other.lng.hi)
     }
 }
 
@@ -187,10 +190,10 @@ impl From<LatLng> for Rect {
     }
 }
 
-use s2::point::Point;
-use s2::region::Region;
 use s2::cap::Cap;
 use s2::cell::Cell;
+use s2::point::Point;
+use s2::region::Region;
 
 impl Region for Rect {
     /// cap_bound returns a cap that countains Rect.
@@ -210,17 +213,19 @@ impl Region for Rect {
             (1., PI / 2. - self.lat.lo)
         };
 
-        let pole_cap = Cap::from_center_angle(&Point::from_coords(0., 0., pole_z),
-                                              &Rad(pole_angle).into());
+        let pole_cap =
+            Cap::from_center_angle(&Point::from_coords(0., 0., pole_z), &Rad(pole_angle).into());
 
         // For bounding rectangles that span 180 degrees or less in longitude, the
         // maximum cap size is achieved at one of the rectangle vertices.  For
         // rectangles that are larger than 180 degrees, we punt and always return a
         // bounding cap centered at one of the two poles.
-        if remainder(self.lng.hi - self.lng.lo, 2. * PI) >= 0. &&
-           self.lng.hi - self.lng.lo < 2. * PI {
-            let mid_cap = Cap::from(&(Point::from(self.center()) + Point::from(self.lo()) +
-                                      Point::from(self.hi())));
+        if remainder(self.lng.hi - self.lng.lo, 2. * PI) >= 0.
+            && self.lng.hi - self.lng.lo < 2. * PI
+        {
+            let mid_cap = Cap::from(
+                &(Point::from(self.center()) + Point::from(self.lo()) + Point::from(self.hi())),
+            );
             if mid_cap.height() < pole_cap.height() {
                 return mid_cap;
             }

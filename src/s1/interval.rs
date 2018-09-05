@@ -18,8 +18,8 @@ limitations under the License.
 use std;
 use std::f64::consts::PI;
 
-use r1;
 use consts::*;
+use r1;
 
 /// Interval represents a closed interval on a unit circle.
 /// Zero-length intervals (where Lo == Hi) represent single points.
@@ -30,7 +30,7 @@ use consts::*;
 ///   - the full interval, [-π,π], and
 ///   - the empty interval, [π,-π].
 /// Treat the exported fields as read-only.
-#[derive(Clone,Copy,PartialEq,Default)]
+#[derive(Clone, Copy, PartialEq, Default)]
 pub struct Interval {
     pub lo: f64,
     pub hi: f64,
@@ -49,7 +49,11 @@ pub const FULL: Interval = Interval { lo: -PI, hi: PI };
 /// Compute distance from a to b in [0,2π], in a numerically stable way.
 fn positive_distance(a: f64, b: f64) -> f64 {
     let d = b - a;
-    if d >= 0. { d } else { (b + PI) - (a - PI) }
+    if d >= 0. {
+        d
+    } else {
+        (b + PI) - (a - PI)
+    }
 }
 
 impl Interval {
@@ -85,8 +89,10 @@ impl Interval {
 
     /// is_valid reports whether the interval is valid.
     pub fn is_valid(&self) -> bool {
-        self.lo.abs() <= PI && self.hi.abs() <= PI && !(self.lo == -PI && self.hi != PI) &&
-        !(self.hi == -PI && self.lo != PI)
+        self.lo.abs() <= PI
+            && self.hi.abs() <= PI
+            && !(self.lo == -PI && self.hi != PI)
+            && !(self.hi == -PI && self.lo != PI)
     }
 
     /// is_full reports whether the interval is full.
@@ -330,8 +336,10 @@ impl Interval {
                 return EMPTY;
             }
         }
-        let mut result = Interval::new(remainder(self.lo - margin, 2. * PI),
-                                       remainder(self.hi + margin, 2. * PI));
+        let mut result = Interval::new(
+            remainder(self.lo - margin, 2. * PI),
+            remainder(self.hi + margin, 2. * PI),
+        );
         if result.lo <= -PI {
             result.lo = PI
         }
@@ -396,7 +404,7 @@ mod tests {
     lazy_static! {
         static ref full: Interval = FULL;
         static ref empty: Interval = EMPTY;
-	    // Single-point intervals:
+        // Single-point intervals:
         static ref zero: Interval = Interval::default();
         static ref pi2: Interval = Interval::new(PI/2., PI/2.);
         static ref pi: Interval = Interval::new(PI, PI);
@@ -496,11 +504,13 @@ mod tests {
         assert_f64_eq!(2. * PI, full.len());
     }
 
-    fn test_contains_case(i: Interval,
-                          p_in: &[f64],
-                          p_out: &[f64],
-                          p_i_in: &[f64],
-                          p_i_out: &[f64]) {
+    fn test_contains_case(
+        i: Interval,
+        p_in: &[f64],
+        p_out: &[f64],
+        p_i_in: &[f64],
+        p_i_out: &[f64],
+    ) {
         for &p in p_in {
             assert!(i.contains(p));
         }
@@ -521,24 +531,28 @@ mod tests {
         test_contains_case(*empty, &[], &[0., PI, -PI], &[], &[PI, -PI]);
         test_contains_case(*full, &[0., PI, -PI], &[], &[PI, -PI], &[]);
         test_contains_case(*quad12, &[0., PI, -PI], &[], &[PI / 2.], &[0., PI, -PI]);
-        test_contains_case(*quad23,
-                           &[PI / 2., -PI / 2., PI, -PI],
-                           &[0.],
-                           &[PI, -PI],
-                           &[PI / 2., -PI / 2., 0.]);
+        test_contains_case(
+            *quad23,
+            &[PI / 2., -PI / 2., PI, -PI],
+            &[0.],
+            &[PI, -PI],
+            &[PI / 2., -PI / 2., 0.],
+        );
         test_contains_case(*pi, &[PI, -PI], &[0.], &[], &[PI, -PI]);
         test_contains_case(*mipi, &[PI, -PI], &[0.], &[], &[PI, -PI]);
         test_contains_case(*zero, &[0.], &[], &[], &[0.]);
     }
 
-    fn iops_case(x: &Interval,
-                 y: &Interval,
-                 x_contains_y: bool,
-                 x_interior_contains_y: bool,
-                 x_intersects_y: bool,
-                 x_interior_intersects_y: bool,
-                 want_union: &Interval,
-                 want_intersection: &Interval) {
+    fn iops_case(
+        x: &Interval,
+        y: &Interval,
+        x_contains_y: bool,
+        x_interior_contains_y: bool,
+        x_intersects_y: bool,
+        x_interior_intersects_y: bool,
+        want_union: &Interval,
+        want_intersection: &Interval,
+    ) {
         assert_eq!(x_contains_y, x.contains_interval(&y));
         assert_eq!(x_interior_contains_y, x.interior_contains_interval(&y));
 
@@ -581,14 +595,16 @@ mod tests {
         iops_case(&zero, &empty, true, true, false, false, &zero, &empty);
         iops_case(&zero, &full, false, false, true, false, &full, &zero);
         iops_case(&zero, &zero, true, false, true, false, &zero, &zero);
-        iops_case(&zero,
-                  &pi,
-                  false,
-                  false,
-                  false,
-                  false,
-                  &Interval::new(0., PI),
-                  &empty);
+        iops_case(
+            &zero,
+            &pi,
+            false,
+            false,
+            false,
+            false,
+            &Interval::new(0., PI),
+            &empty,
+        );
         iops_case(&zero, &pi2, false, false, false, false, &quad1, &empty);
         iops_case(&zero, &mipi, false, false, false, false, &quad12, &empty);
         iops_case(&zero, &mipi2, false, false, false, false, &quad4, &empty);
@@ -599,14 +615,16 @@ mod tests {
         iops_case(&pi2, &empty, true, true, false, false, &pi2, &empty);
         iops_case(&pi2, &full, false, false, true, false, &full, &pi2);
         iops_case(&pi2, &zero, false, false, false, false, &quad1, &empty);
-        iops_case(&pi2,
-                  &pi,
-                  false,
-                  false,
-                  false,
-                  false,
-                  &Interval::new(PI / 2., PI),
-                  &empty);
+        iops_case(
+            &pi2,
+            &pi,
+            false,
+            false,
+            false,
+            false,
+            &Interval::new(PI / 2., PI),
+            &empty,
+        );
         iops_case(&pi2, &pi2, true, false, true, false, &pi2, &pi2);
         iops_case(&pi2, &mipi, false, false, false, false, &quad2, &empty);
         iops_case(&pi2, &mipi2, false, false, false, false, &quad23, &empty);
@@ -616,33 +634,39 @@ mod tests {
         // 30
         iops_case(&pi, &empty, true, true, false, false, &pi, &empty);
         iops_case(&pi, &full, false, false, true, false, &full, &pi);
-        iops_case(&pi,
-                  &zero,
-                  false,
-                  false,
-                  false,
-                  false,
-                  &Interval::new(PI, 0.),
-                  &empty);
+        iops_case(
+            &pi,
+            &zero,
+            false,
+            false,
+            false,
+            false,
+            &Interval::new(PI, 0.),
+            &empty,
+        );
         iops_case(&pi, &pi, true, false, true, false, &pi, &pi);
-        iops_case(&pi,
-                  &pi2,
-                  false,
-                  false,
-                  false,
-                  false,
-                  &Interval::new(PI / 2., PI),
-                  &empty);
+        iops_case(
+            &pi,
+            &pi2,
+            false,
+            false,
+            false,
+            false,
+            &Interval::new(PI / 2., PI),
+            &empty,
+        );
         iops_case(&pi, &mipi, true, false, true, false, &pi, &pi);
         iops_case(&pi, &mipi2, false, false, false, false, &quad3, &empty);
-        iops_case(&pi,
-                  &quad12,
-                  false,
-                  false,
-                  true,
-                  false,
-                  &Interval::new(0., PI),
-                  &pi);
+        iops_case(
+            &pi,
+            &quad12,
+            false,
+            false,
+            true,
+            false,
+            &Interval::new(0., PI),
+            &pi,
+        );
         iops_case(&pi, &quad23, false, false, true, false, &quad23, &pi);
 
         // 39
@@ -652,14 +676,16 @@ mod tests {
         iops_case(&mipi, &pi, true, false, true, false, &mipi, &mipi);
         iops_case(&mipi, &pi2, false, false, false, false, &quad2, &empty);
         iops_case(&mipi, &mipi, true, false, true, false, &mipi, &mipi);
-        iops_case(&mipi,
-                  &mipi2,
-                  false,
-                  false,
-                  false,
-                  false,
-                  &Interval::new(-PI, -PI / 2.),
-                  &empty);
+        iops_case(
+            &mipi,
+            &mipi2,
+            false,
+            false,
+            false,
+            false,
+            &Interval::new(-PI, -PI / 2.),
+            &empty,
+        );
         iops_case(&mipi, &quad12, false, false, true, false, &quad12, &mipi);
         iops_case(&mipi, &quad23, false, false, true, false, &quad23, &mipi);
 
@@ -681,24 +707,28 @@ mod tests {
         iops_case(&quad23, &mipi, true, true, true, true, &quad23, &mipi);
         iops_case(&quad23, &quad12, false, false, true, true, &quad123, &quad2);
         iops_case(&quad23, &quad23, true, false, true, true, &quad23, &quad23);
-        iops_case(&quad23,
-                  &quad34,
-                  false,
-                  false,
-                  true,
-                  true,
-                  &quad234,
-                  &Interval::new(-PI, -PI / 2.));
+        iops_case(
+            &quad23,
+            &quad34,
+            false,
+            false,
+            true,
+            true,
+            &quad234,
+            &Interval::new(-PI, -PI / 2.),
+        );
 
         // 64
-        iops_case(&quad1,
-                  &quad23,
-                  false,
-                  false,
-                  true,
-                  false,
-                  &quad123,
-                  &Interval::new(PI / 2., PI / 2.));
+        iops_case(
+            &quad1,
+            &quad23,
+            false,
+            false,
+            true,
+            false,
+            &quad123,
+            &Interval::new(PI / 2., PI / 2.),
+        );
         iops_case(&quad2, &quad3, false, false, true, false, &quad23, &mipi);
         iops_case(&quad3, &quad2, false, false, true, false, &quad23, &pi);
         iops_case(&quad2, &pi, true, false, true, false, &quad2, &pi);
@@ -711,113 +741,81 @@ mod tests {
         iops_case(&mid12, &quad12, false, false, true, true, &quad12, &mid12);
 
         // 73
-        iops_case(&quad12,
-                  &mid23,
-                  false,
-                  false,
-                  true,
-                  true,
-                  &quad12eps,
-                  &quad2hi);
-        iops_case(&mid23,
-                  &quad12,
-                  false,
-                  false,
-                  true,
-                  true,
-                  &quad12eps,
-                  &quad2hi);
+        iops_case(
+            &quad12, &mid23, false, false, true, true, &quad12eps, &quad2hi,
+        );
+        iops_case(
+            &mid23, &quad12, false, false, true, true, &quad12eps, &quad2hi,
+        );
 
         // This test checks that the union of two disjoint intervals is the smallest
         // interval that contains both of them.  Note that the center of "mid34"
         // slightly CCW of -Pi/2 so that there is no ambiguity about the result.
         // 75
-        iops_case(&quad12,
-                  &mid34,
-                  false,
-                  false,
-                  false,
-                  false,
-                  &quad412eps,
-                  &empty);
-        iops_case(&mid34,
-                  &quad12,
-                  false,
-                  false,
-                  false,
-                  false,
-                  &quad412eps,
-                  &empty);
+        iops_case(
+            &quad12,
+            &mid34,
+            false,
+            false,
+            false,
+            false,
+            &quad412eps,
+            &empty,
+        );
+        iops_case(
+            &mid34,
+            &quad12,
+            false,
+            false,
+            false,
+            false,
+            &quad412eps,
+            &empty,
+        );
 
         // 77
-        iops_case(&quad12,
-                  &mid41,
-                  false,
-                  false,
-                  true,
-                  true,
-                  &quadeps12,
-                  &quad1lo);
-        iops_case(&mid41,
-                  &quad12,
-                  false,
-                  false,
-                  true,
-                  true,
-                  &quadeps12,
-                  &quad1lo);
+        iops_case(
+            &quad12, &mid41, false, false, true, true, &quadeps12, &quad1lo,
+        );
+        iops_case(
+            &mid41, &quad12, false, false, true, true, &quadeps12, &quad1lo,
+        );
 
         // 79
-        iops_case(&quad23,
-                  &mid12,
-                  false,
-                  false,
-                  true,
-                  true,
-                  &quadeps23,
-                  &quad2lo);
-        iops_case(&mid12,
-                  &quad23,
-                  false,
-                  false,
-                  true,
-                  true,
-                  &quadeps23,
-                  &quad2lo);
+        iops_case(
+            &quad23, &mid12, false, false, true, true, &quadeps23, &quad2lo,
+        );
+        iops_case(
+            &mid12, &quad23, false, false, true, true, &quadeps23, &quad2lo,
+        );
         iops_case(&quad23, &mid23, true, true, true, true, &quad23, &mid23);
         iops_case(&mid23, &quad23, false, false, true, true, &quad23, &mid23);
-        iops_case(&quad23,
-                  &mid34,
-                  false,
-                  false,
-                  true,
-                  true,
-                  &quad23eps,
-                  &quad3hi);
-        iops_case(&mid34,
-                  &quad23,
-                  false,
-                  false,
-                  true,
-                  true,
-                  &quad23eps,
-                  &quad3hi);
-        iops_case(&quad23,
-                  &mid41,
-                  false,
-                  false,
-                  false,
-                  false,
-                  &quadeps123,
-                  &empty);
-        iops_case(&mid41,
-                  &quad23,
-                  false,
-                  false,
-                  false,
-                  false,
-                  &quadeps123,
-                  &empty);
+        iops_case(
+            &quad23, &mid34, false, false, true, true, &quad23eps, &quad3hi,
+        );
+        iops_case(
+            &mid34, &quad23, false, false, true, true, &quad23eps, &quad3hi,
+        );
+        iops_case(
+            &quad23,
+            &mid41,
+            false,
+            false,
+            false,
+            false,
+            &quadeps123,
+            &empty,
+        );
+        iops_case(
+            &mid41,
+            &quad23,
+            false,
+            false,
+            false,
+            false,
+            &quadeps123,
+            &empty,
+        );
     }
 
     fn test_interval_add_point_case(want: Interval, mut i: Interval, points: &[f64]) {

@@ -1,10 +1,9 @@
-
-use std;
-use std::f64::consts::PI;
 use consts::remainder;
 use r3::vector::Vector;
 use s1::*;
 use s2::point::Point;
+use std;
+use std::f64::consts::PI;
 
 //TODO: typed const?
 const NORTH_POLE_LAT: f64 = PI / 2.;
@@ -74,10 +73,10 @@ impl<'a> From<&'a LatLng> for Point {
         let theta = ll.lng.rad();
         let cosphi = phi.cos();
         Point(Vector {
-                  x: theta.cos() * cosphi,
-                  y: theta.sin() * cosphi,
-                  z: phi.sin(),
-              })
+            x: theta.cos() * cosphi,
+            y: theta.sin() * cosphi,
+            z: phi.sin(),
+        })
     }
 }
 impl From<LatLng> for Point {
@@ -102,20 +101,27 @@ impl From<Point> for LatLng {
 
 #[cfg(test)]
 mod tests {
-    use s1;
-    use r3::vector::Vector;
-    use s2::point::Point;
     use super::*;
+    use r3::vector::Vector;
+    use s1;
+    use s2::point::Point;
 
     macro_rules! ll {
-        ($lat: expr, $lng: expr) => {
-            LatLng{lat: s1::Deg($lat).into(), lng: s1::Deg($lng).into()}
-        }
+        ($lat:expr, $lng:expr) => {
+            LatLng {
+                lat: s1::Deg($lat).into(),
+                lng: s1::Deg($lng).into(),
+            }
+        };
     }
     macro_rules! p {
-        ($x: expr, $y: expr, $z: expr) => {
-            Point(Vector{x:$x as f64, y:$y as f64, z:$z as f64})
-        }
+        ($x:expr, $y:expr, $z:expr) => {
+            Point(Vector {
+                x: $x as f64,
+                y: $y as f64,
+                z: $z as f64,
+            })
+        };
     }
 
     fn test_latlng_normalized_case(descr: &str, pos: LatLng, want: LatLng) {
@@ -129,30 +135,46 @@ mod tests {
 
     #[test]
     fn test_latlng_normalized() {
-        test_latlng_normalized_case(&"Valid lat/lng",
-                                    ll!(21.8275043, 151.1979675),
-                                    ll!(21.8275043, 151.1979675));
-        test_latlng_normalized_case(&"Valid lat/lng in the West",
-                                    ll!(21.8275043, -151.1979675),
-                                    ll!(21.8275043, -151.1979675));
-        test_latlng_normalized_case(&"Beyond the North pole",
-                                    ll!(95., 151.1979675),
-                                    ll!(90., 151.1979675));
-        test_latlng_normalized_case("Beyond the South pole",
-                                    ll!(-95., 151.1979675),
-                                    ll!(-90., 151.1979675));
-        test_latlng_normalized_case("At the date line (from East)",
-                                    ll!(21.8275043, 180.),
-                                    ll!(21.8275043, 180.));
-        test_latlng_normalized_case("At the date line (from West)",
-                                    ll!(21.8275043, -180.),
-                                    ll!(21.8275043, -180.));
-        test_latlng_normalized_case("Across the date line going East",
-                                    ll!(21.8275043, 181.0012),
-                                    ll!(21.8275043, -178.9988));
-        test_latlng_normalized_case("Across the date line going West",
-                                    ll!(21.8275043, -181.0012),
-                                    ll!(21.8275043, 178.9988));
+        test_latlng_normalized_case(
+            &"Valid lat/lng",
+            ll!(21.8275043, 151.1979675),
+            ll!(21.8275043, 151.1979675),
+        );
+        test_latlng_normalized_case(
+            &"Valid lat/lng in the West",
+            ll!(21.8275043, -151.1979675),
+            ll!(21.8275043, -151.1979675),
+        );
+        test_latlng_normalized_case(
+            &"Beyond the North pole",
+            ll!(95., 151.1979675),
+            ll!(90., 151.1979675),
+        );
+        test_latlng_normalized_case(
+            "Beyond the South pole",
+            ll!(-95., 151.1979675),
+            ll!(-90., 151.1979675),
+        );
+        test_latlng_normalized_case(
+            "At the date line (from East)",
+            ll!(21.8275043, 180.),
+            ll!(21.8275043, 180.),
+        );
+        test_latlng_normalized_case(
+            "At the date line (from West)",
+            ll!(21.8275043, -180.),
+            ll!(21.8275043, -180.),
+        );
+        test_latlng_normalized_case(
+            "Across the date line going East",
+            ll!(21.8275043, 181.0012),
+            ll!(21.8275043, -178.9988),
+        );
+        test_latlng_normalized_case(
+            "Across the date line going West",
+            ll!(21.8275043, -181.0012),
+            ll!(21.8275043, 178.9988),
+        );
         test_latlng_normalized_case("All wrong", ll!(256., 256.), ll!(90., -104.));
     }
 
@@ -186,10 +208,10 @@ mod tests {
         test_latlng_point_conversion_case(ll!(90., -180.), p!(-6.12323e-17, -7.4988e-33, 1));
         test_latlng_point_conversion_case(ll!(-90., 180.), p!(-6.12323e-17, 7.4988e-33, -1));
         test_latlng_point_conversion_case(ll!(-90., -180.), p!(-6.12323e-17, -7.4988e-33, -1));
-        test_latlng_point_conversion_case(ll!(-81.82750430354997, 151.19796752929685),
-                                          p!(-0.12456788151479525,
-                                             0.0684875268284729,
-                                             -0.989844584550441));
+        test_latlng_point_conversion_case(
+            ll!(-81.82750430354997, 151.19796752929685),
+            p!(-0.12456788151479525, 0.0684875268284729, -0.989844584550441),
+        );
     }
 
     fn test_latlng_distance_case(ll1: LatLng, ll2: LatLng, want: f64, tolerance: f64) {

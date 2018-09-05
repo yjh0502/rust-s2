@@ -54,18 +54,18 @@ use std::f64::consts::PI;
 ///
 /// When testing for equality, you should allow for numerical errors (float64Eq)
 /// or convert to discrete E5/E6/E7 values first.
-#[derive(Clone,Copy,PartialEq,PartialOrd)]
+#[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub struct Angle(f64);
-#[derive(Clone,Copy,PartialEq,PartialOrd,Debug)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
 pub struct Rad(pub f64);
-#[derive(Clone,Copy,PartialEq,PartialOrd,Debug)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
 pub struct Deg(pub f64);
 
-#[derive(Clone,Copy,PartialEq,PartialOrd,Debug)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
 pub struct E5(pub i32);
-#[derive(Clone,Copy,PartialEq,PartialOrd,Debug)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
 pub struct E6(pub i32);
-#[derive(Clone,Copy,PartialEq,PartialOrd,Debug)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
 pub struct E7(pub i32);
 
 impl Angle {
@@ -125,53 +125,53 @@ impl std::fmt::Debug for Angle {
 }
 
 macro_rules! convert {
-    ($tyname1: ident, $tyname2: ident, $mul: expr) => {
+    ($tyname1:ident, $tyname2:ident, $mul:expr) => {
         impl From<$tyname1> for $tyname2 {
             fn from(a: $tyname1) -> Self {
-                $tyname2(a.0*$mul)
+                $tyname2(a.0 * $mul)
             }
         }
         impl<'a> From<&'a $tyname1> for $tyname2 {
             fn from(a: &$tyname1) -> Self {
-                $tyname2(a.0*$mul)
+                $tyname2(a.0 * $mul)
             }
         }
         impl From<$tyname2> for $tyname1 {
             fn from(a: $tyname2) -> Self {
-                $tyname1(a.0/$mul)
+                $tyname1(a.0 / $mul)
             }
         }
         impl<'a> From<&'a $tyname2> for $tyname1 {
             fn from(a: &$tyname2) -> Self {
-                $tyname1(a.0/$mul)
+                $tyname1(a.0 / $mul)
             }
         }
-    }
+    };
 }
 
 macro_rules! convert_i32 {
-    ($tyname1: ident, $tyname2: ident, $mul: expr) => {
+    ($tyname1:ident, $tyname2:ident, $mul:expr) => {
         impl From<$tyname1> for $tyname2 {
             fn from(a: $tyname1) -> Self {
-                $tyname2((a.0 as f64)*$mul)
+                $tyname2((a.0 as f64) * $mul)
             }
         }
         impl<'a> From<&'a $tyname1> for $tyname2 {
             fn from(a: &$tyname1) -> Self {
-                $tyname2((a.0 as f64)*$mul)
+                $tyname2((a.0 as f64) * $mul)
             }
         }
         impl From<$tyname2> for $tyname1 {
             fn from(a: $tyname2) -> Self {
-                $tyname1((a.0/$mul).round() as i32)
+                $tyname1((a.0 / $mul).round() as i32)
             }
         }
         impl<'a> From<&'a $tyname2> for $tyname1 {
             fn from(a: &$tyname2) -> Self {
-                $tyname1((a.0/$mul).round() as i32)
+                $tyname1((a.0 / $mul).round() as i32)
             }
         }
-    }
+    };
 }
 
 convert!(Rad, Angle, 1.);

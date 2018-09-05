@@ -15,18 +15,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
 use std;
-use std::u64;
 use std::iter::*;
+use std::u64;
 
 use consts::clamp;
 use r1::interval::Interval;
 use r2;
 use r3::vector::Vector;
-use s2::stuv::*;
-use s2::point::Point;
 use s2::latlng::*;
+use s2::point::Point;
+use s2::stuv::*;
 
 /// CellID uniquely identifies a cell in the S2 cell decomposition.
 /// The most significant 3 bits encode the face number (0-5). The
@@ -52,7 +51,7 @@ use s2::latlng::*;
 /// this type provides methods for converting directly between these two
 /// representations. For cells that represent 2D regions rather than
 /// discrete point, it is better to use Cells.
-#[derive(Clone,Copy,PartialEq,Eq,PartialOrd,Ord,Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CellID(pub u64);
 
 const FACE_BITS: u64 = 3;
@@ -141,7 +140,6 @@ impl CellID {
             Self::from_face_ij_wrap(f, i, j)
         }
     }
-
 
     /// from_token returns a cell given a hex-encoded string of its uint64 ID.
     pub fn from_token(s: &str) -> CellID {
@@ -249,8 +247,8 @@ impl CellID {
 
         let mut k = 7;
         loop {
-            orientation += (((self.0 >> (k * 2 * LOOKUP_BITS + 1)) &
-                             ((1 << (2 * nbits)) - 1)) as u64) << 2;
+            orientation +=
+                (((self.0 >> (k * 2 * LOOKUP_BITS + 1)) & ((1 << (2 * nbits)) - 1)) as u64) << 2;
 
             orientation = LOOKUP_IJ[orientation as usize] as u64;
             i += ((orientation as i32) >> (LOOKUP_BITS + 2)) << (k * LOOKUP_BITS);
@@ -278,10 +276,12 @@ impl CellID {
         let size = size_ij(level) as i32;
         let (f, i, j, _) = self.face_ij_orientation();
 
-        [CellID::from_face_ij_wrap(f, i, j - size).parent(level),
-         CellID::from_face_ij_wrap(f, i + size, j).parent(level),
-         CellID::from_face_ij_wrap(f, i, j + size).parent(level),
-         CellID::from_face_ij_wrap(f, i - size, j).parent(level)]
+        [
+            CellID::from_face_ij_wrap(f, i, j - size).parent(level),
+            CellID::from_face_ij_wrap(f, i + size, j).parent(level),
+            CellID::from_face_ij_wrap(f, i, j + size).parent(level),
+            CellID::from_face_ij_wrap(f, i - size, j).parent(level),
+        ]
     }
 
     /// vertex_neighbors returns the neighboring cellIDs with vertex closest to this cell at the given level.
@@ -308,8 +308,10 @@ impl CellID {
         results.push(CellID::from_face_ij_same(f, i + ioffset, j, isame).parent(level));
         results.push(CellID::from_face_ij_same(f, i, j + joffset, jsame).parent(level));
         if isame || jsame {
-            results.push(CellID::from_face_ij_same(f, i + ioffset, j + joffset, isame && jsame)
-                             .parent(level));
+            results.push(
+                CellID::from_face_ij_same(f, i + ioffset, j + joffset, isame && jsame)
+                    .parent(level),
+            );
         }
         results
     }
@@ -340,26 +342,29 @@ impl CellID {
             } else if k >= size {
                 (j + k) < MAX_SIZE_I32
             } else {
-                neighbors.push(CellID::from_face_ij_same(face, i + k, j - nbr_size, j - size >= 0)
-                                   .parent(level));
-                neighbors.push(CellID::from_face_ij_same(face,
-                                                         i + k,
-                                                         j + size,
-                                                         j + size < MAX_SIZE_I32)
-                                       .parent(level));
+                neighbors.push(
+                    CellID::from_face_ij_same(face, i + k, j - nbr_size, j - size >= 0)
+                        .parent(level),
+                );
+                neighbors.push(
+                    CellID::from_face_ij_same(face, i + k, j + size, j + size < MAX_SIZE_I32)
+                        .parent(level),
+                );
                 true
             };
 
-            neighbors.push(CellID::from_face_ij_same(face,
-                                                     i - nbr_size,
-                                                     j + k,
-                                                     same_face && i - size >= 0)
-                                   .parent(level));
-            neighbors.push(CellID::from_face_ij_same(face,
-                                                     i + size,
-                                                     j + k,
-                                                     same_face && i + size < MAX_SIZE_I32)
-                                   .parent(level));
+            neighbors.push(
+                CellID::from_face_ij_same(face, i - nbr_size, j + k, same_face && i - size >= 0)
+                    .parent(level),
+            );
+            neighbors.push(
+                CellID::from_face_ij_same(
+                    face,
+                    i + size,
+                    j + k,
+                    same_face && i + size < MAX_SIZE_I32,
+                ).parent(level),
+            );
 
             if k >= size {
                 break;
@@ -406,9 +411,11 @@ impl CellID {
     //TODO private
     pub fn raw_point(&self) -> Vector {
         let (face, si, ti) = self.face_siti();
-        face_uv_to_xyz(face,
-                       st_to_uv(siti_to_st(si as u64)),
-                       st_to_uv(siti_to_st(ti as u64)))
+        face_uv_to_xyz(
+            face,
+            st_to_uv(siti_to_st(si as u64)),
+            st_to_uv(siti_to_st(ti as u64)),
+        )
     }
 
     /// child_begin returns the first child in a traversal of the children of this cell, in Hilbert curve order.
@@ -707,13 +714,16 @@ pub fn expanded_by_distance_uv(uv: &r2::rect::Rect, distance: &Angle) -> r2::rec
 
     let sin_dist = distance.rad().sin();
     r2::rect::Rect {
-        x: Interval::new(expand_endpoint(uv.x.lo, max_v, -sin_dist),
-                         expand_endpoint(uv.x.hi, max_v, sin_dist)),
-        y: Interval::new(expand_endpoint(uv.y.lo, max_u, -sin_dist),
-                         expand_endpoint(uv.y.hi, max_u, sin_dist)),
+        x: Interval::new(
+            expand_endpoint(uv.x.lo, max_v, -sin_dist),
+            expand_endpoint(uv.x.hi, max_v, sin_dist),
+        ),
+        y: Interval::new(
+            expand_endpoint(uv.y.lo, max_u, -sin_dist),
+            expand_endpoint(uv.y.hi, max_u, sin_dist),
+        ),
     }
 }
-
 
 /// ij_tostmin converts the i- or j-index of a leaf cell to the minimum corresponding
 /// s- or t-value contained by that cell. The argument must be in the range
@@ -842,37 +852,60 @@ pub const POS_TO_ORIENTATION: [u8; 4] = [SWAP_MASK, 0, 0, INVERT_MASK | SWAP_MAS
 
 lazy_static! {
     static ref LOOKUP_TBL: [Vec<u64>; 2] = {
-        let size = 1 << (2*LOOKUP_BITS + 2);
+        let size = 1 << (2 * LOOKUP_BITS + 2);
         let mut lookup_pos = Vec::new();
         let mut lookup_ij = Vec::new();
         lookup_pos.resize(size, 0);
         lookup_ij.resize(size, 0);
 
         init_lookup_cell(0, 0, 0, 0, 0, 0, &mut lookup_pos, &mut lookup_ij);
-        init_lookup_cell(0, 0, 0, SWAP_MASK, 0, SWAP_MASK, &mut lookup_pos, &mut lookup_ij);
-        init_lookup_cell(0, 0, 0, INVERT_MASK, 0, INVERT_MASK, &mut lookup_pos, &mut lookup_ij);
-        init_lookup_cell(0, 0, 0, SWAP_MASK|INVERT_MASK, 0, SWAP_MASK|INVERT_MASK, &mut lookup_pos, &mut lookup_ij);
+        init_lookup_cell(
+            0,
+            0,
+            0,
+            SWAP_MASK,
+            0,
+            SWAP_MASK,
+            &mut lookup_pos,
+            &mut lookup_ij,
+        );
+        init_lookup_cell(
+            0,
+            0,
+            0,
+            INVERT_MASK,
+            0,
+            INVERT_MASK,
+            &mut lookup_pos,
+            &mut lookup_ij,
+        );
+        init_lookup_cell(
+            0,
+            0,
+            0,
+            SWAP_MASK | INVERT_MASK,
+            0,
+            SWAP_MASK | INVERT_MASK,
+            &mut lookup_pos,
+            &mut lookup_ij,
+        );
         [lookup_pos, lookup_ij]
     };
-
-    static ref LOOKUP_POS: &'static [u64] = {
-        LOOKUP_TBL[0].as_slice()
-    };
-
-    static ref LOOKUP_IJ: &'static [u64] = {
-        LOOKUP_TBL[1].as_slice()
-    };
+    static ref LOOKUP_POS: &'static [u64] = { LOOKUP_TBL[0].as_slice() };
+    static ref LOOKUP_IJ: &'static [u64] = { LOOKUP_TBL[1].as_slice() };
 }
 
 /// init_lookup_cell initializes the lookupIJ table at init time.
-fn init_lookup_cell(level: u64,
-                    i: i32,
-                    j: i32,
-                    orig_orientation: u8,
-                    pos: usize,
-                    orientation: u8,
-                    lookup_pos: &mut [u64],
-                    lookup_ij: &mut [u64]) {
+fn init_lookup_cell(
+    level: u64,
+    i: i32,
+    j: i32,
+    orig_orientation: u8,
+    pos: usize,
+    orientation: u8,
+    lookup_pos: &mut [u64],
+    lookup_ij: &mut [u64],
+) {
     if level == LOOKUP_BITS {
         let ij = ((i << LOOKUP_BITS) + j) as usize;
         lookup_pos[(ij << 2) + orig_orientation as usize] = (pos << 2) as u64 + orientation as u64;
@@ -882,14 +915,16 @@ fn init_lookup_cell(level: u64,
 
     let r = &POS_TO_IJ[orientation as usize];
     for idx in 0..4 {
-        init_lookup_cell(level + 1,
-                         (i << 1) + (r[idx] >> 1) as i32,
-                         (j << 1) + (r[idx] & 1) as i32,
-                         orig_orientation,
-                         (pos << 2) + idx,
-                         orientation ^ POS_TO_ORIENTATION[idx],
-                         lookup_pos,
-                         lookup_ij)
+        init_lookup_cell(
+            level + 1,
+            (i << 1) + (r[idx] >> 1) as i32,
+            (j << 1) + (r[idx] & 1) as i32,
+            orig_orientation,
+            (pos << 2) + idx,
+            orientation ^ POS_TO_ORIENTATION[idx],
+            lookup_pos,
+            lookup_ij,
+        )
     }
 }
 
@@ -901,10 +936,14 @@ pub fn ij_level_to_bound_uv(i: i32, j: i32, level: u64) -> r2::rect::Rect {
     let y_lo = j & -cell_size;
 
     r2::rect::Rect {
-        x: Interval::new(st_to_uv(ij_to_stmin(x_lo)),
-                         st_to_uv(ij_to_stmin(x_lo + cell_size))),
-        y: Interval::new(st_to_uv(ij_to_stmin(y_lo)),
-                         st_to_uv(ij_to_stmin(y_lo + cell_size))),
+        x: Interval::new(
+            st_to_uv(ij_to_stmin(x_lo)),
+            st_to_uv(ij_to_stmin(x_lo + cell_size)),
+        ),
+        y: Interval::new(
+            st_to_uv(ij_to_stmin(y_lo)),
+            st_to_uv(ij_to_stmin(y_lo + cell_size)),
+        ),
     }
 }
 
@@ -919,10 +958,10 @@ pub fn find_lsb_set_nonzero64(bits: u64) -> u32 {
 #[cfg(test)]
 pub mod tests {
     use super::*;
+    use consts::*;
     use rand::Rng;
     use s1;
     use s2::random;
-    use consts::*;
 
     #[test]
     fn test_cellid_from_face() {
@@ -956,11 +995,13 @@ pub mod tests {
         assert_eq!(ci.range_max().next(), ci.child_end_at_level(MAX_LEVEL));
     }
 
-    fn test_cellid_containment_case(x: &CellID,
-                                    y: &CellID,
-                                    x_contains_y: bool,
-                                    y_contains_x: bool,
-                                    x_intersects_y: bool) {
+    fn test_cellid_containment_case(
+        x: &CellID,
+        y: &CellID,
+        x_contains_y: bool,
+        y_contains_x: bool,
+        x_intersects_y: bool,
+    ) {
         assert_eq!(x.contains(y), x_contains_y);
         assert_eq!(y.contains(x), y_contains_x);
         assert_eq!(x.intersects(y), x_intersects_y);
@@ -1032,10 +1073,11 @@ pub mod tests {
         let faces = [5, 3, 2, 0];
 
         for (i, nbr) in CellID::from_face_ij(1, 0, 0)
-                .parent(0)
-                .edge_neighbors()
-                .iter()
-                .enumerate() {
+            .parent(0)
+            .edge_neighbors()
+            .iter()
+            .enumerate()
+        {
             assert!(nbr.is_face());
             assert_eq!(nbr.face(), faces[i]);
         }
@@ -1044,10 +1086,12 @@ pub mod tests {
         for level in 1..(MAX_LEVEL + 1) {
             let id = CellID::from_face_ij(1, 0, 0).parent(level);
             let level_size_ij = size_ij(level) as i32;
-            let want = [CellID::from_face_ij(5, max_ij, max_ij).parent(level),
-                        CellID::from_face_ij(1, level_size_ij, 0).parent(level),
-                        CellID::from_face_ij(1, 0, level_size_ij).parent(level),
-                        CellID::from_face_ij(0, max_ij, 0).parent(level)];
+            let want = [
+                CellID::from_face_ij(5, max_ij, max_ij).parent(level),
+                CellID::from_face_ij(1, level_size_ij, 0).parent(level),
+                CellID::from_face_ij(1, 0, level_size_ij).parent(level),
+                CellID::from_face_ij(0, max_ij, 0).parent(level),
+            ];
 
             assert_eq!(want, id.edge_neighbors());
         }
@@ -1056,11 +1100,10 @@ pub mod tests {
     #[test]
     fn test_cellid_vertex_neighbors() {
         let id: CellID = Point(Vector {
-                                   x: 0.,
-                                   y: 0.,
-                                   z: 1.,
-                               })
-                .into();
+            x: 0.,
+            y: 0.,
+            z: 1.,
+        }).into();
 
         let mut neighbors = id.vertex_neighbors(5);
         neighbors.sort();
@@ -1182,9 +1225,9 @@ pub mod tests {
     }
 
     macro_rules! P {
-        ($x: expr, $y: expr) => {
+        ($x:expr, $y:expr) => {
             r2::point::Point::new($x as f64, $y as f64)
-        }
+        };
     }
 
     fn test_ij_level_to_bound_uv_case(i: i32, j: i32, level: u64, points: &[r2::point::Point]) {
@@ -1204,70 +1247,82 @@ pub mod tests {
     fn test_ij_level_to_bound_uv() {
         test_ij_level_to_bound_uv_case(-1, -1, 0, &[P!(-5., -5.), P!(-1., -1.)]);
         test_ij_level_to_bound_uv_case(-1 * MAX_IJ, -1 * MAX_IJ, 0, &[P!(-5., -5.), P!(-1., -1.)]);
-        test_ij_level_to_bound_uv_case(-1,
-                                       -1,
-                                       MAX_LEVEL,
-                                       &[P!(-1.0000000024835267, -1.0000000024835267),
-                                         P!(-1., -1.)]);
+        test_ij_level_to_bound_uv_case(
+            -1,
+            -1,
+            MAX_LEVEL,
+            &[P!(-1.0000000024835267, -1.0000000024835267), P!(-1., -1.)],
+        );
 
         //XXX
         // test_ij_level_to_bound_uv_case(0, 0, MAX_LEVEL + 1, &[P!(-1., -1.), P!(-1., -1.)]);
 
         // Minimum i,j at different levels
         test_ij_level_to_bound_uv_case(0, 0, 0, &[P!(-1., -1.), P!(1., 1.)]);
-        test_ij_level_to_bound_uv_case(0,
-                                       0,
-                                       MAX_LEVEL / 2,
-                                       &[P!(-1, -1),
-                                         P!(-0.999918621033430099, -0.999918621033430099)]);
-        test_ij_level_to_bound_uv_case(0,
-                                       0,
-                                       MAX_LEVEL,
-                                       &[P!(-1, -1),
-                                         P!(-0.999999997516473060, -0.999999997516473060)]);
+        test_ij_level_to_bound_uv_case(
+            0,
+            0,
+            MAX_LEVEL / 2,
+            &[P!(-1, -1), P!(-0.999918621033430099, -0.999918621033430099)],
+        );
+        test_ij_level_to_bound_uv_case(
+            0,
+            0,
+            MAX_LEVEL,
+            &[P!(-1, -1), P!(-0.999999997516473060, -0.999999997516473060)],
+        );
         test_ij_level_to_bound_uv_case(1, 1, 0, &[P!(-1., -1.), P!(1., 1.)]);
-        test_ij_level_to_bound_uv_case(1,
-                                       1,
-                                       MAX_LEVEL / 2,
-                                       &[P!(-1, -1),
-                                         P!(-0.999918621033430099, -0.999918621033430099)]);
+        test_ij_level_to_bound_uv_case(
+            1,
+            1,
+            MAX_LEVEL / 2,
+            &[P!(-1, -1), P!(-0.999918621033430099, -0.999918621033430099)],
+        );
 
         // Just a hair off the outer bounds at different levels.
-        test_ij_level_to_bound_uv_case(1,
-                                       1,
-                                       MAX_LEVEL,
-                                       &[P!(-0.9999999975164731, -0.9999999975164731),
-                                         P!(-0.9999999950329462, -0.9999999950329462)]);
+        test_ij_level_to_bound_uv_case(
+            1,
+            1,
+            MAX_LEVEL,
+            &[
+                P!(-0.9999999975164731, -0.9999999975164731),
+                P!(-0.9999999950329462, -0.9999999950329462),
+            ],
+        );
 
         test_ij_level_to_bound_uv_case(MAX_IJ / 2, MAX_IJ / 2, 0, &[P!(-1, -1), P!(1, 1)]);
 
-        test_ij_level_to_bound_uv_case(MAX_IJ / 2,
-                                       MAX_IJ / 2,
-                                       MAX_LEVEL / 2,
-                                       &[P!(-0.000040691345930099, -0.000040691345930099),
-                                         P!(0., 0.)]);
+        test_ij_level_to_bound_uv_case(
+            MAX_IJ / 2,
+            MAX_IJ / 2,
+            MAX_LEVEL / 2,
+            &[P!(-0.000040691345930099, -0.000040691345930099), P!(0., 0.)],
+        );
 
-        test_ij_level_to_bound_uv_case(MAX_IJ / 2,
-                                       MAX_IJ / 2,
-                                       MAX_LEVEL,
-                                       &[P!(-0.000000001241763433, -0.000000001241763433),
-                                         P!(0., 0.)]);
+        test_ij_level_to_bound_uv_case(
+            MAX_IJ / 2,
+            MAX_IJ / 2,
+            MAX_LEVEL,
+            &[P!(-0.000000001241763433, -0.000000001241763433), P!(0., 0.)],
+        );
 
         // Maximum i, j at different levels.
         test_ij_level_to_bound_uv_case(MAX_IJ, MAX_IJ, 0, &[P!(-1., -1.), P!(1., 1.)]);
 
         // Center point of the i,j space at different levels.
-        test_ij_level_to_bound_uv_case(MAX_IJ,
-                                       MAX_IJ,
-                                       MAX_LEVEL / 2,
-                                       &[P!(0.999918621033430099, 0.999918621033430099),
-                                         P!(1., 1.)]);
+        test_ij_level_to_bound_uv_case(
+            MAX_IJ,
+            MAX_IJ,
+            MAX_LEVEL / 2,
+            &[P!(0.999918621033430099, 0.999918621033430099), P!(1., 1.)],
+        );
 
-        test_ij_level_to_bound_uv_case(MAX_IJ,
-                                       MAX_IJ,
-                                       MAX_LEVEL,
-                                       &[P!(0.999999997516473060, 0.999999997516473060),
-                                         P!(1., 1.)]);
+        test_ij_level_to_bound_uv_case(
+            MAX_IJ,
+            MAX_IJ,
+            MAX_LEVEL,
+            &[P!(0.999999997516473060, 0.999999997516473060), P!(1., 1.)],
+        );
     }
 
     fn test_common_ancestor_case(expected: Option<u64>, c1: CellID, c2: CellID) {
@@ -1278,70 +1333,92 @@ pub mod tests {
     #[test]
     fn test_cellid_common_ancestor_level() {
         test_common_ancestor_case(Some(0), CellID::from_face(0), CellID::from_face(0));
-        test_common_ancestor_case(Some(30),
-                                  CellID::from_face(0).child_begin_at_level(30),
-                                  CellID::from_face(0).child_begin_at_level(30));
+        test_common_ancestor_case(
+            Some(30),
+            CellID::from_face(0).child_begin_at_level(30),
+            CellID::from_face(0).child_begin_at_level(30),
+        );
 
         // One cell is a descendant of the other.
-        test_common_ancestor_case(Some(0),
-                                  CellID::from_face(0),
-                                  CellID::from_face(0).child_begin_at_level(30));
+        test_common_ancestor_case(
+            Some(0),
+            CellID::from_face(0),
+            CellID::from_face(0).child_begin_at_level(30),
+        );
 
-        test_common_ancestor_case(Some(0),
-                                  CellID::from_face(5),
-                                  CellID::from_face(5).child_end_at_level(30).prev());
+        test_common_ancestor_case(
+            Some(0),
+            CellID::from_face(5),
+            CellID::from_face(5).child_end_at_level(30).prev(),
+        );
 
         // No common ancestors.
         test_common_ancestor_case(None, CellID::from_face(0), CellID::from_face(5));
 
-        test_common_ancestor_case(None,
-                                  CellID::from_face(2).child_begin_at_level(30),
-                                  CellID::from_face(3).child_begin_at_level(20));
+        test_common_ancestor_case(
+            None,
+            CellID::from_face(2).child_begin_at_level(30),
+            CellID::from_face(3).child_begin_at_level(20),
+        );
 
         // Common ancestor distinct from both.
-        test_common_ancestor_case(Some(8),
-                                  CellID::from_face(5)
-                                      .child_begin_at_level(9)
-                                      .next()
-                                      .child_begin_at_level(15),
-                                  CellID::from_face(5)
-                                      .child_begin_at_level(9)
-                                      .child_begin_at_level(20));
+        test_common_ancestor_case(
+            Some(8),
+            CellID::from_face(5)
+                .child_begin_at_level(9)
+                .next()
+                .child_begin_at_level(15),
+            CellID::from_face(5)
+                .child_begin_at_level(9)
+                .child_begin_at_level(20),
+        );
 
-        test_common_ancestor_case(Some(1),
-                                  CellID::from_face(0)
-                                      .child_begin_at_level(2)
-                                      .child_begin_at_level(30),
-                                  CellID::from_face(0)
-                                      .child_begin_at_level(2)
-                                      .next()
-                                      .child_begin_at_level(5));
+        test_common_ancestor_case(
+            Some(1),
+            CellID::from_face(0)
+                .child_begin_at_level(2)
+                .child_begin_at_level(30),
+            CellID::from_face(0)
+                .child_begin_at_level(2)
+                .next()
+                .child_begin_at_level(5),
+        );
     }
 
     #[test]
     fn test_cellid_distance_to_begin() {
-        assert_eq!(6,
-                   CellID::from_face(5)
-                       .child_end_at_level(0)
-                       .distance_from_begin());
-        assert_eq!(6 * (1 << (2 * MAX_LEVEL)),
-                   CellID::from_face(5)
-                       .child_end_at_level(MAX_LEVEL)
-                       .distance_from_begin());
-        assert_eq!(0,
-                   CellID::from_face(0)
-                       .child_begin_at_level(0)
-                       .distance_from_begin());
-        assert_eq!(0,
-                   CellID::from_face(0)
-                       .child_begin_at_level(MAX_LEVEL)
-                       .distance_from_begin());
+        assert_eq!(
+            6,
+            CellID::from_face(5)
+                .child_end_at_level(0)
+                .distance_from_begin()
+        );
+        assert_eq!(
+            6 * (1 << (2 * MAX_LEVEL)),
+            CellID::from_face(5)
+                .child_end_at_level(MAX_LEVEL)
+                .distance_from_begin()
+        );
+        assert_eq!(
+            0,
+            CellID::from_face(0)
+                .child_begin_at_level(0)
+                .distance_from_begin()
+        );
+        assert_eq!(
+            0,
+            CellID::from_face(0)
+                .child_begin_at_level(MAX_LEVEL)
+                .distance_from_begin()
+        );
 
         let id = CellID::from_face_pos_level(3, 0x12345678, MAX_LEVEL - 4);
-        assert_eq!(id,
-                   CellID::from_face(0)
-                       .child_begin_at_level(id.level())
-                       .advance(id.distance_from_begin()));
+        assert_eq!(
+            id,
+            CellID::from_face(0)
+                .child_begin_at_level(id.level())
+                .advance(id.distance_from_begin())
+        );
     }
 
     #[test]
@@ -1395,106 +1472,148 @@ pub mod tests {
         let id = CellID::from_face_pos_level(3, 0x12345678, MAX_LEVEL - 4);
 
         // "test wrap from beginning to end of Hilbert curve",
-        assert_eq!(CellID::from_face(5).child_end_at_level(0).prev(),
-                   CellID::from_face(0).child_begin_at_level(0).prev_wrap());
+        assert_eq!(
+            CellID::from_face(5).child_end_at_level(0).prev(),
+            CellID::from_face(0).child_begin_at_level(0).prev_wrap()
+        );
 
         // "smallest end leaf wraps to smallest first leaf using prev_wrap",
-        assert_eq!(CellID::from_face_pos_level(5, (!0u64) >> FACE_BITS, MAX_LEVEL),
-                   CellID::from_face(0)
-                       .child_begin_at_level(MAX_LEVEL)
-                       .prev_wrap());
+        assert_eq!(
+            CellID::from_face_pos_level(5, (!0u64) >> FACE_BITS, MAX_LEVEL),
+            CellID::from_face(0)
+                .child_begin_at_level(MAX_LEVEL)
+                .prev_wrap()
+        );
         // "smallest end leaf wraps to smallest first leaf using advance_wrap",
-        assert_eq!(CellID::from_face_pos_level(5, (!0u64) >> FACE_BITS, MAX_LEVEL),
-                   CellID::from_face(0)
-                       .child_begin_at_level(MAX_LEVEL)
-                       .advance_wrap(-1));
+        assert_eq!(
+            CellID::from_face_pos_level(5, (!0u64) >> FACE_BITS, MAX_LEVEL),
+            CellID::from_face(0)
+                .child_begin_at_level(MAX_LEVEL)
+                .advance_wrap(-1)
+        );
         // "prev_wrap is the same as advance_wrap(-1)",
-        assert_eq!(CellID::from_face(0)
-                       .child_begin_at_level(MAX_LEVEL)
-                       .advance_wrap(-1),
-                   CellID::from_face(0)
-                       .child_begin_at_level(MAX_LEVEL)
-                       .prev_wrap());
+        assert_eq!(
+            CellID::from_face(0)
+                .child_begin_at_level(MAX_LEVEL)
+                .advance_wrap(-1),
+            CellID::from_face(0)
+                .child_begin_at_level(MAX_LEVEL)
+                .prev_wrap()
+        );
         // "prev + next_wrap stays the same at given level",
-        assert_eq!(CellID::from_face(0).child_begin_at_level(4),
-                   CellID::from_face(5)
-                       .child_end_at_level(4)
-                       .prev()
-                       .next_wrap());
+        assert_eq!(
+            CellID::from_face(0).child_begin_at_level(4),
+            CellID::from_face(5)
+                .child_end_at_level(4)
+                .prev()
+                .next_wrap()
+        );
         // "advance_wrap forward and back stays the same at given level",
-        assert_eq!(CellID::from_face(0).child_begin_at_level(4),
-                   CellID::from_face(5)
-                       .child_end_at_level(4)
-                       .advance(-1)
-                       .advance_wrap(1));
+        assert_eq!(
+            CellID::from_face(0).child_begin_at_level(4),
+            CellID::from_face(5)
+                .child_end_at_level(4)
+                .advance(-1)
+                .advance_wrap(1)
+        );
         // "prev().next_wrap() stays same for first cell at level",
-        assert_eq!(CellID::from_face_pos_level(0, 0, MAX_LEVEL),
-                   CellID::from_face(5)
-                       .child_end_at_level(MAX_LEVEL)
-                       .prev()
-                       .next_wrap());
+        assert_eq!(
+            CellID::from_face_pos_level(0, 0, MAX_LEVEL),
+            CellID::from_face(5)
+                .child_end_at_level(MAX_LEVEL)
+                .prev()
+                .next_wrap()
+        );
         // "advance_wrap forward and back stays same for first cell at level",
-        assert_eq!(CellID::from_face_pos_level(0, 0, MAX_LEVEL),
-                   CellID::from_face(5)
-                       .child_end_at_level(MAX_LEVEL)
-                       .advance(-1)
-                       .advance_wrap(1));
+        assert_eq!(
+            CellID::from_face_pos_level(0, 0, MAX_LEVEL),
+            CellID::from_face(5)
+                .child_end_at_level(MAX_LEVEL)
+                .advance(-1)
+                .advance_wrap(1)
+        );
 
         // Check basic properties of advance_wrap().
         // "advancing 7 steps around cube should end up one past start.",
-        assert_eq!(CellID::from_face(1),
-                   CellID::from_face(0).child_begin_at_level(0).advance_wrap(7));
+        assert_eq!(
+            CellID::from_face(1),
+            CellID::from_face(0).child_begin_at_level(0).advance_wrap(7)
+        );
         // "twice around should end up where we started",
-        assert_eq!(CellID::from_face(0).child_begin_at_level(0),
-                   CellID::from_face(0)
-                       .child_begin_at_level(0)
-                       .advance_wrap(12));
+        assert_eq!(
+            CellID::from_face(0).child_begin_at_level(0),
+            CellID::from_face(0)
+                .child_begin_at_level(0)
+                .advance_wrap(12)
+        );
         // "backwards once around plus one step should be one before we started",
         assert_eq!(CellID::from_face(4), CellID::from_face(5).advance_wrap(-7));
         // "wrapping even multiple of times around should end where we started",
-        assert_eq!(CellID::from_face(0).child_begin_at_level(0),
-                   CellID::from_face(0)
-                       .child_begin_at_level(0)
-                       .advance_wrap(-12000000));
+        assert_eq!(
+            CellID::from_face(0).child_begin_at_level(0),
+            CellID::from_face(0)
+                .child_begin_at_level(0)
+                .advance_wrap(-12000000)
+        );
         // "wrapping combination of even times around should end where it started",
-        assert_eq!(CellID::from_face(0)
-                       .child_begin_at_level(5)
-                       .advance_wrap(6644),
-                   CellID::from_face(0)
-                       .child_begin_at_level(5)
-                       .advance_wrap(-11788));
+        assert_eq!(
+            CellID::from_face(0)
+                .child_begin_at_level(5)
+                .advance_wrap(6644),
+            CellID::from_face(0)
+                .child_begin_at_level(5)
+                .advance_wrap(-11788)
+        );
         // "moving 256 should advance us one cell at max level",
-        assert_eq!(id.next().child_begin_at_level(MAX_LEVEL),
-                   id.child_begin_at_level(MAX_LEVEL).advance_wrap(256));
+        assert_eq!(
+            id.next().child_begin_at_level(MAX_LEVEL),
+            id.child_begin_at_level(MAX_LEVEL).advance_wrap(256)
+        );
         // "wrapping by 4 times cells per face should advance 4 faces",
-        assert_eq!(CellID::from_face_pos_level(1, 0, MAX_LEVEL),
-                   CellID::from_face_pos_level(5, 0, MAX_LEVEL).advance_wrap(2 << (2 * MAX_LEVEL)));
+        assert_eq!(
+            CellID::from_face_pos_level(1, 0, MAX_LEVEL),
+            CellID::from_face_pos_level(5, 0, MAX_LEVEL).advance_wrap(2 << (2 * MAX_LEVEL))
+        );
     }
 
     #[test]
     fn test_cellid_advance() {
-        assert_eq!(CellID::from_face(0).child_begin_at_level(0).advance(7),
-                   CellID::from_face(5).child_end_at_level(0));
-        assert_eq!(CellID::from_face(0).child_begin_at_level(0).advance(12),
-                   CellID::from_face(5).child_end_at_level(0));
-        assert_eq!(CellID::from_face(5).child_end_at_level(0).advance(-7),
-                   CellID::from_face(0).child_begin_at_level(0));
-        assert_eq!(CellID::from_face(5)
-                       .child_end_at_level(0)
-                       .advance(-12000000),
-                   CellID::from_face(0).child_begin_at_level(0));
-        assert_eq!(CellID::from_face(0).child_begin_at_level(5).advance(500),
-                   CellID::from_face(5)
-                       .child_end_at_level(5)
-                       .advance(500 - (6 << (2 * 5))));
-        assert_eq!(CellID::from_face_pos_level(3, 0x12345678, MAX_LEVEL - 4)
-                       .child_begin_at_level(MAX_LEVEL)
-                       .advance(256),
-                   CellID::from_face_pos_level(3, 0x12345678, MAX_LEVEL - 4)
-                       .next()
-                       .child_begin_at_level(MAX_LEVEL));
-        assert_eq!(CellID::from_face_pos_level(1, 0, MAX_LEVEL).advance(4 << (2 * MAX_LEVEL)),
-                   CellID::from_face_pos_level(5, 0, MAX_LEVEL));
+        assert_eq!(
+            CellID::from_face(0).child_begin_at_level(0).advance(7),
+            CellID::from_face(5).child_end_at_level(0)
+        );
+        assert_eq!(
+            CellID::from_face(0).child_begin_at_level(0).advance(12),
+            CellID::from_face(5).child_end_at_level(0)
+        );
+        assert_eq!(
+            CellID::from_face(5).child_end_at_level(0).advance(-7),
+            CellID::from_face(0).child_begin_at_level(0)
+        );
+        assert_eq!(
+            CellID::from_face(5)
+                .child_end_at_level(0)
+                .advance(-12000000),
+            CellID::from_face(0).child_begin_at_level(0)
+        );
+        assert_eq!(
+            CellID::from_face(0).child_begin_at_level(5).advance(500),
+            CellID::from_face(5)
+                .child_end_at_level(5)
+                .advance(500 - (6 << (2 * 5)))
+        );
+        assert_eq!(
+            CellID::from_face_pos_level(3, 0x12345678, MAX_LEVEL - 4)
+                .child_begin_at_level(MAX_LEVEL)
+                .advance(256),
+            CellID::from_face_pos_level(3, 0x12345678, MAX_LEVEL - 4)
+                .next()
+                .child_begin_at_level(MAX_LEVEL)
+        );
+        assert_eq!(
+            CellID::from_face_pos_level(1, 0, MAX_LEVEL).advance(4 << (2 * MAX_LEVEL)),
+            CellID::from_face_pos_level(5, 0, MAX_LEVEL)
+        );
     }
 
     #[test]
@@ -1550,7 +1669,8 @@ pub mod tests {
 
     // sample_boundary returns a random point on the boundary of the given rectangle.
     fn sample_boundary<R>(r: &mut R, rect: &r2::rect::Rect) -> (f64, f64)
-        where R: Rng
+    where
+        R: Rng,
     {
         if random::one_in(r, 2) {
             let v = r.gen_range(rect.y.lo, rect.y.hi);
@@ -1599,8 +1719,8 @@ pub mod tests {
 
         for _ in 0..1000 {
             let id = random::cellid(&mut rng);
-            let distance: s1::Angle = s1::Deg(rng.gen_range(-MAX_DIST_DEGREES, MAX_DIST_DEGREES))
-                .into();
+            let distance: s1::Angle =
+                s1::Deg(rng.gen_range(-MAX_DIST_DEGREES, MAX_DIST_DEGREES)).into();
 
             let bound = id.bound_uv();
             let expanded = expanded_by_distance_uv(&bound, &distance);
@@ -1612,11 +1732,10 @@ pub mod tests {
                 let center = Point(face_uv_to_xyz(face, center_u, center_v).normalize());
 
                 // Now sample a point from a disc of radius (2 * distance).
-                let p =
-                    random::sample_point_from_cap(&mut rng,
-                                                  Cap::from_center_height(&center,
-                                                                          2. *
-                                                                          distance.rad().abs()));
+                let p = random::sample_point_from_cap(
+                    &mut rng,
+                    Cap::from_center_height(&center, 2. * distance.rad().abs()),
+                );
 
                 // Find the closest point on the boundary to the sampled point.
                 if let Some((u, v)) = face_xyz_to_uv(face, &p) {
@@ -1660,22 +1779,34 @@ pub mod tests {
             // Check that the tile size is increased when possible.
             assert_eq!(id, id.children()[0].max_tile(&id.next()));
             assert_eq!(id, id.children()[0].max_tile(&id.next().children()[0]));
-            assert_eq!(id,
-                       id.children()[0].max_tile(&id.next().children()[1].children()[0]));
+            assert_eq!(
+                id,
+                id.children()[0].max_tile(&id.next().children()[1].children()[0])
+            );
             assert_eq!(id, id.children()[0].children()[0].max_tile(&id.next()));
-            assert_eq!(id,
-                       id.children()[0].children()[0].children()[0].max_tile(&id.next()));
+            assert_eq!(
+                id,
+                id.children()[0].children()[0].children()[0].max_tile(&id.next())
+            );
 
             // Check that the tile size is decreased when necessary.
             assert_eq!(id.children()[0], id.max_tile(&id.children()[0].next()));
-            assert_eq!(id.children()[0],
-                       id.max_tile(&id.children()[0].next().children()[0]));
-            assert_eq!(id.children()[0],
-                       id.max_tile(&id.children()[0].next().children()[1]));
-            assert_eq!(id.children()[0].children()[0],
-                       id.max_tile(&id.children()[0].children()[0].next()));
-            assert_eq!(id.children()[0].children()[0].children()[0],
-                       id.max_tile(&id.children()[0].children()[0].children()[0].next()));
+            assert_eq!(
+                id.children()[0],
+                id.max_tile(&id.children()[0].next().children()[0])
+            );
+            assert_eq!(
+                id.children()[0],
+                id.max_tile(&id.children()[0].next().children()[1])
+            );
+            assert_eq!(
+                id.children()[0].children()[0],
+                id.max_tile(&id.children()[0].children()[0].next())
+            );
+            assert_eq!(
+                id.children()[0].children()[0].children()[0],
+                id.max_tile(&id.children()[0].children()[0].children()[0].next())
+            );
 
             // Check that the tile size is otherwise unchanged.
             assert_eq!(id, id.max_tile(&id.next()));
