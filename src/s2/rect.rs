@@ -117,7 +117,7 @@ impl Rect {
         } else {
             Rect {
                 lat: lat.intersection(&VALID_RECT_LAT_RANGE),
-                lng: lng,
+                lng,
             }
         }
     }
@@ -125,7 +125,7 @@ impl Rect {
     pub fn polar_closure(&self) -> Self {
         if self.lat.lo == -PI / 2. || self.lat.hi == PI / 2. {
             Rect {
-                lat: self.lat.clone(),
+                lat: self.lat,
                 lng: interval::FULL,
             }
         } else {
@@ -147,7 +147,7 @@ impl Rect {
         if lat.is_empty() || lng.is_empty() {
             Self::empty()
         } else {
-            Rect { lat: lat, lng: lng }
+            Rect { lat, lng }
         }
     }
 
@@ -171,8 +171,8 @@ impl<'a, 'b> std::ops::Add<&'a LatLng> for &'b Rect {
             self.clone()
         } else {
             Rect {
-                lat: &self.lat + ll.lat.rad(),
-                lng: &self.lng + ll.lng.rad(),
+                lat: self.lat + ll.lat.rad(),
+                lng: self.lng + ll.lng.rad(),
             }
         }
     }

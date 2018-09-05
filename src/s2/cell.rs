@@ -55,7 +55,7 @@ impl<'a> From<&'a CellID> for Cell {
             face: f as u8,
             level: level as u8,
             orientation: o as u8,
-            id: id.clone(),
+            id: *id,
             uv: ij_level_to_bound_uv(i, j, level),
         }
     }
@@ -113,7 +113,7 @@ impl Cell {
     }
 
     pub fn size_ij(&self) -> u64 {
-        size_ij(self.level as u64)
+        size_ij(u64::from(self.level))
     }
 
     /// vertex returns the k-th vertex of the cell (k = 0,1,2,3) in CCW order
@@ -178,7 +178,7 @@ impl Cell {
                 face: self.face,
                 level: self.level + 1,
                 orientation: self.orientation ^ (POS_TO_ORIENTATION[pos]),
-                id: cid.clone(),
+                id: cid,
                 uv: self.uv.clone(),
             };
 
@@ -339,13 +339,11 @@ impl Cell {
             // two latitudes to differ by up to another 1.5 * DBL_EPSILON, which also
             // leads to a maximum difference of 2 * DBL_EPSILON.
             let max_err = Angle::from(Rad(2. * DBL_EPSILON));
-            return s2::rect::Rect {
-                lat: lat.into(),
-                lng: lng.into(),
-            }.expanded(&LatLng {
-                lat: max_err,
-                lng: max_err,
-            })
+            return s2::rect::Rect { lat, lng }
+                .expanded(&LatLng {
+                    lat: max_err,
+                    lng: max_err,
+                })
                 .polar_closure();
         }
 
@@ -388,10 +386,10 @@ impl Cell {
         // point, not just the infinite-precision version.) We don't need to expand
         // longitude because longitude is calculated via a single call to math.Atan2,
         // which is guaranteed to be semi-monotoniself.
-        return bound.expanded(&LatLng {
+        bound.expanded(&LatLng {
             lat: Rad(DBL_EPSILON).into(),
             lng: Rad(0.).into(),
-        });
+        })
     }
 
     // ContainsPoint reports whether this cell contains the given point. Note that

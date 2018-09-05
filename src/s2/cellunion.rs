@@ -43,7 +43,7 @@ impl CellUnion {
         let mut v = Vec::new();
         let mut cur = begin.max_tile(&end);
         while cur != end {
-            v.push(cur.clone());
+            v.push(cur);
             cur = cur.next().max_tile(&end);
         }
         CellUnion(v)
@@ -79,7 +79,7 @@ impl CellUnion {
             // See if the last three cells plus this one can be collapsed.
             // We loop because collapsing three accepted cells and adding a higher level cell
             // could cascade into previously accepted cells.
-            let mut ci = ci.clone();
+            let mut ci = *ci;
             while output.len() >= 3 {
                 {
                     let fin = &output[(output.len() - 3)..];
@@ -110,7 +110,7 @@ impl CellUnion {
                 }
                 ci = ci.immediate_parent();
             }
-            output.push(ci.clone());
+            output.push(ci);
         }
 
         // self.0 = output;
@@ -189,7 +189,7 @@ impl CellUnion {
 impl Region for CellUnion {
     // cap_bound returns a Cap that bounds this entity.
     fn cap_bound(&self) -> Cap {
-        if self.0.len() == 0 {
+        if self.0.is_empty() {
             return Cap::empty();
         }
 

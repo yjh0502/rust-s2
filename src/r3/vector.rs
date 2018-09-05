@@ -107,7 +107,7 @@ impl std::ops::Mul<f64> for Vector {
 
 impl Vector {
     pub fn new(x: f64, y: f64, z: f64) -> Self {
-        Vector { x: x, y: y, z: z }
+        Vector { x, y, z }
     }
 
     /// approx_eq reports whether v and ov are equal within a small epsilon.

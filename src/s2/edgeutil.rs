@@ -174,14 +174,14 @@ use s2::point::Point;
 /// the sphere, so this is more complicated than just computing (1-t)*a + t*b
 /// and normalizing the result.
 pub fn interpolate(t: f64, a: &Point, b: &Point) -> Point {
-    if t == 0. {
-        return a.clone();
+    if t == 0f64 {
+        return *a;
     }
-    if t == 1. {
-        return b.clone();
+    if t == 1f64 {
+        return *b;
     }
     let ab = a.0.angle(&b.0).rad();
-    return interpolate_at_distance(&Angle::from(Rad(t * ab)), &a, &b);
+    interpolate_at_distance(&Angle::from(Rad(t * ab)), &a, &b)
 }
 
 /// interpolate_at_distance returns the point X along the line segment AB whose
@@ -200,7 +200,7 @@ pub fn interpolate_at_distance(ax: &Angle, a: &Point, b: &Point) -> Point {
     // normalize it anyway to ensure that the error is within acceptable bounds.
     // (Otherwise errors can build up when the result of one interpolation is
     // fed into another interpolation.)
-    let v = ((&a.0 * ax.rad().cos()) + (&tangent * (ax.rad().sin() / tangent.norm()))).normalize();
+    let v = ((a.0 * ax.rad().cos()) + (tangent * (ax.rad().sin() / tangent.norm()))).normalize();
     Point(v)
 }
 

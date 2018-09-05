@@ -127,7 +127,7 @@ impl Metric {
             return MAX_LEVEL;
         }
 
-        let level = -ilogb(val / self.deriv) >> ((self.dim - 1) as u64);
+        let level = -ilogb(val / self.deriv) >> u64::from(self.dim - 1);
         if level > (MAX_LEVEL as isize) {
             MAX_LEVEL
         } else if level < 0 {
@@ -149,7 +149,7 @@ impl Metric {
             return MAX_LEVEL;
         }
 
-        let level = ilogb(self.deriv / val) >> ((self.dim - 1) as u64);
+        let level = ilogb(self.deriv / val) >> u64::from(self.dim - 1);
         if level > (MAX_LEVEL as isize) {
             MAX_LEVEL
         } else if level < 0 {

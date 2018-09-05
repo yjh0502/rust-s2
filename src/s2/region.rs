@@ -239,7 +239,7 @@ where
         };
 
         let cand_cell = cand.cell.clone();
-        let num_terminals = self.expand_children(&mut cand, cand_cell, num_levels as i32);
+        let num_terminals = self.expand_children(&mut cand, cand_cell, i32::from(num_levels));
         let max_children_shift = self.constraint.level_mod * 2;
         if cand.children.is_empty() {
             return;
@@ -361,7 +361,7 @@ where
                 || self.result.len() + self.pq.len() + cand.num_children
                     <= self.constraint.max_cells
             {
-                for child in cand.children.into_iter() {
+                for child in cand.children {
                     if !self.interior_covering || self.result.len() < self.constraint.max_cells {
                         self.add_candidate(child)
                     }
@@ -384,7 +384,7 @@ impl RegionCoverer {
         Coverer {
             constraint: self,
 
-            region: region,
+            region,
             result: Vec::new(),
             pq: BinaryHeap::new(),
             interior_covering: false,
@@ -485,10 +485,7 @@ fn raw_fast_covering(cap: &Cap) -> CellUnion {
             v.push(CellID::from_face(face));
         }
     } else {
-        for ci in CellID::from(&cap.center)
-            .vertex_neighbors(level)
-            .into_iter()
-        {
+        for ci in CellID::from(&cap.center).vertex_neighbors(level) {
             v.push(ci);
         }
     }

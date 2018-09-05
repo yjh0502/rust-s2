@@ -61,7 +61,7 @@ impl Interval {
     /// Both arguments must be in the range [-π,π]. This function allows inverted intervals
     /// to be created.
     pub fn new(lo: f64, hi: f64) -> Self {
-        let mut i = Interval { lo: lo, hi: hi };
+        let mut i = Interval { lo, hi };
         if lo == -PI && hi != PI {
             i.lo = PI
         }
@@ -142,7 +142,7 @@ impl Interval {
         if l > 0. {
             return l;
         }
-        return -1f64;
+        -1f64
     }
 
     /// fast_contains returns true iff the interval contains p.
@@ -237,12 +237,12 @@ impl Interval {
     /// union returns the smallest interval that contains both the interval and oi.
     pub fn union(&self, other: &Self) -> Self {
         if other.is_empty() {
-            self.clone()
+            *self
         } else if self.fast_contains(other.lo) {
             if self.fast_contains(other.hi) {
                 // Either other⊂ i, or i ∪ other is the full interval.
                 if self.contains_interval(other) {
-                    self.clone()
+                    *self
                 } else {
                     FULL
                 }
@@ -259,7 +259,7 @@ impl Interval {
             }
         } else if self.is_empty() || other.fast_contains(self.lo) {
             // Neither endpoint of oi is in i. Either i ⊂ oi, or i and oi are disjoint.
-            other.clone()
+            *other
         } else if positive_distance(other.hi, self.lo) < positive_distance(self.hi, other.lo) {
             // This is the only hard case where we need to find the closest pair of endpoints.
             Interval {
@@ -288,9 +288,9 @@ impl Interval {
                 // that covers the two disjoint pieces is the shorter of i and oi.
                 // We thus want to pick the shorter of i and oi in both cases.
                 if other.len() < self.len() {
-                    other.clone()
+                    *other
                 } else {
-                    self.clone()
+                    *self
                 }
             } else {
                 Interval {
@@ -305,7 +305,7 @@ impl Interval {
             }
         } else if other.fast_contains(self.lo) {
             // Neither endpoint of oi is in i. Either i ⊂ oi, or i and oi are disjoint.
-            self.clone()
+            *self
         } else {
             EMPTY
         }
@@ -319,7 +319,7 @@ impl Interval {
     pub fn expanded(&self, margin: f64) -> Self {
         if margin >= 0. {
             if self.is_empty() {
-                return self.clone();
+                return *self;
             }
             // Check whether this interval will be full after expansion, allowing
             // for a rounding error when computing each endpoint.
@@ -328,7 +328,7 @@ impl Interval {
             }
         } else {
             if self.is_full() {
-                return self.clone();
+                return *self;
             }
             // Check whether this interval will be empty after expansion, allowing
             // for a rounding error when computing each endpoint.
@@ -343,7 +343,7 @@ impl Interval {
         if result.lo <= -PI {
             result.lo = PI
         }
-        return result;
+        result
     }
 }
 
@@ -359,14 +359,14 @@ impl<'a> std::ops::Add<f64> for &'a Interval {
     /// that it contains the given point "p" (an angle in the range [-Pi, Pi]).
     fn add(self, mut p: f64) -> Self::Output {
         if p.abs() > PI {
-            return self.clone();
+            return *self;
         }
 
         if p == -PI {
             p = PI
         }
         if self.fast_contains(p) {
-            return self.clone();
+            return *self;
         }
         if self.is_empty() {
             return Interval { lo: p, hi: p };
@@ -374,7 +374,7 @@ impl<'a> std::ops::Add<f64> for &'a Interval {
         if positive_distance(p, self.lo) < positive_distance(self.hi, p) {
             return Interval { lo: p, hi: self.hi };
         }
-        return Interval { lo: self.lo, hi: p };
+        Interval { lo: self.lo, hi: p }
     }
 }
 

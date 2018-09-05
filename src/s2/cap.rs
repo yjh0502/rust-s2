@@ -99,8 +99,8 @@ impl Cap {
     /// s1.ChordAngle. This constructor is more efficient than using an s1.Angle.
     pub fn from_center_chordangle(center: &Point, radius: &ChordAngle) -> Self {
         Self {
-            center: center.clone(),
-            radius: radius.clone(),
+            center: *center,
+            radius: *radius,
         }
     }
 
@@ -219,10 +219,7 @@ impl Cap {
         } else if self.is_empty() {
             Self::full()
         } else {
-            Cap::from_center_chordangle(
-                &(self.center.clone() * -1.),
-                &(chordangle::STRAIGHT - self.radius),
-            )
+            Cap::from_center_chordangle(&(self.center * -1.), &(chordangle::STRAIGHT - self.radius))
         }
     }
 
@@ -303,7 +300,7 @@ impl Region for Cap {
                 lng.hi = remainder(center_lng + angle_a, PI * 2.);
             }
         }
-        Rect { lat: lat, lng: lng }
+        Rect { lat, lng }
     }
 
     /// contains_cell reports whether the cap contains the given cell.
@@ -381,7 +378,7 @@ impl Cap {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     /// Centroid returns the true centroid of the cap multiplied by its surface area
@@ -412,7 +409,7 @@ impl Cap {
             })
         } else {
             let r = 1. - 0.5 * self.height();
-            Point(self.center.clone().0 * (r * self.area()))
+            Point(self.center.0 * (r * self.area()))
         }
     }
 

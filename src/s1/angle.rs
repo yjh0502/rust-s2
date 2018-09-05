@@ -153,12 +153,12 @@ macro_rules! convert_i32 {
     ($tyname1:ident, $tyname2:ident, $mul:expr) => {
         impl From<$tyname1> for $tyname2 {
             fn from(a: $tyname1) -> Self {
-                $tyname2((a.0 as f64) * $mul)
+                $tyname2(f64::from(a.0) * $mul)
             }
         }
         impl<'a> From<&'a $tyname1> for $tyname2 {
             fn from(a: &$tyname1) -> Self {
-                $tyname2((a.0 as f64) * $mul)
+                $tyname2(f64::from(a.0) * $mul)
             }
         }
         impl From<$tyname2> for $tyname1 {

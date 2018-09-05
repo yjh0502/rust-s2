@@ -82,7 +82,7 @@ pub fn sign(a: &Point, b: &Point, c: &Point) -> bool {
     //
     //     (1) x ⨯ y == -(y ⨯ x)
     //     (2) -x · y == -(x · y)
-    return c.0.cross(&a.0).dot(&b.0) > 0.;
+    c.0.cross(&a.0).dot(&b.0) > 0f64
 }
 
 /// robust_sign returns a Direction representing the ordering of the points.
@@ -131,11 +131,11 @@ pub fn robust_sign(a: &Point, b: &Point, c: &Point) -> Direction {
 /// points are rare in practice so it seems better to simply fall back to
 /// exact arithmetic in that case.
 pub fn stable_sign(a: &Point, b: &Point, c: &Point) -> Direction {
-    let ab = &b.0 - &a.0;
+    let ab = b.0 - a.0;
     let ab2 = ab.norm2();
-    let bc = &c.0 - &b.0;
+    let bc = c.0 - b.0;
     let bc2 = bc.norm2();
-    let ca = &a.0 - &c.0;
+    let ca = a.0 - c.0;
     let ca2 = ca.norm2();
 
     // Now compute the determinant ((A-C)x(B-C)).C, where the vertices have been

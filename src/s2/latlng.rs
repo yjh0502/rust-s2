@@ -23,7 +23,7 @@ impl std::fmt::Debug for LatLng {
 
 impl LatLng {
     pub fn new(lat: Angle, lng: Angle) -> Self {
-        LatLng { lat: lat, lng: lng }
+        LatLng { lat, lng }
     }
 
     pub fn is_valid(&self) -> bool {
@@ -40,7 +40,7 @@ impl LatLng {
         };
 
         LatLng {
-            lat: lat,
+            lat,
             lng: Rad(remainder(self.lng.rad(), PI * 2.)).into(),
         }
     }

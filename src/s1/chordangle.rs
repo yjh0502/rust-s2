@@ -114,7 +114,7 @@ impl<'a, 'b> std::ops::Add<&'a ChordAngle> for &'b ChordAngle {
         if other.0 == 0.0 {
             // Optimization for the common case where b is an error tolerance
             // parameter that happens to be set to zero.
-            self.clone()
+            *self
         } else if self.0 + other.0 >= 4. {
             // Clamp the angle sum to at most 180 degrees.
             STRAIGHT
@@ -186,9 +186,9 @@ impl ChordAngle {
     pub fn expanded(&self, e: f64) -> Self {
         // If the angle is special, don't change it. Otherwise clamp it to the valid range.
         if self.is_special() {
-            self.clone()
+            *self
         } else {
-            return ChordAngle(0f64.max(4f64.min(self.0 + e)));
+            ChordAngle(0f64.max(4f64.min(self.0 + e)))
         }
     }
 

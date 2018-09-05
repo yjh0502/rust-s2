@@ -218,7 +218,7 @@ const FACE_UVW_FACES: [[[u8; 2]; 3]; 6] = [
 ];
 
 fn uvw_axis(face: u8, axis: u8) -> Point {
-    FACE_UVW_AXES[face as usize][axis as usize].clone()
+    FACE_UVW_AXES[face as usize][axis as usize]
 }
 
 #[cfg(test)]

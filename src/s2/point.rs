@@ -111,7 +111,7 @@ impl Point {
         if x == 0. && y == 0. && z == 0. {
             Point::origin()
         } else {
-            Point(Vector { x: x, y: y, z: z }.normalize())
+            Point(Vector { x, y, z }.normalize())
         }
     }
 
@@ -143,7 +143,7 @@ impl Point {
     pub fn cross(&self, other: &Self) -> Self {
         // NOTE(dnadasi): In the C++ API the equivalent method here was known as "RobustCrossProd",
         // but point_cross more accurately describes how this method is used.
-        let v = (&self.0 + &other.0).cross(&(&other.0 - &self.0));
+        let v = (self.0 + other.0).cross(&(other.0 - self.0));
 
         // Compare exactly to the 0 vector.
         if v.x == 0. && v.y == 0. && v.z == 0. {
@@ -182,7 +182,7 @@ impl Point {
     //struct for Frame and From<>/Into<>?
     //TODO: private
     pub fn frame(&self) -> Matrix3<f64> {
-        let c2 = self.clone();
+        let c2 = *self;
         let c1 = self.ortho();
         let c0 = Point(c1.0.cross(&self.0));
 
@@ -231,7 +231,7 @@ pub fn ordered_ccw(a: &Point, b: &Point, c: &Point, o: &Point) -> bool {
     if robust_sign(a, o, c) == Direction::CounterClockwise {
         sum += 1;
     }
-    return sum >= 2;
+    sum >= 2
 }
 
 /// point_area returns the area on the unit sphere for the triangle defined by the
@@ -368,14 +368,14 @@ pub fn true_centroid(a: &Point, b: &Point, c: &Point) -> Point {
 /// the surface is a much more reasonable interpretation of the "center" of
 /// this triangle.
 pub fn planar_centroid(a: &Point, b: &Point, c: &Point) -> Point {
-    Point((&(&a.0 + &b.0) + &c.0) * (1. / 3.))
+    Point((&(a.0 + b.0) + &c.0) * (1. / 3.))
 }
 
 impl Point {
     /// chordangle constructs a ChordAngle corresponding to the distance
     /// between the two given points. The points must be unit length.
     pub fn chordangle(&self, other: &Point) -> ChordAngle {
-        ChordAngle(4f64.min((&self.0 - &other.0).norm2()))
+        ChordAngle(4f64.min((self.0 - other.0).norm2()))
     }
 }
 

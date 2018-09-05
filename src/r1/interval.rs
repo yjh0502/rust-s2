@@ -131,7 +131,7 @@ impl Interval {
     /// expansion of an empty interval remains empty.
     pub fn expanded(&self, margin: f64) -> Self {
         if self.is_empty() {
-            self.clone()
+            *self
         } else {
             Interval {
                 lo: self.lo - margin,
@@ -143,9 +143,9 @@ impl Interval {
     /// union returns the smallest interval that contains this interval and the given interval.
     pub fn union(&self, other: &Self) -> Self {
         if self.is_empty() {
-            other.clone()
+            *other
         } else if other.is_empty() {
-            self.clone()
+            *self
         } else {
             Interval {
                 lo: self.lo.min(other.lo),
@@ -187,7 +187,7 @@ impl<'a> std::ops::Add<f64> for &'a Interval {
         } else if p > self.hi {
             Interval { lo: self.lo, hi: p }
         } else {
-            self.clone()
+            *self
         }
     }
 }

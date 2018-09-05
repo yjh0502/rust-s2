@@ -169,7 +169,7 @@ impl Rect {
         if x.is_empty() || y.is_empty() {
             EMPTY
         } else {
-            Rect { x: x, y: y }
+            Rect { x, y }
         }
     }
 
@@ -195,7 +195,7 @@ impl Rect {
         if x.is_empty() || y.is_empty() {
             EMPTY
         } else {
-            Rect { x: x, y: y }
+            Rect { x, y }
         }
     }
 
