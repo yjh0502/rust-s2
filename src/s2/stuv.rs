@@ -397,7 +397,7 @@ mod tests {
 
     #[test]
     fn test_siti_st_roundtrip() {
-        let mut rng = rand::StdRng::new().expect("failed to get rng");
+        let mut rng = random::rng();
         for _ in 0..1000 {
             let si = rng.gen_range(0, MAX_SITI);
             assert_eq!(st_to_siti(siti_to_st(si)), si);

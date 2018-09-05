@@ -7,8 +7,10 @@ use s2::cap::Cap;
 use s2::cellid::*;
 use s2::point::{self, Point};
 
-pub fn rng() -> rand::StdRng {
-    rand::StdRng::new().expect("failed to get rng")
+pub fn rng() -> rand::prng::XorShiftRng {
+    use rand::prelude::*;
+
+    rand::prng::XorShiftRng::from_rng(rand::thread_rng()).expect("failed to get rng")
 }
 
 /// skewed_int returns a number in the range [0,2^max_log-1] with bias towards smaller numbers.
