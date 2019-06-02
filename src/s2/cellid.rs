@@ -168,7 +168,7 @@ impl CellID {
         if self.0 == 0 {
             "X".into()
         } else {
-            format!("{:016x}", self.0).trim_right_matches('0').into()
+            format!("{:016x}", self.0).trim_end_matches('0').into()
         }
     }
 
