@@ -80,29 +80,33 @@ const (
     // opposite directions.
     intersectionMergeRadius = 2 * intersectionError
 )
+*/
 
 // SimpleCrossing reports whether edge AB crosses CD at a point that is interior
 // to both edges. Properties:
 //
 //  (1) SimpleCrossing(b,a,c,d) == SimpleCrossing(a,b,c,d)
 //  (2) SimpleCrossing(c,d,a,b) == SimpleCrossing(a,b,c,d)
-func SimpleCrossing(a, b, c, d Point) bool {
+pub fn simple_crossing(a: &Point, b: &Point, c: &Point, d: &Point) -> bool {
     // We compute the equivalent of Sign for triangles ACB, CBD, BDA,
     // and DAC. All of these triangles need to have the same orientation
     // (CW or CCW) for an intersection to exist.
 
-    ab := a.Vector.Cross(b.Vector)
-    acb := -(ab.Dot(c.Vector))
-    bda := ab.Dot(d.Vector)
-    if acb*bda <= 0 {
-        return false
+    let ab = a.0.cross(&b.0);
+    let acb = -(ab.dot(&c.0));
+    let bda = ab.dot(&d.0);
+    if acb * bda <= 0. {
+        return false;
     }
 
-    cd := c.Vector.Cross(d.Vector)
-    cbd := -(cd.Dot(b.Vector))
-    dac := cd.Dot(a.Vector)
-    return (acb*cbd > 0) && (acb*dac > 0)
+    let cd = c.0.cross(&d.0);
+    let cbd = -(cd.dot(&b.0));
+    let dac = cd.dot(&a.0);
+
+    (acb * cbd > 0.) && (acb * dac > 0.)
 }
+
+/*
 
 // VertexCrossing reports whether two edges "cross" in such a way that point-in-polygon
 // containment tests can be implemented by counting the number of edge crossings.

@@ -140,7 +140,6 @@ where
 struct Candidate {
     cell: Cell,
     terminal: bool,
-    num_children: usize,
     children: Vec<Candidate>,
     priority: isize,
 }
@@ -177,7 +176,6 @@ where
         let mut cand = Candidate {
             cell: cell.clone(),
             terminal: false,
-            num_children: 0,
             children: Vec::new(),
             priority: 0,
         };
@@ -218,7 +216,6 @@ where
                     num_terminals += 1;
                 }
                 cand.children.push(child);
-                cand.num_children += 1;
             }
         }
         num_terminals
@@ -346,10 +343,11 @@ where
     /// (fewest children first).
     fn covering_internal(&mut self) {
         self.initial_candidates();
-        while !self.pq.is_empty()
-            && (!self.interior_covering || self.result.len() < self.constraint.max_cells)
-        {
-            let mut cand = self.pq.pop().unwrap();
+
+        while let Some(mut cand) = self.pq.pop() {
+            if !(!self.interior_covering || self.result.len() < self.constraint.max_cells) {
+                break;
+            }
 
             // For interior covering we keep subdividing no matter how many children
             // candidate has. If we reach MaxCells before expanding all children,
@@ -361,8 +359,8 @@ where
             // Subdividing of the candidate with one child does no harm in this case.
             if self.interior_covering
                 || cand.cell.level() < self.constraint.min_level
-                || cand.num_children == 1
-                || self.result.len() + self.pq.len() + cand.num_children
+                || cand.children.len() == 1
+                || self.result.len() + self.pq.len() + cand.children.len()
                     <= self.constraint.max_cells
             {
                 for child in cand.children {
@@ -403,7 +401,7 @@ impl RegionCoverer {
     {
         let mut covering = self.cellunion(region);
         covering.denormalize(
-            clamp(0, self.min_level, MAX_LEVEL as u8).into(),
+            clamp(self.min_level, 0, MAX_LEVEL as u8).into(),
             clamp(self.level_mod, 1, 3).into(),
         );
         covering
@@ -417,7 +415,7 @@ impl RegionCoverer {
     {
         let mut int_covering = self.interior_cellunion(region);
         int_covering.denormalize(
-            clamp(0, self.min_level, MAX_LEVEL as u8).into(),
+            clamp(self.min_level, 0, MAX_LEVEL as u8).into(),
             clamp(self.level_mod, 1, 3).into(),
         );
         int_covering

@@ -4,6 +4,7 @@ use std::f64::consts::PI;
 use consts::*;
 use r1;
 use s1::*;
+use s2::edgeutil;
 use s2::latlng::LatLng;
 
 #[derive(Clone)]
@@ -252,6 +253,145 @@ impl Region for Rect {
         // polygon will contain the cell, but the polygon's bounding box will not.
         self.contains(&c.rect_bound())
     }
+
+    fn intersects_cell(&self, cell: &Cell) -> bool {
+        if self.is_empty() {
+            return false;
+        }
+
+        if self.contains_point(&Point(cell.id.raw_point())) {
+            return true;
+        }
+
+        if cell.contains_point(&Point::from(self.center())) {
+            return true;
+        }
+
+        // Quick rejection test (not required for correctness).
+        if !self.intersects(&cell.rect_bound()) {
+            return false;
+        }
+
+        // Precompute the cell vertices as points and latitude-longitudes. We also
+        // check whether the Cell contains any corner of the rectangle, or
+        // vice-versa, since the edge-crossing tests only check the edge interiors.
+        let mut vertices = Vec::new();
+        let mut latlngs = Vec::new();
+
+        for i in 0..4 {
+            vertices.push(cell.vertex(i));
+            latlngs.push(LatLng::from(vertices[i]));
+
+            if self.contains_latlng(&latlngs[i]) {
+                return true;
+            }
+            if cell.contains_point(&Point::from(self.vertex(i as u8))) {
+                return true;
+            }
+        }
+
+        // Now check whether the boundaries intersect. Unfortunately, a
+        // latitude-longitude rectangle does not have straight edges: two edges
+        // are curved, and at least one of them is concave.
+        for i in 0..4 {
+            let edge_lng =
+                interval::Interval::new(latlngs[i].lng.rad(), latlngs[(i + 1) & 3].lng.rad());
+            if !self.lng.intersects(&edge_lng) {
+                continue;
+            }
+
+            let a = &vertices[i];
+            let b = &vertices[(i + 1) & 3];
+            if edge_lng.contains(self.lng.lo)
+                && intersects_lng_edge(a, b, self.lat, Rad(self.lng.lo).into())
+            {
+                return true;
+            }
+            if edge_lng.contains(self.lng.hi)
+                && intersects_lng_edge(a, b, self.lat, Rad(self.lng.hi).into())
+            {
+                return true;
+            }
+            if intersects_lat_edge(a, b, Rad(self.lat.lo).into(), self.lng) {
+                return true;
+            }
+            if intersects_lat_edge(a, b, Rad(self.lat.hi).into(), self.lng) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
+// intersectsLatEdge reports whether the edge AB intersects the given edge of constant
+// latitude. Requires the points to have unit length.
+fn intersects_lat_edge(a: &Point, b: &Point, lat: Angle, lng: interval::Interval) -> bool {
+    // Unfortunately, lines of constant latitude are curves on
+    // the sphere. They can intersect a straight edge in 0, 1, or 2 points.
+
+    // First, compute the normal to the plane AB that points vaguely north.
+    let mut z = a.cross(b).normalize();
+    if z.0.z < 0. {
+        z = Point(z.0 * -1.)
+    }
+
+    // Extend this to an orthonormal frame (x,y,z) where x is the direction
+    // where the great circle through AB achieves its maximium latitude.
+    let y = z.cross(&Point::from_coords(0., 0., 1.)).normalize();
+    let x = y.cross(&z);
+
+    // Compute the angle "theta" from the x-axis (in the x-y plane defined
+    // above) where the great circle intersects the given line of latitude.
+    let sin_lat = lat.rad().sin();
+    if sin_lat.abs() >= x.0.z {
+        // The great circle does not reach the given latitude.
+        return false;
+    }
+
+    let cos_theta = sin_lat / x.0.z;
+    let sin_theta = (1. - cos_theta * cos_theta).sqrt();
+    let theta = sin_theta.atan2(cos_theta);
+
+    // The candidate intersection points are located +/- theta in the x-y
+    // plane. For an intersection to be valid, we need to check that the
+    // intersection point is contained in the interior of the edge AB and
+    // also that it is contained within the given longitude interval "lng".
+
+    // Compute the range of theta values spanned by the edge AB.
+    let ab_theta = interval::Interval::from_point_pair(
+        a.0.dot(&y.0).atan2(a.0.dot(&x.0)),
+        b.0.dot(&y.0).atan2(b.0.dot(&x.0)),
+    );
+
+    if ab_theta.contains(theta) {
+        // Check if the intersection point is also in the given lng interval.
+        let isect = (x * cos_theta) + (y * sin_theta);
+        if lng.contains(isect.0.y.atan2(isect.0.x)) {
+            return true;
+        }
+    }
+
+    if ab_theta.contains(-theta) {
+        // Check if the other intersection point is also in the given lng interval.
+        let isect = (x * cos_theta) - (y * sin_theta);
+        if lng.contains(isect.0.y.atan2(isect.0.x)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+fn intersects_lng_edge(a: &Point, b: &Point, lat: r1::interval::Interval, lng: Angle) -> bool {
+    // The nice thing about edges of constant longitude is that
+    // they are straight lines on the sphere (geodesics).
+    edgeutil::simple_crossing(
+        a,
+        b,
+        &Point::from(LatLng::new(Rad(lat.lo).into(), lng)),
+        &Point::from(LatLng::new(Rad(lat.hi).into(), lng)),
+    )
 }
 
 impl Rect {
@@ -272,71 +412,6 @@ impl Rect {
 }
 
 /*
-// intersectsLatEdge reports whether the edge AB intersects the given edge of constant
-// latitude. Requires the points to have unit length.
-func intersectsLatEdge(a, b Point, lat s1.Angle, lng s1.Interval) bool {
-    // Unfortunately, lines of constant latitude are curves on
-    // the sphere. They can intersect a straight edge in 0, 1, or 2 points.
-
-    // First, compute the normal to the plane AB that points vaguely north.
-    z := Point{a.PointCross(b).Normalize()}
-    if z.Z < 0 {
-        z = Point{z.Mul(-1)}
-    }
-
-    // Extend this to an orthonormal frame (x,y,z) where x is the direction
-    // where the great circle through AB achieves its maximium latitude.
-    y := Point{z.PointCross(PointFromCoords(0, 0, 1)).Normalize()}
-    x := y.Cross(z.Vector)
-
-    // Compute the angle "theta" from the x-axis (in the x-y plane defined
-    // above) where the great circle intersects the given line of latitude.
-    sinLat := math.Sin(float64(lat))
-    if math.Abs(sinLat) >= x.Z {
-        // The great circle does not reach the given latitude.
-        return false
-    }
-
-    cosTheta := sinLat / x.Z
-    sinTheta := math.Sqrt(1 - cosTheta*cosTheta)
-    theta := math.Atan2(sinTheta, cosTheta)
-
-    // The candidate intersection points are located +/- theta in the x-y
-    // plane. For an intersection to be valid, we need to check that the
-    // intersection point is contained in the interior of the edge AB and
-    // also that it is contained within the given longitude interval "lng".
-
-    // Compute the range of theta values spanned by the edge AB.
-    abTheta := s1.IntervalFromPointPair(
-        math.Atan2(a.Dot(y.Vector), a.Dot(x)),
-        math.Atan2(b.Dot(y.Vector), b.Dot(x)))
-
-    if abTheta.Contains(theta) {
-        // Check if the intersection point is also in the given lng interval.
-        isect := x.Mul(cosTheta).Add(y.Mul(sinTheta))
-        if lng.Contains(math.Atan2(isect.Y, isect.X)) {
-            return true
-        }
-    }
-
-    if abTheta.Contains(-theta) {
-        // Check if the other intersection point is also in the given lng interval.
-        isect := x.Mul(cosTheta).Sub(y.Mul(sinTheta))
-        if lng.Contains(math.Atan2(isect.Y, isect.X)) {
-            return true
-        }
-    }
-    return false
-}
-
-// intersectsLngEdge reports whether the edge AB intersects the given edge of constant
-// longitude. Requires the points to have unit length.
-func intersectsLngEdge(a, b Point, lat r1.Interval, lng s1.Angle) bool {
-    // The nice thing about edges of constant longitude is that
-    // they are straight lines on the sphere (geodesics).
-    return SimpleCrossing(a, b, PointFromLatLng(LatLng{s1.Angle(lat.Lo), lng}),
-        PointFromLatLng(LatLng{s1.Angle(lat.Hi), lng}))
-}
 
 // IntersectsCell reports whether this rectangle intersects the given cell. This is an
 // exact test and may be fairly expensive.
