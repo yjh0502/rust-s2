@@ -23,7 +23,9 @@ use r1;
 use r3::vector::Vector;
 use s1::{self, chordangle, Angle, ChordAngle, Deg, Rad};
 use s2::cell::Cell;
+use s2::cellid::*;
 use s2::edgeutil::*;
+use s2::metric::*;
 use s2::point::Point;
 use s2::rect::Rect;
 use s2::region::Region;
@@ -327,6 +329,26 @@ impl Region for Cap {
         }
         self.intersects_cell_vertices(cell, vertices)
     }
+
+    /// cell_union_bound computes a covering of the given cap. In general the covering consists of
+    /// at most 4 cells (except for very large caps, which may need up to 6 cells).  The output is
+    /// not sorted.
+    fn cell_union_bound(&self) -> Vec<CellID> {
+        let mut v = Vec::new();
+        // Find the maximum level such that the cap contains at most one cell vertex
+        // and such that CellId.VertexNeighbors() can be called.
+        let level = MIN_WIDTHMETRIC.max_level(self.radius().rad());
+        if level == 0 {
+            for face in 0..6 {
+                v.push(CellID::from_face(face));
+            }
+        } else {
+            for ci in CellID::from(&self.center).vertex_neighbors(level - 1) {
+                v.push(ci);
+            }
+        }
+        v
+    }
 }
 
 impl Cap {
@@ -466,6 +488,12 @@ impl<'a> std::ops::Add<&'a Point> for Cap {
             let new_rad = self.center.chordangle(&p).0.max(self.radius.0);
             Self::from_center_chordangle(&self.center, &ChordAngle(new_rad))
         }
+    }
+}
+impl std::ops::Add<Point> for Cap {
+    type Output = Cap;
+    fn add(self, other: Point) -> Self::Output {
+        self + &other
     }
 }
 

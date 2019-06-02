@@ -24,7 +24,6 @@ use s2::cap::Cap;
 use s2::cell::Cell;
 use s2::cellid::*;
 use s2::cellunion::CellUnion;
-use s2::metric::*;
 use s2::rect::Rect;
 
 /// A Region represents a two-dimensional region on the unit sphere.
@@ -54,6 +53,10 @@ pub trait Region {
     /// does not intersect.
     fn intersects_cell(&self, cell: &Cell) -> bool {
         self.cap_bound().intersects_cell(cell)
+    }
+
+    fn cell_union_bound(&self) -> Vec<CellID> {
+        self.cap_bound().cell_union_bound()
     }
 }
 
@@ -317,7 +320,7 @@ where
             max_cells: min(self.constraint.max_cells, 4),
         };
 
-        let mut cells = temp.fast_covering(&self.region.cap_bound());
+        let mut cells = temp.fast_covering(self.region);
         let mut v = &mut cells.0;
         self.adjust_cell_levels(&mut v);
         for ci in v.iter() {
@@ -463,34 +466,14 @@ impl RegionCoverer {
     ///
     /// This function is useful as a starting point for algorithms that
     /// recursively subdivide cells.
-    pub fn fast_covering(&self, cap: &Cap) -> CellUnion {
-        let mut cu = raw_fast_covering(cap);
+    pub fn fast_covering<'a, R>(&self, region: &'a R) -> CellUnion
+    where
+        R: Region,
+    {
+        let mut cu = CellUnion(region.cell_union_bound());
         self.normalize_covering(&mut cu);
         cu
     }
-}
-
-/// raw_fast_covering computes a covering of the given cap. In general the covering consists of
-/// at most 4 cells (except for very large caps, which may need up to 6 cells).
-/// The output is not sorted.
-fn raw_fast_covering(cap: &Cap) -> CellUnion {
-    let mut v = Vec::new();
-    // Find the maximum level such that the cap contains at most one cell vertex
-    // and such that CellId.VertexNeighbors() can be called.
-    let level = min(
-        MIN_WIDTHMETRIC.max_level(2. * cap.radius().rad()),
-        MAX_LEVEL - 1,
-    );
-    if level == 0 {
-        for face in 0..6 {
-            v.push(CellID::from_face(face));
-        }
-    } else {
-        for ci in CellID::from(&cap.center).vertex_neighbors(level) {
-            v.push(ci);
-        }
-    }
-    CellUnion(v)
 }
 
 impl RegionCoverer {
@@ -567,6 +550,7 @@ mod tests {
     use super::*;
     use rand::Rng;
     use s2::cell::*;
+    use s2::metric::*;
     use s2::random;
     use std::f64::consts::PI;
 

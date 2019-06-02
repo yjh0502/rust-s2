@@ -223,9 +223,10 @@ impl Region for Rect {
         if remainder(self.lng.hi - self.lng.lo, 2. * PI) >= 0.
             && self.lng.hi - self.lng.lo < 2. * PI
         {
-            let mid_cap = Cap::from(
-                &(Point::from(self.center()) + Point::from(self.lo()) + Point::from(self.hi())),
-            );
+            let mid_cap = Cap::from(&Point::from(self.center()))
+                + Point::from(self.lo())
+                + Point::from(self.hi());
+
             if mid_cap.height() < pole_cap.height() {
                 return mid_cap;
             }
