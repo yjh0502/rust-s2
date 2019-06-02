@@ -209,10 +209,10 @@ mod tests {
         };
     }
 
-    const UNIT: Interval = I!{0., 1.};
-    const NEG_UNIT: Interval = I!{-1., 0.};
-    const HALF: Interval = I!{0.5, 0.5};
-    const ZERO: Interval = I!{0., 0.};
+    const UNIT: Interval = I! {0., 1.};
+    const NEG_UNIT: Interval = I! {-1., 0.};
+    const HALF: Interval = I! {0.5, 0.5};
+    const ZERO: Interval = I! {0., 0.};
 
     #[test]
     fn is_empty() {

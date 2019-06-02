@@ -228,10 +228,11 @@ impl Cell {
         // perpendicular to its normal. The cross product of its diagonals gives
         // the normal, and the length of the normal is twice the projected area.
         let verts = self.vertices();
-        let flat_area = 0.5 * (&verts[2] - &verts[0])
-            .0
-            .cross(&(&verts[3] - &verts[1]).0)
-            .norm();
+        let flat_area = 0.5
+            * (&verts[2] - &verts[0])
+                .0
+                .cross(&(&verts[3] - &verts[1]).0)
+                .norm();
 
         // Now, compensate for the curvature of the cell surface by pretending
         // that the cell is shaped like a spherical cap. The ratio of the
@@ -451,7 +452,6 @@ impl Region for Cell {
 // Distance/DistanceToEdge
 // VertexChordDistance
 // */
-
 #[cfg(test)]
 mod tests {
     extern crate rand;

@@ -468,13 +468,11 @@ mod tests {
                     assert_eq!(si, si_random);
                     assert_eq!(ti, ti_random);
                     if gotlevel >= 0 {
-                        assert!(
-                            p_random.approx_eq(
-                                &CellID::from_face_ij(f, si as i32 / 2, ti as i32 / 2)
-                                    .parent(gotlevel as u64)
-                                    .into()
-                            )
-                        );
+                        assert!(p_random.approx_eq(
+                            &CellID::from_face_ij(f, si as i32 / 2, ti as i32 / 2)
+                                .parent(gotlevel as u64)
+                                .into()
+                        ));
                     }
                 }
             }

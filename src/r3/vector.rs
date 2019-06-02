@@ -314,26 +314,18 @@ mod tests {
 
     #[test]
     fn test_vector_cross() {
-        assert!(
-            V!(1., 0., 0.)
-                .cross(&V!(1., 0., 0.))
-                .approx_eq(&V!(0., 0., 0.))
-        );
-        assert!(
-            V!(1., 0., 0.)
-                .cross(&V!(0., 1., 0.))
-                .approx_eq(&V!(0., 0., 1.))
-        );
-        assert!(
-            V!(0., 1., 0.)
-                .cross(&V!(1., 0., 0.))
-                .approx_eq(&V!(0., 0., -1.))
-        );
-        assert!(
-            V!(1., 2., 3.)
-                .cross(&V!(-4., 5., -6.))
-                .approx_eq(&V!(-27., -6., 13.))
-        );
+        assert!(V!(1., 0., 0.)
+            .cross(&V!(1., 0., 0.))
+            .approx_eq(&V!(0., 0., 0.)));
+        assert!(V!(1., 0., 0.)
+            .cross(&V!(0., 1., 0.))
+            .approx_eq(&V!(0., 0., 1.)));
+        assert!(V!(0., 1., 0.)
+            .cross(&V!(1., 0., 0.))
+            .approx_eq(&V!(0., 0., -1.)));
+        assert!(V!(1., 2., 3.)
+            .cross(&V!(-4., 5., -6.))
+            .approx_eq(&V!(-27., -6., 13.)));
     }
 
     #[test]

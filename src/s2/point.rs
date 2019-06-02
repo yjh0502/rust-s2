@@ -296,9 +296,9 @@ pub fn point_area(a: &Point, b: &Point, c: &Point) -> f64 {
         * (0.5 * (s - sa)).tan()
         * (0.5 * (s - sb)).tan()
         * (0.5 * (s - sc)).tan())
-        .max(0.)
-        .sqrt()
-        .atan()
+    .max(0.)
+    .sqrt()
+    .atan()
 }
 
 /// true_centroid returns the true centroid of the spherical triangle ABC multiplied by the

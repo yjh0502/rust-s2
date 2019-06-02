@@ -265,7 +265,8 @@ where
         // Finally, among cells with equal numbers of children we prefer those
         // with the smallest number of children that cannot be refined further.
         cand.priority = -((((((level as usize) << max_children_shift) + cand.children.len())
-            << max_children_shift) + num_terminals) as isize);
+            << max_children_shift)
+            + num_terminals) as isize);
         self.pq.push(cand)
     }
 

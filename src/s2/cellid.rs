@@ -371,7 +371,8 @@ impl CellID {
                     i + size,
                     j + k,
                     same_face && i + size < MAX_SIZE_I32,
-                ).parent(level),
+                )
+                .parent(level),
             );
 
             if k >= size {
@@ -1113,7 +1114,8 @@ pub mod tests {
             x: 0.,
             y: 0.,
             z: 1.,
-        }).into();
+        })
+        .into();
 
         let mut neighbors = id.vertex_neighbors(5);
         neighbors.sort();
