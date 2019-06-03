@@ -17,7 +17,7 @@ limitations under the License.
 
 //! This file implements functions for various S2 measurements.
 
-use float_extras::f64::{ilogb, ldexp};
+use libm::{ilogb, ldexp};
 use std::f64::consts::{PI, SQRT_2};
 
 use s2::cellid::MAX_LEVEL;
@@ -112,7 +112,7 @@ impl Metric {
     /// value returns the value of the metric at the given level.
     pub fn value(&self, level: u8) -> f64 {
         // return math.Ldexp(m.Deriv, -m.Dim*level)
-        ldexp(self.deriv, -1 * (self.dim as isize) * (level as isize))
+        ldexp(self.deriv, -1 * (self.dim as i32) * (level as i32))
     }
 
     /// min_level returns the minimum level such that the metric is at most
@@ -128,7 +128,7 @@ impl Metric {
         }
 
         let level = -ilogb(val / self.deriv) >> u64::from(self.dim - 1);
-        if level > (MAX_LEVEL as isize) {
+        if level > (MAX_LEVEL as i32) {
             MAX_LEVEL
         } else if level < 0 {
             0
@@ -150,7 +150,7 @@ impl Metric {
         }
 
         let level = ilogb(self.deriv / val) >> u64::from(self.dim - 1);
-        if level > (MAX_LEVEL as isize) {
+        if level > (MAX_LEVEL as i32) {
             MAX_LEVEL
         } else if level < 0 {
             0

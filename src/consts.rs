@@ -1,5 +1,3 @@
-use float_extras;
-
 /// Define the maximum rounding error for arithmetic operations. Depending on the
 /// platform the mantissa precision may be different than others, so we choose to
 /// use specific values to be consistent across all.
@@ -38,7 +36,7 @@ pub fn f64_near(x: f64, y: f64, eps: f64) -> bool {
 
 ///TODO: to util module?
 pub fn remainder(x: f64, y: f64) -> f64 {
-    float_extras::f64::remainder(x, y)
+    ::libm::remquo(x, y).0
 }
 
 pub fn clamp<T>(val: T, min: T, max: T) -> T
