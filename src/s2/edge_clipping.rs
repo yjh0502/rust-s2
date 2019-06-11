@@ -737,13 +737,193 @@ pub mod test {
     }
 
     #[test]
+    fn test_edge_clipping_exit_axis() {
+        assert!((Point(r3::vector::Vector{x: 0.0, y: -(2.0_f64 / 3.0_f64).sqrt(), z: (2.0_f64 / 3.0_f64).sqrt()}) as PointUVW).exit_axis() == Axis::AxisU);
+        assert!((Point(r3::vector::Vector{x: 0.0, y: (4.0_f64 / 3.0_f64).sqrt(), z: -(4.0_f64 / 3.0_f64).sqrt()}) as PointUVW).exit_axis() == Axis::AxisU);
+        assert!((Point(r3::vector::Vector{x: -(4.0_f64 / 3.0_f64).sqrt(), y: -(4.0_f64 / 3.0_f64).sqrt(), z: 0.0}) as PointUVW).exit_axis() == Axis::AxisV);
+        assert!((Point(r3::vector::Vector{x: (4.0_f64 / 3.0_f64).sqrt(), y: (4.0_f64 / 3.0_f64).sqrt(), z: 0.0}) as PointUVW).exit_axis() == Axis::AxisV);
+        assert!((Point(r3::vector::Vector{x: (2.0_f64 / 3.0_f64).sqrt(), y: -(2.0_f64 / 3.0_f64).sqrt(), z: 0.0}) as PointUVW).exit_axis() == Axis::AxisV);
+        assert!((Point(r3::vector::Vector{x: 1.67968702783622, y: 0.0, z: 0.870988820096491}) as PointUVW).exit_axis() == Axis::AxisV);
+        assert!((Point(r3::vector::Vector{x: 0.0, y: 2.0_f64.sqrt(), z: 2.0_f64.sqrt()}) as PointUVW).exit_axis() == Axis::AxisU);
+    }
+
+    #[test]
     fn test_edge_clipping_exit_point() {
-        assert!((Point(r3::vector::Vector{x: 0, y: -math.Sqrt(2.0 / 3.0), z: math.Sqrt(2.0 / 3.0)}) as PointUVW).exit_axis() == Axis::AxisU);
-        assert!((Point(r3::vector::Vector{x: 0, y: math.Sqrt(4.0 / 3.0), z: -math.Sqrt(4.0 / 3.0)}) as PointUVW).exit_axis() == Axis::AxisU);
-        assert!((Point(r3::vector::Vector{x: -math.Sqrt(4.0 / 3.0), y: -math.Sqrt(4.0 / 3.0), z: 0}) as PointUVW).exit_axis() == Axis::AxisV);
-        assert!((Point(r3::vector::Vector{x: math.Sqrt(4.0 / 3.0), y: math.Sqrt(4.0 / 3.0), z: 0}) as PointUVW).exit_axis() == Axis::AxisV);
-        assert!((Point(r3::vector::Vector{x: math.Sqrt(2.0 / 3.0), y: -math.Sqrt(2.0 / 3.0), z: 0}) as PointUVW).exit_axis() == Axis::AxisV);
-        assert!((Point(r3::vector::Vector{x: 1.67968702783622, y: 0, z: 0.870988820096491}) as PointUVW).exit_axis() == Axis::AxisV);
-        assert!((Point(r3::vector::Vector{x: 0, y: math.Sqrt2, z: math.Sqrt2}) as PointUVW).exit_axis() == Axis::AxisU);
+        assert!((Point(r3::vector::Vector{x: -3.88578058618805e-16, y: -(2.0_f64 / 3.0_f64).sqrt(), z: (2.0_f64 / 3.0_f64).sqrt()}) as PointUVW).exit_point(Axis::AxisU) == r2::point::Point{x: -1_f64, y: 1_f64});
+        assert!((Point(r3::vector::Vector{x: (4.0_f64 / 3.0_f64).sqrt(), y: -(4.0_f64 / 3.0_f64).sqrt(), z: 0_f64}) as PointUVW).exit_point(Axis::AxisV) == r2::point::Point{x: -1_f64, y: -1_f64});
+        assert!((Point(r3::vector::Vector{x: -(4.0_f64 / 3.0_f64).sqrt(), y: -(4.0_f64 / 3.0_f64).sqrt(), z: 0_f64}) as PointUVW).exit_point(Axis::AxisV) == r2::point::Point{x: -1_f64, y: 1_f64});
+        assert!((Point(r3::vector::Vector{x: -6.66134e-16, y: (4.0_f64 / 3.0_f64).sqrt(), z: -(4.0_f64 / 3.0_f64).sqrt()}) as PointUVW).exit_point(Axis::AxisU) == r2::point::Point{x: 1_f64, y: 1_f64});
+    }
+
+    fn test_clip_to_padded_face(a: r2::point::Point, b: r2::point::Point) {
+        a = r2::point::Point{a.normalize()}
+        b = r2::point::Point{b.normalize()}
+        if a.vector == b.mul(-1) {
+            return
+        }
+
+        // Test FaceSegements for this pair.
+        segments := FaceSegments(a, b)
+        n := len(segments)
+        if n == 0 {
+            t.Errorf("FaceSegments(%v, %v) should have generated at least one entry", a, b)
+        }
+
+        biunit := r2.Rect{r1.Interval{-1, 1}, r1.Interval{-1, 1}}
+        const errorRadians = faceClipErrorRadians
+
+        // The first and last vertices should approximately equal A and B.
+        if aPrime := faceUVToXYZ(segments[0].face, segments[0].a.X, segments[0].a.Y); a.Angle(aPrime) > errorRadians {
+            t.Errorf("%v.Angle(%v) = %v, want < %v", a, aPrime, a.Angle(aPrime), errorRadians)
+        }
+        if bPrime := faceUVToXYZ(segments[n-1].face, segments[n-1].b.X, segments[n-1].b.Y); b.Angle(bPrime) > errorRadians {
+            t.Errorf("%v.Angle(%v) = %v, want < %v", b, bPrime, b.Angle(bPrime), errorRadians)
+        }
+
+        norm := Point{a.PointCross(b).Normalize()}
+        aTan := Point{norm.Cross(a.Vector)}
+        bTan := Point{b.Cross(norm.Vector)}
+
+        for i := 0; i < n; i++ {
+            // Vertices may not protrude outside the biunit square.
+            if !biunit.ContainsPoint(segments[i].a) {
+                t.Errorf("biunit.ContainsPoint(%v) = false, want true", segments[i].a)
+            }
+            if !biunit.ContainsPoint(segments[i].b) {
+                t.Errorf("biunit.ContainsPoint(%v) = false, want true", segments[i].b)
+            }
+            if i == 0 {
+                continue
+            }
+
+            // The two representations of each interior vertex (on adjacent faces)
+            // must correspond to exactly the same Point.
+            if segments[i-1].face == segments[i].face {
+                t.Errorf("%v.face != %v.face", segments[i-1], segments[i])
+            }
+            if got, want := faceUVToXYZ(segments[i-1].face, segments[i-1].b.X, segments[i-1].b.Y),
+                faceUVToXYZ(segments[i].face, segments[i].a.X, segments[i].a.Y); !got.ApproxEqual(want) {
+                t.Errorf("interior vertices on adjacent faces should be the same point. got %v != %v", got, want)
+            }
+
+            // Interior vertices should be in the plane containing A and B, and should
+            // be contained in the wedge of angles between A and B (i.e., the dot
+            // products with aTan and bTan should be non-negative).
+            p := faceUVToXYZ(segments[i].face, segments[i].a.X, segments[i].a.Y).Normalize()
+            if got := math.Abs(p.Dot(norm.Vector)); got > errorRadians {
+                t.Errorf("%v.Dot(%v) = %v, want <= %v", p, norm, got, errorRadians)
+            }
+            if got := p.Dot(aTan.Vector); got < -errorRadians {
+                t.Errorf("%v.Dot(%v) = %v, want >= %v", p, aTan, got, -errorRadians)
+            }
+            if got := p.Dot(bTan.Vector); got < -errorRadians {
+                t.Errorf("%v.Dot(%v) = %v, want >= %v", p, bTan, got, -errorRadians)
+            }
+        }
+
+        padding := 0.0
+        if !oneIn(10) {
+            padding = 1e-10 * math.Pow(1e-5, randomFloat64())
+        }
+
+        xAxis := a
+        yAxis := aTan
+
+        // Given the points A and B, we expect all angles generated from the clipping
+        // to fall within this range.
+        expectedAngles := s1.Interval{0, float64(a.Angle(b.Vector))}
+        if expectedAngles.IsInverted() {
+            expectedAngles = s1.Interval{expectedAngles.Hi, expectedAngles.Lo}
+        }
+        maxAngles := expectedAngles.Expanded(faceClipErrorRadians)
+        var actualAngles s1.Interval
+
+        for face := 0; face < 6; face++ {
+            aUV, bUV, intersects := ClipToPaddedFace(a, b, face, padding)
+            if !intersects {
+                continue
+            }
+
+            aClip := Point{faceUVToXYZ(face, aUV.X, aUV.Y).Normalize()}
+            bClip := Point{faceUVToXYZ(face, bUV.X, bUV.Y).Normalize()}
+
+            desc := fmt.Sprintf("on face %d, a=%v, b=%v, aClip=%v, bClip=%v,", face, a, b, aClip, bClip)
+
+            if got := math.Abs(aClip.Dot(norm.Vector)); got > faceClipErrorRadians {
+                t.Errorf("%s abs(%v.Dot(%v)) = %v, want <= %v", desc, aClip, norm, got, faceClipErrorRadians)
+            }
+            if got := math.Abs(bClip.Dot(norm.Vector)); got > faceClipErrorRadians {
+                t.Errorf("%s abs(%v.Dot(%v)) = %v, want <= %v", desc, bClip, norm, got, faceClipErrorRadians)
+            }
+
+            if float64(aClip.Angle(a.Vector)) > faceClipErrorRadians {
+                if got := math.Max(math.Abs(aUV.X), math.Abs(aUV.Y)); !float64Eq(got, 1+padding) {
+                    t.Errorf("%s the largest component of %v = %v, want %v", desc, aUV, got, 1+padding)
+                }
+            }
+            if float64(bClip.Angle(b.Vector)) > faceClipErrorRadians {
+                if got := math.Max(math.Abs(bUV.X), math.Abs(bUV.Y)); !float64Eq(got, 1+padding) {
+                    t.Errorf("%s the largest component of %v = %v, want %v", desc, bUV, got, 1+padding)
+                }
+            }
+
+            aAngle := math.Atan2(aClip.Dot(yAxis.Vector), aClip.Dot(xAxis.Vector))
+            bAngle := math.Atan2(bClip.Dot(yAxis.Vector), bClip.Dot(xAxis.Vector))
+
+            // Rounding errors may cause bAngle to be slightly less than aAngle.
+            // We handle this by constructing the interval with FromPointPair,
+            // which is okay since the interval length is much less than math.Pi.
+            faceAngles := s1.IntervalFromEndpoints(aAngle, bAngle)
+            if faceAngles.IsInverted() {
+                faceAngles = s1.Interval{faceAngles.Hi, faceAngles.Lo}
+            }
+            if !maxAngles.ContainsInterval(faceAngles) {
+                t.Errorf("%s %v.ContainsInterval(%v) = false, but should have contained this interval", desc, maxAngles, faceAngles)
+            }
+            actualAngles = actualAngles.Union(faceAngles)
+        }
+        if !actualAngles.Expanded(faceClipErrorRadians).ContainsInterval(expectedAngles) {
+            t.Errorf("the union of all angle segments should be larger than the expected angle")
+        }
+
+    }
+
+    #[test]
+    fn test_edge_clipping_clip_to_padded_face() {
+        // Start with a few simple cases.
+        // An edge that is entirely contained within one cube face:
+        test_clip_to_padded_face(t, Point{r3::vector::Vector{1, -0.5, -0.5}}, Point{r3::vector::Vector{1, 0.5, 0.5}})
+        test_clip_to_padded_face(t, Point{r3::vector::Vector{1, 0.5, 0.5}}, Point{r3::vector::Vector{1, -0.5, -0.5}})
+        // An edge that crosses one cube edge:
+        test_clip_to_padded_face(t, Point{r3::vector::Vector{1, 0, 0}}, Point{r3::vector::Vector{0, 1, 0}})
+        test_clip_to_padded_face(t, Point{r3::vector::Vector{0, 1, 0}}, Point{r3::vector::Vector{1, 0, 0}})
+        // An edge that crosses two opposite edges of face 0:
+        test_clip_to_padded_face(t, Point{r3::vector::Vector{0.75, 0, -1}}, Point{r3::vector::Vector{0.75, 0, 1}})
+        test_clip_to_padded_face(t, Point{r3::vector::Vector{0.75, 0, 1}}, Point{r3::vector::Vector{0.75, 0, -1}})
+        // An edge that crosses two adjacent edges of face 2:
+        test_clip_to_padded_face(t, Point{r3::vector::Vector{1, 0, 0.75}}, Point{r3::vector::Vector{0, 1, 0.75}})
+        test_clip_to_padded_face(t, Point{r3::vector::Vector{0, 1, 0.75}}, Point{r3::vector::Vector{1, 0, 0.75}})
+        // An edges that crosses three cube edges (four faces):
+        test_clip_to_padded_face(t, Point{r3::vector::Vector{1, 0.9, 0.95}}, Point{r3::vector::Vector{-1, 0.95, 0.9}})
+        test_clip_to_padded_face(t, Point{r3::vector::Vector{-1, 0.95, 0.9}}, Point{r3::vector::Vector{1, 0.9, 0.95}})
+
+        // Comprehensively test edges that are difficult to handle, especially those
+        // that nearly follow one of the 12 cube edges.
+        biunit := r2.Rect{r1.Interval{-1, 1}, r1.Interval{-1, 1}}
+
+        for i := 0; i < 1000; i++ {
+            // Choose two adjacent cube corners P and Q.
+            face := randomUniformInt(6)
+            i := randomUniformInt(4)
+            j := (i + 1) & 3
+            p := Point{faceUVToXYZ(face, biunit.Vertices()[i].X, biunit.Vertices()[i].Y)}
+            q := Point{faceUVToXYZ(face, biunit.Vertices()[j].X, biunit.Vertices()[j].Y)}
+
+            // Now choose two points that are nearly in the plane of PQ, preferring
+            // points that are near cube corners, face midpoints, or edge midpoints.
+            a := perturbedCornerOrMidpoint(p, q)
+            b := perturbedCornerOrMidpoint(p, q)
+            test_clip_to_padded_face(t, a, b)
+        }
     }
 }
