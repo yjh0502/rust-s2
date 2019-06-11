@@ -738,6 +738,12 @@ pub mod test {
 
     #[test]
     fn test_edge_clipping_exit_point() {
-
+        assert!((Point(r3::vector::Vector{x: 0, y: -math.Sqrt(2.0 / 3.0), z: math.Sqrt(2.0 / 3.0)}) as PointUVW).exit_axis() == Axis::AxisU);
+        assert!((Point(r3::vector::Vector{x: 0, y: math.Sqrt(4.0 / 3.0), z: -math.Sqrt(4.0 / 3.0)}) as PointUVW).exit_axis() == Axis::AxisU);
+        assert!((Point(r3::vector::Vector{x: -math.Sqrt(4.0 / 3.0), y: -math.Sqrt(4.0 / 3.0), z: 0}) as PointUVW).exit_axis() == Axis::AxisV);
+        assert!((Point(r3::vector::Vector{x: math.Sqrt(4.0 / 3.0), y: math.Sqrt(4.0 / 3.0), z: 0}) as PointUVW).exit_axis() == Axis::AxisV);
+        assert!((Point(r3::vector::Vector{x: math.Sqrt(2.0 / 3.0), y: -math.Sqrt(2.0 / 3.0), z: 0}) as PointUVW).exit_axis() == Axis::AxisV);
+        assert!((Point(r3::vector::Vector{x: 1.67968702783622, y: 0, z: 0.870988820096491}) as PointUVW).exit_axis() == Axis::AxisV);
+        assert!((Point(r3::vector::Vector{x: 0, y: math.Sqrt2, z: math.Sqrt2}) as PointUVW).exit_axis() == Axis::AxisU);
     }
 }

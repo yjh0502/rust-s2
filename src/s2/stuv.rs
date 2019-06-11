@@ -102,8 +102,7 @@ pub fn face_xyz_to_uv(face: u8, p: &Point) -> Option<(f64, f64)> {
     }
 }
 
-#[cfg(test)]
-fn face_xyz_to_uvw(face: u8, p: &Point) -> Point {
+pub fn face_xyz_to_uvw(face: u8, p: &Point) -> Point {
     let v = &p.0;
     match face {
         0 => Point(Vector::new(v.y, v.z, v.x)),

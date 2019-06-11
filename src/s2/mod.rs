@@ -5,6 +5,7 @@ pub mod cellid;
 pub mod cellunion;
 
 pub mod cap;
+pub mod edge_clipping;
 pub mod latlng;
 pub mod point;
 pub mod rect;
@@ -14,6 +15,7 @@ pub mod region;
 pub mod edgeutil;
 pub mod metric;
 pub mod predicates;
+
 
 #[cfg(test)]
 mod random;
