@@ -17,14 +17,49 @@ limitations under the License.
 
 use consts::*;
 use std;
+use std::cmp::Ordering;
 
 /// Point represents a point in ℝ².
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Point {
     /// x coordinate of the point
     pub x: f64,
     /// y coordinate of the point
     pub y: f64,
+}
+
+impl Eq for Point {}
+
+impl Ord for Point {
+    fn cmp(&self, ov: &Point) -> Ordering {
+        if self.x < ov.x {
+            return Ordering::Less
+        }
+        if self.x > ov.x {
+            return Ordering::Greater
+        }
+
+        // First elements were the same, try the next.
+        if self.y < ov.y {
+            return Ordering::Less
+        }
+        if self.y > ov.y {
+            return Ordering::Greater
+        }
+        return Ordering::Equal
+    }
+}
+
+impl PartialOrd for Point {
+    fn partial_cmp(&self, other: &Point) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Point {
+    fn eq(&self, other: &Point) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
 }
 
 impl std::ops::Add<Point> for Point {

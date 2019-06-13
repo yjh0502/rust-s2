@@ -16,6 +16,7 @@ pub mod edgeutil;
 pub mod metric;
 pub mod predicates;
 
+pub mod shape;
 
 #[cfg(test)]
 mod random;
