@@ -756,8 +756,8 @@ pub mod test {
     }
 
     fn test_clip_to_padded_face(a: r2::point::Point, b: r2::point::Point) {
-        a = r2::point::Point{a.normalize()}
-        b = r2::point::Point{b.normalize()}
+        a.normalize();
+        b.normalize();
         if a.vector == b.mul(-1) {
             return
         }
