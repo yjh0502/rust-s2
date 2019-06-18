@@ -198,22 +198,16 @@ mod tests {
 	pub fn test_precise_round_trip() {
 
 		let tv = Vector{x:1.0, y:2.0, z:3.0};
-		println!("tv.x: {}", tv.x);
-		let tvnorm = tv.clone().normalize();
-		println!("tvnorm.x: {}", tvnorm.x);
-		let ptv = precisevector::precise_vector_from_vector(tv.clone());
-		println!("ptv.x: {}", ptv.x);
-		let ptvret = ptv.clone().vector();
-		println!("ptvret.x: {}", ptvret.x);
-		println!("----------------------------------------");
-		let nptv = ptv.clone();
-		let x = nptv.x.to_f64().unwrap();
-		let y = nptv.y.to_f64().unwrap();
-		let z = nptv.z.to_f64().unwrap();
-		let manual = Vector{x, y, z}.normalize();
-		println!("tv.x: {}    manual.x: {}", tv.x, nptv.x);
+		let tv_normalized = tv.clone().normalize();
+		let precise_tv = precisevector::precise_vector_from_vector(tv.clone());
+		let precise_tv_converted_and_normalized = precise_tv.clone().vector();
 
-		assert_eq!(tvnorm.x, manual.x);
+		println!("vector.x: {}    			 after_conversion_to_bigdecimal.x: {}", tv.x, precise_tv.x);
+		println!("vector.x normalized: {}    bigdecimal_converted_back_and_normalized.x: {}", tv_normalized.x, precise_tv_converted_and_normalized.x); 
+		println!("");
+		println!("");
+
+		assert_eq!(tv_normalized.x, precise_tv_converted_and_normalized.x);
 
 		assert!(precisevector::precise_vector_from_vector(Vector{x:0.0, y:0.0, z:0.0}).vector() == Vector{x:0.0, y:0.0, z:0.0}.normalize());
 		assert!(precisevector::precise_vector_from_vector(Vector{x:1.0, y:2.0, z:3.0}).vector() == Vector{x:1.0, y:2.0, z:3.0}.normalize());
