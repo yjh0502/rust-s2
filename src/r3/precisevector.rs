@@ -188,31 +188,38 @@ impl PreciseVector {
 #[cfg(test)]
 mod tests {
 
+	use std::num;
 	use r3::vector::Axis;
 	use r3::precisevector;
 	use r3::vector::Vector;
 	use consts::EPSILON;
-	use r3::precisevector::bigdecimal::ToPrimitive;
 
 	#[test]
 	pub fn test_precise_round_trip() {
 
-		let tv = Vector{x:1.0, y:2.0, z:3.0};
-		let tv_normalized = tv.clone().normalize();
-		let precise_tv = precisevector::precise_vector_from_vector(tv.clone());
-		let precise_tv_converted_and_normalized = precise_tv.clone().vector();
+		let pvn = precisevector::precise_vector_from_vector(Vector{x:0.0, y:0.0, z:0.0}).vector();
+		let nvn = Vector{x:0.0, y:0.0, z:0.0}.normalize();
+		assert!((pvn.x - nvn.x).abs() <= 0.0000000000001);
+		assert!((pvn.y - nvn.y).abs() <= 0.0000000000001);
+		assert!((pvn.z - nvn.z).abs() <= 0.0000000000001);
 
-		println!("vector.x: {}    			 after_conversion_to_bigdecimal.x: {}", tv.x, precise_tv.x);
-		println!("vector.x normalized: {}    bigdecimal_converted_back_and_normalized.x: {}", tv_normalized.x, precise_tv_converted_and_normalized.x); 
-		println!("");
-		println!("");
+		let pvn = precisevector::precise_vector_from_vector(Vector{x:1.0, y:2.0, z:3.0}).vector();
+		let nvn = Vector{x:1.0, y:2.0, z:3.0}.normalize();
+		assert!((pvn.x - nvn.x).abs() <= 0.0000000000001);
+		assert!((pvn.y - nvn.y).abs() <= 0.0000000000001);
+		assert!((pvn.z - nvn.z).abs() <= 0.0000000000001);
 
-		assert_eq!(tv_normalized.x, precise_tv_converted_and_normalized.x);
+		let pvn = precisevector::precise_vector_from_vector(Vector{x:3.0, y:-4.0, z:12.0}).vector();
+		let nvn = Vector{x:3.0, y:-4.0, z:12.0}.normalize();
+		assert!((pvn.x - nvn.x).abs() <= 0.0000000000001);
+		assert!((pvn.y - nvn.y).abs() <= 0.0000000000001);
+		assert!((pvn.z - nvn.z).abs() <= 0.0000000000001);
 
-		assert!(precisevector::precise_vector_from_vector(Vector{x:0.0, y:0.0, z:0.0}).vector() == Vector{x:0.0, y:0.0, z:0.0}.normalize());
-		assert!(precisevector::precise_vector_from_vector(Vector{x:1.0, y:2.0, z:3.0}).vector() == Vector{x:1.0, y:2.0, z:3.0}.normalize());
-		assert!(precisevector::precise_vector_from_vector(Vector{x:3.0, y:-4.0, z:12.0}).vector() == Vector{x:3.0, y:-4.0, z:12.0});
-		assert!(precisevector::precise_vector_from_vector(Vector{x:1.0, y:1e-16_f64, z:1e-32_f64}).vector() == Vector{x:1.0, y:1e-16_f64, z:1e-32_f64});
+		let pvn = precisevector::precise_vector_from_vector(Vector{x:1.0, y:1e-16, z:1e-32}).vector();
+		let nvn = Vector{x:1.0, y:1e-16, z:1e-32}.normalize();
+		assert!((pvn.x - nvn.x).abs() <= 0.0000000000001);
+		assert!((pvn.y - nvn.y).abs() <= 0.0000000000001);
+		assert!((pvn.z - nvn.z).abs() <= 0.0000000000001);
 	}
 
 	#[test]
