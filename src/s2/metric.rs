@@ -20,7 +20,7 @@ limitations under the License.
 use libm::{ilogb, ldexp};
 use std::f64::consts::{PI, SQRT_2};
 
-use s2::cellid::MAX_LEVEL;
+use crate::s2::cellid::MAX_LEVEL;
 
 // A metric is a measure for cells. It is used to describe the shape and size
 // of cells. They are useful for deciding which cell level to use in order to

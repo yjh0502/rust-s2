@@ -18,17 +18,17 @@ limitations under the License.
 use std;
 use std::f64::consts::PI;
 
-use consts::*;
-use r1;
-use r3::vector::Vector;
-use s1::{self, chordangle, Angle, ChordAngle, Deg, Rad};
-use s2::cell::Cell;
-use s2::cellid::*;
-use s2::edgeutil::*;
-use s2::metric::*;
-use s2::point::Point;
-use s2::rect::Rect;
-use s2::region::Region;
+use crate::consts::*;
+use crate::r1;
+use crate::r3::vector::Vector;
+use crate::s1::{self, chordangle, Angle, ChordAngle, Deg, Rad};
+use crate::s2::cell::Cell;
+use crate::s2::cellid::*;
+use crate::s2::edgeutil::*;
+use crate::s2::metric::*;
+use crate::s2::point::Point;
+use crate::s2::rect::Rect;
+use crate::s2::region::Region;
 
 const CENTER_POINT: Point = Point(Vector {
     x: 1.,

@@ -169,8 +169,8 @@ func DistanceFraction(x, a, b Point) float64 {
 }
 */
 
-use s1::*;
-use s2::point::Point;
+use crate::s1::*;
+use crate::s2::point::Point;
 
 /// interpolate returns the point X along the line segment AB whose distance from A
 /// is the given fraction "t" of the distance AB. Does NOT require that "t" be

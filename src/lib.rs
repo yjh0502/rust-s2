@@ -15,4 +15,4 @@ pub mod s1;
 
 // export s2 modules directly
 mod s2;
-pub use s2::*;
+pub use crate::s2::*;

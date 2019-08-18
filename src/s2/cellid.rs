@@ -19,13 +19,13 @@ use std;
 use std::iter::*;
 use std::u64;
 
-use consts::clamp;
-use r1::interval::Interval;
-use r2;
-use r3::vector::Vector;
-use s2::latlng::*;
-use s2::point::Point;
-use s2::stuv::*;
+use crate::consts::clamp;
+use crate::r1::interval::Interval;
+use crate::r2;
+use crate::r3::vector::Vector;
+use crate::s2::latlng::*;
+use crate::s2::point::Point;
+use crate::s2::stuv::*;
 
 /// CellID uniquely identifies a cell in the S2 cell decomposition.
 /// The most significant 3 bits encode the face number (0-5). The
@@ -690,7 +690,7 @@ fn expand_endpoint(u: f64, max_v: f64, sin_dist: f64) -> f64 {
 }
 
 #[cfg(test)]
-use s1::Angle;
+use crate::s1::Angle;
 
 #[cfg(test)]
 /// expanded_by_distance_uv returns a rectangle expanded in (u,v)-space so that it
@@ -969,10 +969,10 @@ pub fn find_lsb_set_nonzero64(bits: u64) -> u32 {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use consts::*;
+    use crate::consts::*;
     use rand::Rng;
-    use s1;
-    use s2::random;
+    use crate::s1;
+    use crate::s2::random;
 
     #[test]
     fn test_cellid_from_face() {
@@ -1645,7 +1645,7 @@ pub mod tests {
         }
     }
 
-    use s2::metric::*;
+    use crate::s2::metric::*;
 
     #[test]
     fn test_cellid_continuity() {
@@ -1721,7 +1721,7 @@ pub mod tests {
         }
     }
 
-    use s2::cap::Cap;
+    use crate::s2::cap::Cap;
 
     #[test]
     fn test_cellid_expanded_by_distance_uv() {

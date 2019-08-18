@@ -1,7 +1,7 @@
-use consts::remainder;
-use r3::vector::Vector;
-use s1::*;
-use s2::point::Point;
+use crate::consts::remainder;
+use crate::r3::vector::Vector;
+use crate::s1::*;
+use crate::s2::point::Point;
 use std;
 use std::f64::consts::PI;
 
@@ -102,9 +102,9 @@ impl From<Point> for LatLng {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use r3::vector::Vector;
-    use s1;
-    use s2::point::Point;
+    use crate::r3::vector::Vector;
+    use crate::s1;
+    use crate::s2::point::Point;
 
     macro_rules! ll {
         ($lat:expr, $lng:expr) => {

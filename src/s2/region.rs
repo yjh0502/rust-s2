@@ -19,12 +19,12 @@ use std;
 use std::cmp::min;
 use std::collections::BinaryHeap;
 
-use consts::clamp;
-use s2::cap::Cap;
-use s2::cell::Cell;
-use s2::cellid::*;
-use s2::cellunion::CellUnion;
-use s2::rect::Rect;
+use crate::consts::clamp;
+use crate::s2::cap::Cap;
+use crate::s2::cell::Cell;
+use crate::s2::cellid::*;
+use crate::s2::cellunion::CellUnion;
+use crate::s2::rect::Rect;
 
 /// A Region represents a two-dimensional region on the unit sphere.
 ///
@@ -547,9 +547,9 @@ impl RegionCoverer {
 mod tests {
     use super::*;
     use rand::Rng;
-    use s2::cell::*;
-    use s2::metric::*;
-    use s2::random;
+    use crate::s2::cell::*;
+    use crate::s2::metric::*;
+    use crate::s2::random;
     use std::f64::consts::PI;
 
     #[test]

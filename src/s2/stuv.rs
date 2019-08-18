@@ -1,6 +1,6 @@
-use r3::vector::Vector;
-use s2::cellid::*;
-use s2::point::Point;
+use crate::r3::vector::Vector;
+use crate::s2::cellid::*;
+use crate::s2::point::Point;
 
 const MAX_SITI: u64 = MAX_SIZE << 1;
 
@@ -247,8 +247,8 @@ mod tests {
 
     use self::rand::Rng;
     use super::*;
-    use r3::vector::Axis;
-    use s2::random;
+    use crate::r3::vector::Axis;
+    use crate::s2::random;
     use std;
 
     #[test]

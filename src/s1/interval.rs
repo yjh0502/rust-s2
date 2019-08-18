@@ -18,8 +18,8 @@ limitations under the License.
 use std;
 use std::f64::consts::PI;
 
-use consts::*;
-use r1;
+use crate::consts::*;
+use crate::r1;
 
 /// Interval represents a closed interval on a unit circle.
 /// Zero-length intervals (where Lo == Hi) represent single points.

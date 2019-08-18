@@ -15,7 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-use consts::*;
+use crate::consts::*;
 use std;
 
 /// Point represents a point in ℝ².

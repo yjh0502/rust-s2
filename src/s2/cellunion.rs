@@ -15,15 +15,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-use consts::search_lower_by;
-use r3::vector::Vector;
-use s2::cap::Cap;
-use s2::cell::Cell;
-use s2::cellid::*;
-use s2::metric::*;
-use s2::point::Point;
-use s2::rect::Rect;
-use s2::region::Region;
+use crate::consts::search_lower_by;
+use crate::r3::vector::Vector;
+use crate::s2::cap::Cap;
+use crate::s2::cell::Cell;
+use crate::s2::cellid::*;
+use crate::s2::metric::*;
+use crate::s2::point::Point;
+use crate::s2::rect::Rect;
+use crate::s2::region::Region;
 
 /// A CellUnion is a collection of CellIDs.
 ///

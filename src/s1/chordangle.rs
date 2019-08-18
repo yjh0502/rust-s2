@@ -18,8 +18,8 @@ limitations under the License.
 use std;
 use std::f64::consts::PI;
 
-use consts::*;
-use s1::angle::*;
+use crate::consts::*;
+use crate::s1::angle::*;
 
 /// ChordAngle represents the angle subtended by a chord (i.e., the straight
 /// line segment connecting two points on the sphere). Its representation

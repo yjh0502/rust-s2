@@ -24,8 +24,8 @@ limitations under the License.
 //! See also EdgeCrosser, which implements various exact
 //! edge-crossing predicates more efficiently than can be done here.
 
-use consts::*;
-use s2::point::Point;
+use crate::consts::*;
+use crate::s2::point::Point;
 
 /// MAX_DETERMINANT_ERROR is the maximum error in computing (AxB).C where all vectors
 /// are unit length. Using standard inequalities, it can be shown that

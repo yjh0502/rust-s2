@@ -17,8 +17,8 @@ limitations under the License.
 
 use std;
 
-use consts::EPSILON;
-use s1::angle::*;
+use crate::consts::EPSILON;
+use crate::s1::angle::*;
 
 /// Vector represents a point in ℝ³.
 #[derive(Clone, Copy, PartialEq, PartialOrd)]

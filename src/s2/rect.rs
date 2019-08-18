@@ -1,11 +1,11 @@
 use std;
 use std::f64::consts::PI;
 
-use consts::*;
-use r1;
-use s1::*;
-use s2::edgeutil;
-use s2::latlng::LatLng;
+use crate::consts::*;
+use crate::r1;
+use crate::s1::*;
+use crate::s2::edgeutil;
+use crate::s2::latlng::LatLng;
 
 #[derive(Clone)]
 pub struct Rect {
@@ -191,10 +191,10 @@ impl From<LatLng> for Rect {
     }
 }
 
-use s2::cap::Cap;
-use s2::cell::Cell;
-use s2::point::Point;
-use s2::region::Region;
+use crate::s2::cap::Cap;
+use crate::s2::cell::Cell;
+use crate::s2::point::Point;
+use crate::s2::region::Region;
 
 impl Region for Rect {
     /// cap_bound returns a cap that countains Rect.

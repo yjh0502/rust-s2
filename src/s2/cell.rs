@@ -15,19 +15,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-use consts::*;
-use r1;
-use r2;
-use s1;
-use s1::*;
-use s2;
-use s2::cap::Cap;
-use s2::cellid::*;
-use s2::latlng::*;
-use s2::metric::*;
-use s2::point::*;
-use s2::region::Region;
-use s2::stuv::*;
+use crate::consts::*;
+use crate::r1;
+use crate::r2;
+use crate::s1;
+use crate::s1::*;
+use crate::s2;
+use crate::s2::cap::Cap;
+use crate::s2::cellid::*;
+use crate::s2::latlng::*;
+use crate::s2::metric::*;
+use crate::s2::point::*;
+use crate::s2::region::Region;
+use crate::s2::stuv::*;
 use std::f64::consts::PI;
 
 lazy_static! {
@@ -460,7 +460,7 @@ mod tests {
     use rand::Rng;
     use std;
 
-    use s2::random;
+    use crate::s2::random;
 
     // maxCellSize is the upper bounds on the number of bytes we want the Cell object to ever be.
     const MAX_CELL_SIZE: usize = 48;
@@ -802,7 +802,7 @@ mod tests {
         );
     }
 
-    use s2::edgeutil;
+    use crate::s2::edgeutil;
 
     #[test]
     fn test_cell_contains_point_consistent_will_s2_cellid_from_point() {

@@ -17,8 +17,8 @@ limitations under the License.
 
 use std;
 
-use r1::interval::{self, Interval};
-use r2::point::Point;
+use crate::r1::interval::{self, Interval};
+use crate::r2::point::Point;
 
 /// Rect represents a closed axis-aligned rectangle in the (x,y) plane.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -260,7 +260,7 @@ mod tests {
         y: Interval { lo: NE.y, hi: NE.y },
     };
 
-    use r2::point::Point;
+    use crate::r2::point::Point;
 
     #[test]
     fn empty_rect() {

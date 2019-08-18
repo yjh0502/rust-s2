@@ -189,7 +189,7 @@ convert_i32!(E7, Deg, 1. / 1e7);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use consts::*;
+    use crate::consts::*;
 
     #[test]
     fn test_deg_rad() {

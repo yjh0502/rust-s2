@@ -3,9 +3,9 @@ use std::f64::consts::PI;
 
 use rand;
 use rand::Rng;
-use s2::cap::Cap;
-use s2::cellid::*;
-use s2::point::{self, Point};
+use crate::s2::cap::Cap;
+use crate::s2::cellid::*;
+use crate::s2::point::{self, Point};
 
 pub fn rng() -> rand::prng::XorShiftRng {
     use rand::prelude::*;

@@ -2,17 +2,17 @@ use std;
 
 use cgmath::{Matrix, Matrix3, Vector3};
 
-use consts::*;
-use r3::vector::Vector;
-use s1;
-use s1::ChordAngle;
-use s1::*;
-use s2::cap::Cap;
-use s2::cell::Cell;
-use s2::latlng::LatLng;
-use s2::predicates::*;
-use s2::rect::Rect;
-use s2::region::Region;
+use crate::consts::*;
+use crate::r3::vector::Vector;
+use crate::s1;
+use crate::s1::ChordAngle;
+use crate::s1::*;
+use crate::s2::cap::Cap;
+use crate::s2::cell::Cell;
+use crate::s2::latlng::LatLng;
+use crate::s2::predicates::*;
+use crate::s2::rect::Rect;
+use crate::s2::region::Region;
 use std::f64::consts::PI;
 
 /// Point represents a point on the unit sphere as a normalized 3D vector.
@@ -454,7 +454,7 @@ impl Point {
 mod tests {
     use super::*;
 
-    use s2::stuv::st_to_uv;
+    use crate::s2::stuv::st_to_uv;
     use std::f64::consts::PI;
 
     #[test]
@@ -518,8 +518,8 @@ mod tests {
         );
     }
 
-    use s1::Angle;
-    use s2::random;
+    use crate::s1::Angle;
+    use crate::s2::random;
 
     #[test]
     fn test_chordangle_between_points() {

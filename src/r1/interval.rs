@@ -17,7 +17,7 @@ limitations under the License.
 
 use std;
 
-use consts::EPSILON;
+use crate::consts::EPSILON;
 
 /// Interval represents a closed interval on ℝ.
 /// Zero-length intervals (where Lo == Hi) represent single points.
