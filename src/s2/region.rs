@@ -546,10 +546,10 @@ impl RegionCoverer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::Rng;
     use crate::s2::cell::*;
     use crate::s2::metric::*;
     use crate::s2::random;
+    use rand::Rng;
     use std::f64::consts::PI;
 
     #[test]

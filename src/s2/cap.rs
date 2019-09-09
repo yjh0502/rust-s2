@@ -73,7 +73,8 @@ pub struct Cap {
     pub center: Point,
     pub radius: ChordAngle,
 }
-impl std::fmt::Debug for Cap {
+
+impl std::fmt::Display for Cap {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
@@ -81,6 +82,12 @@ impl std::fmt::Debug for Cap {
             self.center.0,
             Deg::from(self.radius()).0
         )
+    }
+}
+
+impl std::fmt::Debug for Cap {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self)
     }
 }
 
@@ -519,17 +526,6 @@ impl std::ops::Add<Cap> for Cap {
     type Output = Cap;
     fn add(self, other: Cap) -> Self::Output {
         self + &other
-    }
-}
-
-impl std::fmt::Display for Cap {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
-            f,
-            "[center={:?}, radius={:?}]",
-            self.center.0,
-            Deg::from(self.radius()).0
-        )
     }
 }
 
