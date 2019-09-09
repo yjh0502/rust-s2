@@ -1,11 +1,11 @@
 use cgmath;
 use std::f64::consts::PI;
 
-use rand;
-use rand::Rng;
 use crate::s2::cap::Cap;
 use crate::s2::cellid::*;
 use crate::s2::point::{self, Point};
+use rand;
+use rand::Rng;
 
 pub fn rng() -> rand::prng::XorShiftRng {
     use rand::prelude::*;

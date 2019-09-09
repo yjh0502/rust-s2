@@ -76,6 +76,12 @@ pub fn size_ij(level: u64) -> u64 {
     1 << (MAX_LEVEL - level)
 }
 
+impl std::fmt::Display for CellID {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.to_token())
+    }
+}
+
 impl CellID {
     /// from_pos_level returns a cell given its face in the range
     /// [0,5], the 61-bit Hilbert curve position pos within that face, and
@@ -970,9 +976,9 @@ pub fn find_lsb_set_nonzero64(bits: u64) -> u32 {
 pub mod tests {
     use super::*;
     use crate::consts::*;
-    use rand::Rng;
     use crate::s1;
     use crate::s2::random;
+    use rand::Rng;
 
     #[test]
     fn test_cellid_from_face() {
