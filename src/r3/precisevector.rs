@@ -198,6 +198,10 @@ mod tests {
     use r3::vector::Axis;
     use r3::vector::Vector;
 
+    fn pv(x: f64, y: f64, z: f64) -> PreciseVector {
+        PreciseVector::new(x, y, z)
+    }
+
     pub fn test_precise_round_trip_case(x: f64, y: f64, z: f64) {
         const EPSILON: f64 = 0.0000000000001;
         let pvn: Vector = PreciseVector::from(Vector { x, y, z }).into();
@@ -217,144 +221,105 @@ mod tests {
 
     #[test]
     pub fn test_precise_is_unit() {
-        assert!(PreciseVector::new(0.0, 0.0, 0.0).is_unit() == false);
-        assert!(PreciseVector::new(1.0, 0.0, 0.0).is_unit() == true);
-        assert!(PreciseVector::new(0.0, 1.0, 0.0).is_unit() == true);
-        assert!(PreciseVector::new(0.0, 0.0, 1.0).is_unit() == true);
-        assert!(PreciseVector::new(1.0 + 2.0 * EPSILON, 0.0, 0.0).is_unit() == false);
-        assert!(PreciseVector::new(0.0 * (1.0 + EPSILON), 0.0, 0.0).is_unit() == false);
-        assert!(PreciseVector::new(1.0, 1.0, 1.0).is_unit() == false);
+        assert!(pv(0.0, 0.0, 0.0).is_unit() == false);
+        assert!(pv(1.0, 0.0, 0.0).is_unit() == true);
+        assert!(pv(0.0, 1.0, 0.0).is_unit() == true);
+        assert!(pv(0.0, 0.0, 1.0).is_unit() == true);
+        assert!(pv(1.0 + 2.0 * EPSILON, 0.0, 0.0).is_unit() == false);
+        assert!(pv(0.0 * (1.0 + EPSILON), 0.0, 0.0).is_unit() == false);
+        assert!(pv(1.0, 1.0, 1.0).is_unit() == false);
     }
 
     #[test]
     pub fn test_precise_norm2() {
-        assert!(PreciseVector::new(0.0, 0.0, 0.0).norm2() == precisevector::prec_float(0.0));
-        assert!(PreciseVector::new(0.0, 1.0, 0.0).norm2() == precisevector::prec_float(1.0));
-        assert!(PreciseVector::new(1.0, 1.0, 1.0).norm2() == precisevector::prec_float(3.0));
-        assert!(PreciseVector::new(1.0, 2.0, 3.0).norm2() == precisevector::prec_float(14.0));
-        assert!(PreciseVector::new(3.0, -4.0, 12.0).norm2() == precisevector::prec_float(169.0));
+        assert!(pv(0.0, 0.0, 0.0).norm2() == precisevector::prec_float(0.0));
+        assert!(pv(0.0, 1.0, 0.0).norm2() == precisevector::prec_float(1.0));
+        assert!(pv(1.0, 1.0, 1.0).norm2() == precisevector::prec_float(3.0));
+        assert!(pv(1.0, 2.0, 3.0).norm2() == precisevector::prec_float(14.0));
+        assert!(pv(3.0, -4.0, 12.0).norm2() == precisevector::prec_float(169.0));
     }
 
     #[test]
     pub fn test_precise_add() {
+        assert_eq!(pv(0.0, 0.0, 0.0) + pv(0.0, 0.0, 0.0), pv(0.0, 0.0, 0.0));
+        assert_eq!(pv(1.0, 0.0, 0.0) + pv(0.0, 0.0, 0.0), pv(1.0, 0.0, 0.0));
+        assert_eq!(pv(1.0, 2.0, 3.0) + pv(4.0, 5.0, 7.0), pv(5.0, 7.0, 10.0));
         assert_eq!(
-            PreciseVector::new(0.0, 0.0, 0.0) + PreciseVector::new(0.0, 0.0, 0.0),
-            PreciseVector::new(0.0, 0.0, 0.0)
-        );
-        assert_eq!(
-            PreciseVector::new(1.0, 0.0, 0.0) + PreciseVector::new(0.0, 0.0, 0.0),
-            PreciseVector::new(1.0, 0.0, 0.0)
-        );
-        assert_eq!(
-            PreciseVector::new(1.0, 2.0, 3.0) + PreciseVector::new(4.0, 5.0, 7.0),
-            PreciseVector::new(5.0, 7.0, 10.0)
-        );
-        assert_eq!(
-            PreciseVector::new(1.0, -3.0, 5.0) + PreciseVector::new(1.0, -6.0, -6.0),
-            PreciseVector::new(2.0, -9.0, -1.0)
+            pv(1.0, -3.0, 5.0) + pv(1.0, -6.0, -6.0),
+            pv(2.0, -9.0, -1.0)
         );
     }
 
     #[test]
     pub fn test_precise_sub() {
-        assert_eq!(
-            PreciseVector::new(0.0, 0.0, 0.0) - PreciseVector::new(0.0, 0.0, 0.0),
-            PreciseVector::new(0.0, 0.0, 0.0)
-        );
-        assert_eq!(
-            PreciseVector::new(1.0, 0.0, 0.0) - PreciseVector::new(0.0, 0.0, 0.0),
-            PreciseVector::new(1.0, 0.0, 0.0)
-        );
-        assert_eq!(
-            PreciseVector::new(1.0, 2.0, 3.0) - PreciseVector::new(4.0, 5.0, 7.0),
-            PreciseVector::new(-3.0, -3.0, -4.0)
-        );
-        assert_eq!(
-            PreciseVector::new(1.0, -3.0, 5.0) - PreciseVector::new(1.0, -6.0, -6.0),
-            PreciseVector::new(0.0, 3.0, 11.0)
-        );
+        assert_eq!(pv(0.0, 0.0, 0.0) - pv(0.0, 0.0, 0.0), pv(0.0, 0.0, 0.0));
+        assert_eq!(pv(1.0, 0.0, 0.0) - pv(0.0, 0.0, 0.0), pv(1.0, 0.0, 0.0));
+        assert_eq!(pv(1.0, 2.0, 3.0) - pv(4.0, 5.0, 7.0), pv(-3.0, -3.0, -4.0));
+        assert_eq!(pv(1.0, -3.0, 5.0) - pv(1.0, -6.0, -6.0), pv(0.0, 3.0, 11.0));
     }
 
     #[test]
     pub fn test_precise_mul() {
         assert_eq!(
-            PreciseVector::new(0.0, 0.0, 0.0) * precisevector::prec_float(3.0),
-            PreciseVector::new(0.0, 0.0, 0.0)
+            pv(0.0, 0.0, 0.0) * precisevector::prec_float(3.0),
+            pv(0.0, 0.0, 0.0)
         );
         assert_eq!(
-            PreciseVector::new(1.0, 0.0, 0.0) * precisevector::prec_float(1.0),
-            PreciseVector::new(1.0, 0.0, 0.0)
+            pv(1.0, 0.0, 0.0) * precisevector::prec_float(1.0),
+            pv(1.0, 0.0, 0.0)
         );
         assert_eq!(
-            PreciseVector::new(1.0, 0.0, 0.0) * precisevector::prec_float(0.0),
-            PreciseVector::new(0.0, 0.0, 0.0)
+            pv(1.0, 0.0, 0.0) * precisevector::prec_float(0.0),
+            pv(0.0, 0.0, 0.0)
         );
         assert_eq!(
-            PreciseVector::new(1.0, 0.0, 0.0) * precisevector::prec_float(3.0),
-            PreciseVector::new(3.0, 0.0, 0.0)
+            pv(1.0, 0.0, 0.0) * precisevector::prec_float(3.0),
+            pv(3.0, 0.0, 0.0)
         );
         assert_eq!(
-            PreciseVector::new(1.0, -3.0, 5.0) * precisevector::prec_float(-1.0),
-            PreciseVector::new(-1.0, 3.0, -5.0)
+            pv(1.0, -3.0, 5.0) * precisevector::prec_float(-1.0),
+            pv(-1.0, 3.0, -5.0)
         );
         assert_eq!(
-            PreciseVector::new(1.0, -3.0, 5.0) * precisevector::prec_float(2.0),
-            PreciseVector::new(2.0, -6.0, 10.0)
+            pv(1.0, -3.0, 5.0) * precisevector::prec_float(2.0),
+            pv(2.0, -6.0, 10.0)
         );
     }
 
     #[test]
     pub fn test_precise_mul_by_f64() {
-        assert_eq!(
-            PreciseVector::new(0.0, 0.0, 0.0) * 3.0,
-            PreciseVector::new(0.0, 0.0, 0.0)
-        );
-        assert_eq!(
-            PreciseVector::new(1.0, 0.0, 0.0) * 1.0,
-            PreciseVector::new(1.0, 0.0, 0.0)
-        );
-        assert_eq!(
-            PreciseVector::new(1.0, 0.0, 0.0) * 0.0,
-            PreciseVector::new(0.0, 0.0, 0.0)
-        );
-        assert_eq!(
-            PreciseVector::new(1.0, 0.0, 0.0) * 3.0,
-            PreciseVector::new(3.0, 0.0, 0.0)
-        );
-        assert_eq!(
-            PreciseVector::new(1.0, -3.0, 5.0) * -1.0,
-            PreciseVector::new(-1.0, 3.0, -5.0)
-        );
-        assert_eq!(
-            PreciseVector::new(1.0, -3.0, 5.0) * 2.0,
-            PreciseVector::new(2.0, -6.0, 10.0)
-        );
+        assert_eq!(pv(0.0, 0.0, 0.0) * 3.0, pv(0.0, 0.0, 0.0));
+        assert_eq!(pv(1.0, 0.0, 0.0) * 1.0, pv(1.0, 0.0, 0.0));
+        assert_eq!(pv(1.0, 0.0, 0.0) * 0.0, pv(0.0, 0.0, 0.0));
+        assert_eq!(pv(1.0, 0.0, 0.0) * 3.0, pv(3.0, 0.0, 0.0));
+        assert_eq!(pv(1.0, -3.0, 5.0) * -1.0, pv(-1.0, 3.0, -5.0));
+        assert_eq!(pv(1.0, -3.0, 5.0) * 2.0, pv(2.0, -6.0, 10.0));
     }
 
     #[test]
     pub fn test_precise_dot() {
         assert_eq!(
-            PreciseVector::new(1.0, 0.0, 0.0).dot(PreciseVector::new(1.0, 0.0, 0.0)),
+            pv(1.0, 0.0, 0.0).dot(pv(1.0, 0.0, 0.0)),
             precisevector::prec_float(1.0)
         );
         assert_eq!(
-            PreciseVector::new(0.0, 1.0, 0.0).dot(PreciseVector::new(0.0, 1.0, 0.0)),
+            pv(0.0, 1.0, 0.0).dot(pv(0.0, 1.0, 0.0)),
             precisevector::prec_float(1.0)
         );
         assert_eq!(
-            PreciseVector::new(0.0, 0.0, 1.0).dot(PreciseVector::new(0.0, 0.0, 1.0)),
+            pv(0.0, 0.0, 1.0).dot(pv(0.0, 0.0, 1.0)),
             precisevector::prec_float(1.0)
         );
         assert_eq!(
-            PreciseVector::new(1.0, 0.0, 0.0).dot(PreciseVector::new(0.0, 1.0, 0.0)),
+            pv(1.0, 0.0, 0.0).dot(pv(0.0, 1.0, 0.0)),
             precisevector::prec_float(0.0)
         );
         assert_eq!(
-            PreciseVector::new(1.0, 0.0, 0.0).dot(PreciseVector::new(0.0, 1.0, 1.0)),
+            pv(1.0, 0.0, 0.0).dot(pv(0.0, 1.0, 1.0)),
             precisevector::prec_float(0.0)
         );
         assert_eq!(
-            PreciseVector::new(1.0, 1.0, 1.0).dot(PreciseVector::new(-1.0, -1.0, -1.0)),
+            pv(1.0, 1.0, 1.0).dot(pv(-1.0, -1.0, -1.0)),
             precisevector::prec_float(-3.0)
         );
     }
@@ -362,28 +327,28 @@ mod tests {
     #[test]
     pub fn test_precise_cross() {
         assert_eq!(
-            PreciseVector::new(1.0, 0.0, 0.0).cross(PreciseVector::new(1.0, 0.0, 0.0)),
-            PreciseVector::new(0.0, 0.0, 0.0)
+            pv(1.0, 0.0, 0.0).cross(pv(1.0, 0.0, 0.0)),
+            pv(0.0, 0.0, 0.0)
         );
         assert_eq!(
-            PreciseVector::new(1.0, 0.0, 0.0).cross(PreciseVector::new(0.0, 1.0, 0.0)),
-            PreciseVector::new(0.0, 0.0, 1.0)
+            pv(1.0, 0.0, 0.0).cross(pv(0.0, 1.0, 0.0)),
+            pv(0.0, 0.0, 1.0)
         );
         assert_eq!(
-            PreciseVector::new(0.0, 1.0, 0.0).cross(PreciseVector::new(0.0, 0.0, 1.0)),
-            PreciseVector::new(1.0, 0.0, 0.0)
+            pv(0.0, 1.0, 0.0).cross(pv(0.0, 0.0, 1.0)),
+            pv(1.0, 0.0, 0.0)
         );
         assert_eq!(
-            PreciseVector::new(0.0, 0.0, 1.0).cross(PreciseVector::new(1.0, 0.0, 0.0)),
-            PreciseVector::new(0.0, 1.0, 0.0)
+            pv(0.0, 0.0, 1.0).cross(pv(1.0, 0.0, 0.0)),
+            pv(0.0, 1.0, 0.0)
         );
         assert_eq!(
-            PreciseVector::new(0.0, 1.0, 0.0).cross(PreciseVector::new(1.0, 0.0, 0.0)),
-            PreciseVector::new(0.0, 0.0, -1.0)
+            pv(0.0, 1.0, 0.0).cross(pv(1.0, 0.0, 0.0)),
+            pv(0.0, 0.0, -1.0)
         );
         assert_eq!(
-            PreciseVector::new(1.0, 2.0, 3.0).cross(PreciseVector::new(-4.0, 5.0, -6.0)),
-            PreciseVector::new(-27.0, -6.0, 13.0)
+            pv(1.0, 2.0, 3.0).cross(pv(-4.0, 5.0, -6.0)),
+            pv(-27.0, -6.0, 13.0)
         );
     }
 
@@ -400,50 +365,50 @@ mod tests {
 
     #[test]
     pub fn test_precise_identities() {
-        let v1 = PreciseVector::new(0.0, 0.0, 0.0);
-        let v2 = PreciseVector::new(0.0, 0.0, 0.0);
+        let v1 = pv(0.0, 0.0, 0.0);
+        let v2 = pv(0.0, 0.0, 0.0);
         test_precise_identities_case(v1, v2);
 
-        let v1 = PreciseVector::new(0.0, 0.0, 0.0);
-        let v2 = PreciseVector::new(0.0, 1.0, 2.0);
+        let v1 = pv(0.0, 0.0, 0.0);
+        let v2 = pv(0.0, 1.0, 2.0);
         test_precise_identities_case(v1, v2);
 
-        let v1 = PreciseVector::new(1.0, 0.0, 0.0);
-        let v2 = PreciseVector::new(0.0, 1.0, 0.0);
+        let v1 = pv(1.0, 0.0, 0.0);
+        let v2 = pv(0.0, 1.0, 0.0);
         test_precise_identities_case(v1, v2);
 
-        let v1 = PreciseVector::new(1.0, 0.0, 0.0);
-        let v2 = PreciseVector::new(0.0, 1.0, 1.0);
+        let v1 = pv(1.0, 0.0, 0.0);
+        let v2 = pv(0.0, 1.0, 1.0);
         test_precise_identities_case(v1, v2);
 
-        let v1 = PreciseVector::new(1.0, 1.0, 1.0);
-        let v2 = PreciseVector::new(-1.0, -1.0, -1.0);
+        let v1 = pv(1.0, 1.0, 1.0);
+        let v2 = pv(-1.0, -1.0, -1.0);
         test_precise_identities_case(v1, v2);
 
-        let v1 = PreciseVector::new(1.0, 2.0, 2.0);
-        let v2 = PreciseVector::new(-0.3, 0.4, -1.2);
+        let v1 = pv(1.0, 2.0, 2.0);
+        let v2 = pv(-0.3, 0.4, -1.2);
         test_precise_identities_case(v1, v2);
     }
 
     #[test]
     pub fn test_precise_largest_smallest_components() {
-        let v1 = PreciseVector::new(0.0, 0.0, 0.0);
-        assert!(v1.largest_component() == Axis::Z);
-        assert!(v1.smallest_component() == Axis::Z);
-        let v1 = PreciseVector::new(1.0, 0.0, 0.0);
-        assert!(v1.largest_component() == Axis::X);
-        assert!(v1.smallest_component() == Axis::Z);
-        let v1 = PreciseVector::new(1.0, -1.0, 0.0);
-        assert!(v1.largest_component() == Axis::Y);
-        assert!(v1.smallest_component() == Axis::Z);
-        let v1 = PreciseVector::new(-1.0, -1.1, -1.1);
-        assert!(v1.largest_component() == Axis::Z);
-        assert!(v1.smallest_component() == Axis::X);
-        let v1 = PreciseVector::new(0.5, -0.4, -0.5);
-        assert!(v1.largest_component() == Axis::Z);
-        assert!(v1.smallest_component() == Axis::Y);
-        let v1 = PreciseVector::new(1e-15, 1e-14, 1e-13);
-        assert!(v1.largest_component() == Axis::Z);
-        assert!(v1.smallest_component() == Axis::X);
+        let v1 = pv(0.0, 0.0, 0.0);
+        assert_eq!(v1.largest_component(), Axis::Z);
+        assert_eq!(v1.smallest_component(), Axis::Z);
+        let v1 = pv(1.0, 0.0, 0.0);
+        assert_eq!(v1.largest_component(), Axis::X);
+        assert_eq!(v1.smallest_component(), Axis::Z);
+        let v1 = pv(1.0, -1.0, 0.0);
+        assert_eq!(v1.largest_component(), Axis::Y);
+        assert_eq!(v1.smallest_component(), Axis::Z);
+        let v1 = pv(-1.0, -1.1, -1.1);
+        assert_eq!(v1.largest_component(), Axis::Z);
+        assert_eq!(v1.smallest_component(), Axis::X);
+        let v1 = pv(0.5, -0.4, -0.5);
+        assert_eq!(v1.largest_component(), Axis::Z);
+        assert_eq!(v1.smallest_component(), Axis::Y);
+        let v1 = pv(1e-15, 1e-14, 1e-13);
+        assert_eq!(v1.largest_component(), Axis::Z);
+        assert_eq!(v1.smallest_component(), Axis::X);
     }
 }
