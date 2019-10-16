@@ -53,6 +53,7 @@ pub fn sort_edges(mut e: Vec<Edge>) {
 }
 
 // edges implements the Sort interface for slices of Edge.
+#[allow(unused)]
 type Edges = Vec<Edge>;
 
 trait EdgesMethods {
@@ -98,7 +99,9 @@ impl ShapeEdgeID {
 
 // ShapeEdge represents a Shapeedge_id with the two endpoints of that Edge.
 pub struct ShapeEdge {
+    #[allow(unused)]
     id: ShapeEdgeID,
+    #[allow(unused)]
     edge: Edge,
 }
 
@@ -106,7 +109,9 @@ pub struct ShapeEdge {
 // edges, specified as a (start, length) pair. The chain is defined to consist of
 // edge IDs {start, start + 1, ..., start + length - 1}.
 pub struct Chain {
+    #[allow(unused)]
     start: i64,
+    #[allow(unused)]
     length: i64,
 }
 
@@ -114,14 +119,18 @@ pub struct Chain {
 // specified as a (chainID, offset) pair. Chains are numbered sequentially
 // starting from zero, and offsets are measured from the start of each chain.
 pub struct ChainPosition {
+    #[allow(unused)]
     chain_id: i64,
+    #[allow(unused)]
     offset: i64,
 }
 
 // A ReferencePoint consists of a point and a boolean indicating whether the point
 // is contained by a particular shape.
 pub struct ReferencePoint {
+    #[allow(unused)]
     point: s2Point,
+    #[allow(unused)]
     contained: bool,
 }
 
@@ -243,11 +252,11 @@ pub trait Shape {
 }
 
 // defaultShapeIsEmpty reports whether this shape contains no points.
-pub fn default_shape_is_empty(s: Box<Shape>) -> bool {
+pub fn default_shape_is_empty(s: Box<dyn Shape>) -> bool {
     return s.num_edges() == 0 && (s.dimension() != 2 || s.num_chains() == 0);
 }
 
 // defaultShapeIsFull reports whether this shape contains all points on the sphere.
-pub fn default_shape_is_full(s: Box<Shape>) -> bool {
+pub fn default_shape_is_full(s: Box<dyn Shape>) -> bool {
     return s.num_edges() == 0 && s.dimension() == 2 && s.num_chains() > 0;
 }
