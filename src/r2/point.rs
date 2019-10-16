@@ -33,20 +33,20 @@ impl Eq for Point {}
 impl Ord for Point {
     fn cmp(&self, ov: &Point) -> Ordering {
         if self.x < ov.x {
-            return Ordering::Less
+            return Ordering::Less;
         }
         if self.x > ov.x {
-            return Ordering::Greater
+            return Ordering::Greater;
         }
 
         // First elements were the same, try the next.
         if self.y < ov.y {
-            return Ordering::Less
+            return Ordering::Less;
         }
         if self.y > ov.y {
-            return Ordering::Greater
+            return Ordering::Greater;
         }
-        return Ordering::Equal
+        Ordering::Equal
     }
 }
 

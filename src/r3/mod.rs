@@ -1,2 +1,2 @@
-pub mod vector;
 pub mod precisevector;
+pub mod vector;

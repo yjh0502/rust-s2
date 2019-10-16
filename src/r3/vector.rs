@@ -229,30 +229,30 @@ impl Vector {
 
     pub fn cmp(&self, ov: Vector) -> i64 {
         if self.x < ov.x {
-            return -1
+            return -1;
         }
         if self.x > ov.x {
-            return 1
+            return 1;
         }
 
         // First elements were the same, try the next.
         if self.y < ov.y {
-            return -1
+            return -1;
         }
         if self.y > ov.y {
-            return 1
+            return 1;
         }
 
         // Second elements were the same return the final compare.
         if self.z < ov.z {
-            return -1
+            return -1;
         }
         if self.z > ov.z {
-            return 1
+            return 1;
         }
 
         // Both are equal
-        return 0
+        return 0;
     }
 }
 
