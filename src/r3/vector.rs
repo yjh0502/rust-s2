@@ -21,7 +21,7 @@ use crate::consts::EPSILON;
 use crate::s1::angle::*;
 
 /// Vector represents a point in ℝ³.
-#[derive(Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct Vector {
     pub x: f64,
     pub y: f64,
@@ -102,6 +102,46 @@ impl std::ops::Mul<f64> for Vector {
     type Output = Vector;
     fn mul(self, m: f64) -> Self::Output {
         &self * m
+    }
+}
+
+use std::cmp::*;
+
+impl Eq for Vector {}
+
+impl PartialOrd for Vector {
+    fn partial_cmp(&self, ov: &Vector) -> Option<Ordering> {
+        Some(self.cmp(ov))
+    }
+}
+
+impl Ord for Vector {
+    fn cmp(&self, ov: &Vector) -> Ordering {
+        if self.x < ov.x {
+            return Ordering::Less;
+        }
+        if self.x > ov.x {
+            return Ordering::Greater;
+        }
+
+        // First elements were the same, try the next.
+        if self.y < ov.y {
+            return Ordering::Less;
+        }
+        if self.y > ov.y {
+            return Ordering::Greater;
+        }
+
+        // Second elements were the same return the final compare.
+        if self.z < ov.z {
+            return Ordering::Less;
+        }
+        if self.z > ov.z {
+            return Ordering::Greater;
+        }
+
+        // Both are equal
+        Ordering::Equal
     }
 }
 
