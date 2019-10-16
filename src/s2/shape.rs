@@ -10,8 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use r2::point::Point;
-use s2::point::Point as s2Point;
+use crate::r2::point::Point;
+use crate::s2::point::Point as s2Point;
 use std::cmp::*;
 
 // Edge represents a geodesic edge consisting of two vertices. Zero-length edges are
@@ -109,13 +109,15 @@ pub struct ReferencePoint {
     contained: bool,
 }
 
-/// OriginReferencePoint returns a ReferencePoint with the given value for
-/// contained and the origin point. It should be used when all points or no
-/// points are contained.
-pub fn origin_reference_point(contained: bool) -> ReferencePoint {
-    ReferencePoint {
-        point: s2Point::origin(),
-        contained: contained,
+impl ReferencePoint {
+    /// origin returns a ReferencePoint with the given value for
+    /// contained and the origin point. It should be used when all points or no
+    /// points are contained.
+    pub fn origin(contained: bool) -> Self {
+        ReferencePoint {
+            point: s2Point::origin(),
+            contained: contained,
+        }
     }
 }
 

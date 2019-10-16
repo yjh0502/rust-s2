@@ -14,11 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-extern crate bigdecimal;
-
-//use std;
-use r3;
-use r3::precisevector::bigdecimal::ToPrimitive;
+use crate::r3;
+use bigdecimal;
+use bigdecimal::ToPrimitive;
 use std::str::FromStr;
 
 pub fn prec_str(s: String) -> bigdecimal::BigDecimal {
@@ -193,7 +191,7 @@ impl PreciseVector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use consts::EPSILON;
+    use crate::consts::EPSILON;
     use r3::precisevector;
     use r3::vector::Axis;
     use r3::vector::Vector;
