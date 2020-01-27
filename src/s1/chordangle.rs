@@ -38,6 +38,7 @@ use crate::s1::angle::*;
 /// ChordAngles are represented by the squared chord length, which can
 /// range from 0 to 4. Positive infinity represents an infinite squared length.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ChordAngle(pub f64);
 
 /// NEGATIVE represents a chord angle smaller than the zero angle.

@@ -22,6 +22,7 @@ use crate::r2::point::Point;
 
 /// Rect represents a closed axis-aligned rectangle in the (x,y) plane.
 #[derive(Clone, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Rect {
     /// x interval of the rect
     pub x: Interval,

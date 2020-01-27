@@ -32,6 +32,7 @@ use crate::s2::region::Region;
 /// is contained by another, nor the four sibling CellIDs that are children of
 /// a single higher level CellID.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct CellUnion(pub Vec<CellID>);
 
 impl CellUnion {

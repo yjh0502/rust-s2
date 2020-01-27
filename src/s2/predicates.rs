@@ -56,6 +56,7 @@ const MAX_DETERMINANT_ERROR: f64 = 1.8274 * DBL_EPSILON;
 const DET_ERROR_MULTIPLIER: f64 = 3.2321 * DBL_EPSILON;
 
 #[derive(PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Direction {
     Clockwise,
     Indeterminate,

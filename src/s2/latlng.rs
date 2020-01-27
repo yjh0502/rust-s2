@@ -10,6 +10,7 @@ const NORTH_POLE_LAT: f64 = PI / 2.;
 const SOUTH_POLE_LAT: f64 = PI / -2.;
 
 #[derive(Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct LatLng {
     pub lat: Angle,
     pub lng: Angle,

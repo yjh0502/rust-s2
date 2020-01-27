@@ -31,6 +31,7 @@ use crate::r1;
 ///   - the empty interval, [π,-π].
 /// Treat the exported fields as read-only.
 #[derive(Clone, Copy, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Interval {
     pub lo: f64,
     pub hi: f64,

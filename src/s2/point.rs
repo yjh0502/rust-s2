@@ -18,6 +18,7 @@ use std::f64::consts::PI;
 /// Point represents a point on the unit sphere as a normalized 3D vector.
 /// Fields should be treated as read-only. Use one of the factory methods for creation.
 #[derive(Clone, Copy, PartialEq, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Point(pub Vector);
 
 impl std::ops::Add<Point> for Point {
