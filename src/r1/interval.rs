@@ -23,6 +23,7 @@ use crate::consts::EPSILON;
 /// Zero-length intervals (where Lo == Hi) represent single points.
 /// If Lo > Hi then the interval is empty.
 #[derive(Clone, Copy, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Interval {
     /// lower bound of the interval
     pub lo: f64,

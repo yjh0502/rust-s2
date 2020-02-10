@@ -38,6 +38,7 @@ lazy_static! {
 /// it supports efficient containment and intersection tests. However, it is
 /// also a more expensive representation.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Cell {
     face: u8,
     level: u8,

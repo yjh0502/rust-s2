@@ -38,6 +38,7 @@ pub fn prec_float(f: f64) -> bigdecimal::BigDecimal {
 /// math. (e.g., methods that need divison like Normalize, or methods needing a
 /// square root operation such as Norm)
 #[derive(Clone, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PreciseVector {
     x: bigdecimal::BigDecimal,
     y: bigdecimal::BigDecimal,

@@ -29,6 +29,7 @@ use crate::s2::cellid::MAX_LEVEL;
 // length or area on the unit sphere for cells at a given level. The minimum
 // and maximum bounds are valid for cells at all levels, but they may be
 // somewhat conservative for very large cells (e.g. face cells).
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Metric {
     // Dim is either 1 or 2, for a 1D or 2D metric respectively.
     dim: u8,

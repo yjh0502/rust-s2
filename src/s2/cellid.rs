@@ -52,6 +52,7 @@ use crate::s2::stuv::*;
 /// representations. For cells that represent 2D regions rather than
 /// discrete point, it is better to use Cells.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct CellID(pub u64);
 
 const FACE_BITS: u64 = 3;

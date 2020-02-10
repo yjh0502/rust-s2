@@ -214,6 +214,7 @@ fn sum_equal(u: f64, v: f64, w: f64) -> bool {
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 enum Axis {
     AxisU,
     AxisV,
@@ -581,6 +582,7 @@ fn interpolate(x: f64, a: f64, b: f64, a1: f64, b1: f64) -> f64 {
 /// FaceSegment represents an edge AB clipped to an S2 cube face. It is
 /// represented by a face index and a pair of (u,v) coordinates.
 #[derive(Clone, Copy, PartialEq, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct FaceSegment {
     pub face: u8,
     pub a: r2::point::Point,

@@ -22,6 +22,7 @@ use crate::s1::angle::*;
 
 /// Vector represents a point in ℝ³.
 #[derive(Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Vector {
     pub x: f64,
     pub y: f64,
@@ -270,6 +271,7 @@ impl Vector {
 
 /// Axis enumerates the 3 axes of ℝ³.
 #[derive(PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Axis {
     X,
     Y,

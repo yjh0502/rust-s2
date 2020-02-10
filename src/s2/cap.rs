@@ -69,6 +69,7 @@ const CENTER_POINT: Point = Point(Vector {
 ///
 /// The zero value of Cap is an invalid cap. Use EmptyCap to get a valid empty cap.
 #[derive(Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Cap {
     pub center: Point,
     pub radius: ChordAngle,

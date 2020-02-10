@@ -114,6 +114,7 @@ pub trait Region {
 /// algorithm may spend a lot of time subdividing cells all the way to leaf
 /// level to try to find contained cells.
 #[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct RegionCoverer {
     /// the minimum cell level to be used.
     pub min_level: u8,
@@ -137,6 +138,7 @@ where
 }
 
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 struct Candidate {
     cell: Cell,
     terminal: bool,

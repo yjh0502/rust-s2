@@ -4,6 +4,10 @@ extern crate cgmath;
 extern crate libm;
 extern crate rand;
 
+#[cfg(feature = "serde")]
+#[macro_use]
+extern crate serde;
+
 #[macro_use]
 mod consts;
 
