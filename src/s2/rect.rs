@@ -489,6 +489,7 @@ mod tests {
     use super::*;
     use std::f64::consts::PI;
 
+    use crate::predicates::sign;
     use crate::r1;
     use crate::s1::*;
     use std::ops::Add;
@@ -498,24 +499,24 @@ mod tests {
     #[test]
     fn test_rect_empty_and_full() {
         let tests = [
-            (Rect::empty(), true, true, false, false),
-            (Rect::full(), true, false, true, false),
+            (&Rect::empty(), true, true, false, false),
+            (&Rect::full(), true, false, true, false),
         ];
-        for (rect, valid, empty, full, point) in &tests {
-            assert_eq!(&rect.is_valid(), valid);
-            assert_eq!(&rect.is_empty(), empty);
-            assert_eq!(&rect.is_full(), full);
-            assert_eq!(&rect.is_point(), point);
+        for &(rect, valid, empty, full, point) in &tests {
+            assert_eq!(rect.is_valid(), valid);
+            assert_eq!(rect.is_empty(), empty);
+            assert_eq!(rect.is_full(), full);
+            assert_eq!(rect.is_point(), point);
         }
     }
 
     #[test]
     fn test_rect_area() {
         let tests = [
-            (Rect::empty(), 0f64),
-            (Rect::full(), 4.0 * PI),
+            (&Rect::empty(), 0f64),
+            (&Rect::full(), 4.0 * PI),
             (
-                Rect {
+                &Rect {
                     lat: r1::interval::Interval {
                         lo: 0f64,
                         hi: PI / 2.0,
@@ -528,8 +529,8 @@ mod tests {
                 PI / 2.0,
             ),
         ];
-        for (rect, want) in &tests {
-            assert_eq!(&rect.area(), want);
+        for &(rect, want) in &tests {
+            assert_eq!(rect.area(), want);
         }
     }
 
@@ -595,24 +596,24 @@ mod tests {
             (
                 rect_from_degrees(0.0, 0.0, 0.0, 0.0),
                 LatLng {
-                    lat: Angle::from(Rad(0.0)),
-                    lng: Angle::from(Rad(-PI / 2.0)),
+                    lat: Rad(0.0).into(),
+                    lng: Rad(-PI / 2.0).into(),
                 },
                 rect_from_degrees(0.0, -90.0, 0.0, 0.0),
             ),
             (
                 rect_from_degrees(0.0, -90.0, 0.0, 0.0),
                 LatLng {
-                    lat: Angle::from(Rad(PI / 4.0)),
-                    lng: Angle::from(Rad(-PI)),
+                    lat: Rad(PI / 4.0).into(),
+                    lng: Rad(-PI).into(),
                 },
                 rect_from_degrees(0.0, -180.0, 45.0, 0.0),
             ),
             (
                 rect_from_degrees(0.0, -180.0, 45.0, 0.0),
                 LatLng {
-                    lat: Angle::from(Rad(PI / 2.0)),
-                    lng: Angle::from(Rad(0.0)),
+                    lat: Rad(PI / 2.0).into(),
+                    lng: Rad(0.0).into(),
                 },
                 rect_from_degrees(0.0, -180.0, 90.0, 0.0),
             ),
@@ -623,4 +624,216 @@ mod tests {
             assert!(rects_approx_equal(got, want.clone(), EPSILON, EPSILON));
         }
     }
+
+    #[test]
+    fn test_rect_vertex() {
+        let r1 = &Rect {
+            lat: r1::interval::Interval {
+                lo: 0.0,
+                hi: PI / 2.0,
+            },
+            lng: Interval::new(-PI, 0.0),
+        };
+        let tests = [
+            (
+                r1,
+                0,
+                &LatLng {
+                    lat: Rad(0.0).into(),
+                    lng: Rad(PI).into(),
+                },
+            ),
+            (
+                r1,
+                1,
+                &LatLng {
+                    lat: Rad(0.0).into(),
+                    lng: Rad(0.0).into(),
+                },
+            ),
+            (
+                r1,
+                2,
+                &LatLng {
+                    lat: Rad(PI / 2.0).into(),
+                    lng: Rad(0.0).into(),
+                },
+            ),
+            (
+                r1,
+                3,
+                &LatLng {
+                    lat: Rad(PI / 2.0).into(),
+                    lng: Rad(PI).into(),
+                },
+            ),
+        ];
+
+        for &(r, i, want) in &tests {
+            assert_eq!(r.vertex(i), *want);
+        }
+    }
+
+    #[test]
+    fn test_rect_vertex_ccw_order() {
+        for i in 0..4 {
+            let lat = PI / 4.0 * (i as f64 - 2.0);
+            let lng = PI / 2.0 * (i as f64 - 2.0) + 0.2;
+            let r = Rect {
+                lat: r1::interval::Interval {
+                    lo: lat,
+                    hi: lat + PI / 4.0,
+                },
+                lng: Interval::new(lng % (2.0 * PI), (lng + PI / 2.0) % (2.0 * PI)),
+            };
+
+            for k in 0i8..4 {
+                assert!(sign(
+                    &Point::from(r.vertex(((k - 1i8) & 3i8) as u8)),
+                    &Point::from(r.vertex(k as u8)),
+                    &Point::from(r.vertex(((k + 1i8) & 3i8) as u8))
+                ));
+            }
+        }
+    }
+
+    #[test]
+    fn test_contains_latlng() {
+        let tests = [
+            (
+                rect_from_degrees(0.0, -180.0, 90.0, 0.0),
+                LatLng::from_degrees(30.0, -45.0),
+                true,
+            ),
+            (
+                rect_from_degrees(0.0, -180.0, 90.0, 0.0),
+                LatLng::from_degrees(30.0, 45.0),
+                false,
+            ),
+            (
+                rect_from_degrees(0.0, -180.0, 90.0, 0.0),
+                LatLng::from_degrees(0.0, -180.0),
+                true,
+            ),
+            (
+                rect_from_degrees(0.0, -180.0, 90.0, 0.0),
+                LatLng::from_degrees(90.0, 0.0),
+                true,
+            ),
+        ];
+
+        for (input, ll, want) in &tests {
+            assert_eq!(input.contains_latlng(ll), *want);
+        }
+    }
+
+    #[test]
+    fn test_rect_expanded() {
+        let tests = [
+            (
+                rect_from_degrees(70.0, 150.0, 80.0, 170.0),
+                LatLng::from_degrees(20.0, 30.0),
+                rect_from_degrees(50.0, 120.0, 90.0, -160.0),
+            ),
+            (
+                Rect::empty(),
+                LatLng::from_degrees(20.0, 30.0),
+                Rect::empty(),
+            ),
+            (
+                Rect::full(),
+                LatLng::from_degrees(500.0, 500.0),
+                Rect::full(),
+            ),
+            (
+                rect_from_degrees(-90.0, 170.0, 10.0, 20.0),
+                LatLng::from_degrees(30.0, 80.0),
+                rect_from_degrees(-90.0, -180.0, 40.0, 180.0),
+            ),
+            // Negative margins.
+            (
+                rect_from_degrees(10.0, -50.0, 60.0, 70.0),
+                LatLng::from_degrees(-10.0, -10.0),
+                rect_from_degrees(20.0, -40.0, 50.0, 60.0),
+            ),
+            (
+                rect_from_degrees(-20.0, -180.0, 20.0, 180.0),
+                LatLng::from_degrees(-10.0, -10.0),
+                rect_from_degrees(-10.0, -180.0, 10.0, 180.0),
+            ),
+            (
+                rect_from_degrees(-20.0, -180.0, 20.0, 180.0),
+                LatLng::from_degrees(-30.0, -30.0),
+                Rect::empty(),
+            ),
+            (
+                rect_from_degrees(-90.0, 10.0, 90.0, 11.0),
+                LatLng::from_degrees(-10.0, -10.0),
+                Rect::empty(),
+            ),
+            (
+                rect_from_degrees(-90.0, 10.0, 90.0, 100.0),
+                LatLng::from_degrees(-10.0, -10.0),
+                rect_from_degrees(-80.0, 20.0, 80.0, 90.0),
+            ),
+            (
+                Rect::empty(),
+                LatLng::from_degrees(-50.0, -500.0),
+                Rect::empty(),
+            ),
+            (
+                Rect::full(),
+                LatLng::from_degrees(-50.0, -50.0),
+                rect_from_degrees(-40.0, -180.0, 40.0, 180.0),
+            ),
+            // Mixed margins.
+            (
+                rect_from_degrees(10.0, -50.0, 60.0, 70.0),
+                LatLng::from_degrees(-10.0, 30.0),
+                rect_from_degrees(20.0, -80.0, 50.0, 100.0),
+            ),
+            (
+                rect_from_degrees(-20.0, -180.0, 20.0, 180.0),
+                LatLng::from_degrees(10.0, -500.0),
+                rect_from_degrees(-30.0, -180.0, 30.0, 180.0),
+            ),
+            (
+                rect_from_degrees(-90.0, -180.0, 80.0, 180.0),
+                LatLng::from_degrees(-30.0, 500.0),
+                rect_from_degrees(-60.0, -180.0, 50.0, 180.0),
+            ),
+            (
+                rect_from_degrees(-80.0, -100.0, 80.0, 150.0),
+                LatLng::from_degrees(30.0, -50.0),
+                rect_from_degrees(-90.0, -50.0, 90.0, 100.0),
+            ),
+            (
+                rect_from_degrees(0.0, -180.0, 50.0, 180.0),
+                LatLng::from_degrees(-30.0, 500.0),
+                Rect::empty(),
+            ),
+            (
+                rect_from_degrees(-80.0, 10.0, 70.0, 20.0),
+                LatLng::from_degrees(30.0, -200.0),
+                Rect::empty(),
+            ),
+            (
+                Rect::empty(),
+                LatLng::from_degrees(100.0, -100.0),
+                Rect::empty(),
+            ),
+            (
+                Rect::full(),
+                LatLng::from_degrees(100.0, -100.0),
+                Rect::full(),
+            ),
+        ];
+
+        for (input, margin, want) in &tests {
+            let got = input.expanded(margin);
+            assert!(rects_approx_equal(got, want.clone(), EPSILON, EPSILON));
+        }
+    }
+
+        
 }
