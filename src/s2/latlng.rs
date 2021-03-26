@@ -27,6 +27,13 @@ impl LatLng {
         LatLng { lat, lng }
     }
 
+    pub fn from_degrees(lat: f64, lng: f64) -> Self {
+        LatLng {
+            lat: Angle::from(Deg(lat)),
+            lng: Angle::from(Deg(lng)),
+        }
+    }
+
     pub fn is_valid(&self) -> bool {
         self.lat.rad().abs() <= PI / 2. && self.lng.rad().abs() <= PI
     }
