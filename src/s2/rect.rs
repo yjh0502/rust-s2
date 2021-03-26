@@ -482,3 +482,145 @@ func (r Rect) IntersectsCell(c Cell) bool {
 // BUG: The major differences from the C++ version are:
 //   - GetCentroid, Get*Distance, Vertex, InteriorContains(LatLng|Rect|Point)
 */
+
+#[cfg(test)]
+#[allow(non_upper_case_globals)]
+mod tests {
+    use super::*;
+    use std::f64::consts::PI;
+
+    use crate::r1;
+    use crate::s1::*;
+    use std::ops::Add;
+
+    const EPSILON: f64 = 1e-10;
+
+    #[test]
+    fn test_rect_empty_and_full() {
+        let tests = [
+            (Rect::empty(), true, true, false, false),
+            (Rect::full(), true, false, true, false),
+        ];
+        for (rect, valid, empty, full, point) in &tests {
+            assert_eq!(&rect.is_valid(), valid);
+            assert_eq!(&rect.is_empty(), empty);
+            assert_eq!(&rect.is_full(), full);
+            assert_eq!(&rect.is_point(), point);
+        }
+    }
+
+    #[test]
+    fn test_rect_area() {
+        let tests = [
+            (Rect::empty(), 0f64),
+            (Rect::full(), 4.0 * PI),
+            (
+                Rect {
+                    lat: r1::interval::Interval {
+                        lo: 0f64,
+                        hi: PI / 2.0,
+                    },
+                    lng: Interval {
+                        lo: 0f64,
+                        hi: PI / 2.0,
+                    },
+                },
+                PI / 2.0,
+            ),
+        ];
+        for (rect, want) in &tests {
+            assert_eq!(&rect.area(), want);
+        }
+    }
+
+    // TODO: test_rect_string
+
+    #[test]
+    fn test_rect_from_latlng() {
+        let ll = LatLng::from_degrees(23.0, 47.0);
+        let got = Rect::from(ll.clone());
+
+        assert!(got.is_point());
+        assert_eq!(got.center(), ll);
+    }
+
+    fn rect_from_degrees(lat_lo: f64, lng_lo: f64, lat_hi: f64, lng_hi: f64) -> Rect {
+        Rect {
+            lat: r1::interval::Interval {
+                lo: Angle::from(Deg(lat_lo)).rad(),
+                hi: Angle::from(Deg(lat_hi)).rad(),
+            },
+            lng: Interval::new(
+                Angle::from(Deg(lng_lo)).rad(),
+                Angle::from(Deg(lng_hi)).rad(),
+            ),
+        }
+    }
+
+    fn rects_approx_equal(a: Rect, b: Rect, tol_lat: f64, tol_lng: f64) -> bool {
+        return (a.lat.lo - b.lat.lo).abs() < tol_lat
+            && (a.lat.hi - b.lat.hi).abs() < tol_lat
+            && (a.lng.lo - b.lng.lo).abs() < tol_lng
+            && (a.lng.hi - b.lng.hi).abs() < tol_lng;
+    }
+
+    #[test]
+    fn test_rect_from_center_size() {
+        let tests = [(
+            LatLng::from_degrees(80.0, 170.0),
+            LatLng::from_degrees(40.0, 60.0),
+            rect_from_degrees(60.0, 140.0, 90.0, -160.0),
+        )];
+        for (center, size, want) in &tests {
+            assert!(rects_approx_equal(
+                Rect::from_center_size(center.clone(), size.clone()),
+                want.clone(),
+                EPSILON,
+                EPSILON
+            ));
+        }
+    }
+
+    #[test]
+    fn test_rect_add_point() {
+        let tests = [
+            (
+                Rect {
+                    lat: r1::interval::EMPTY,
+                    lng: interval::EMPTY,
+                },
+                LatLng::from_degrees(0.0, 0.0),
+                rect_from_degrees(0.0, 0.0, 0.0, 0.0),
+            ),
+            (
+                rect_from_degrees(0.0, 0.0, 0.0, 0.0),
+                LatLng {
+                    lat: Angle::from(Rad(0.0)),
+                    lng: Angle::from(Rad(-PI / 2.0)),
+                },
+                rect_from_degrees(0.0, -90.0, 0.0, 0.0),
+            ),
+            (
+                rect_from_degrees(0.0, -90.0, 0.0, 0.0),
+                LatLng {
+                    lat: Angle::from(Rad(PI / 4.0)),
+                    lng: Angle::from(Rad(-PI)),
+                },
+                rect_from_degrees(0.0, -180.0, 45.0, 0.0),
+            ),
+            (
+                rect_from_degrees(0.0, -180.0, 45.0, 0.0),
+                LatLng {
+                    lat: Angle::from(Rad(PI / 2.0)),
+                    lng: Angle::from(Rad(0.0)),
+                },
+                rect_from_degrees(0.0, -180.0, 90.0, 0.0),
+            ),
+        ];
+
+        for (input, point, want) in &tests {
+            let got = input.add(point);
+            assert!(rects_approx_equal(got, want.clone(), EPSILON, EPSILON));
+        }
+    }
+}
