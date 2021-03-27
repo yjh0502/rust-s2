@@ -489,8 +489,10 @@ mod tests {
     use super::*;
     use std::f64::consts::PI;
 
+    use crate::cellid::CellID;
     use crate::predicates::sign;
     use crate::r1;
+    use crate::r3::vector::Vector;
     use crate::s1::*;
     use std::ops::Add;
 
@@ -558,7 +560,7 @@ mod tests {
         }
     }
 
-    fn rects_approx_equal(a: Rect, b: Rect, tol_lat: f64, tol_lng: f64) -> bool {
+    fn rects_approx_equal(a: &Rect, b: &Rect, tol_lat: f64, tol_lng: f64) -> bool {
         return (a.lat.lo - b.lat.lo).abs() < tol_lat
             && (a.lat.hi - b.lat.hi).abs() < tol_lat
             && (a.lng.lo - b.lng.lo).abs() < tol_lng
@@ -574,8 +576,8 @@ mod tests {
         )];
         for (center, size, want) in &tests {
             assert!(rects_approx_equal(
-                Rect::from_center_size(center.clone(), size.clone()),
-                want.clone(),
+                &Rect::from_center_size(center.clone(), size.clone()),
+                want,
                 EPSILON,
                 EPSILON
             ));
@@ -621,7 +623,7 @@ mod tests {
 
         for (input, point, want) in &tests {
             let got = input.add(point);
-            assert!(rects_approx_equal(got, want.clone(), EPSILON, EPSILON));
+            assert!(rects_approx_equal(&got, want, EPSILON, EPSILON));
         }
     }
 
@@ -831,9 +833,1019 @@ mod tests {
 
         for (input, margin, want) in &tests {
             let got = input.expanded(margin);
-            assert!(rects_approx_equal(got, want.clone(), EPSILON, EPSILON));
+            assert!(rects_approx_equal(&got, want, EPSILON, EPSILON));
         }
     }
 
-        
+    #[test]
+    fn test_rect_polar_closure() {
+        let tests = [
+            (
+                rect_from_degrees(-89.0, 0.0, 89.0, 1.0),
+                rect_from_degrees(-89.0, 0.0, 89.0, 1.0),
+            ),
+            (
+                rect_from_degrees(-90.0, -30.0, -45.0, 100.0),
+                rect_from_degrees(-90.0, -180.0, -45.0, 180.0),
+            ),
+            (
+                rect_from_degrees(89.0, 145.0, 90.0, 146.0),
+                rect_from_degrees(89.0, -180.0, 90.0, 180.0),
+            ),
+            (rect_from_degrees(-90.0, -145.0, 90.0, -144.0), Rect::full()),
+        ];
+
+        for (r, want) in &tests {
+            let got = r.polar_closure();
+            assert!(rects_approx_equal(&got, want, EPSILON, EPSILON));
+        }
+    }
+
+    #[test]
+    fn test_rect_cap_bound() {
+        let tests = [
+            (
+                // Bounding cap at center is smaller.
+                rect_from_degrees(-45.0, -45.0, 45.0, 45.0),
+                Cap::from_center_height(
+                    &Point(Vector {
+                        x: 1.0,
+                        y: 0.0,
+                        z: 0.0,
+                    }),
+                    0.5,
+                ),
+            ),
+            (
+                // Bounding cap at north pole is smaller.
+                rect_from_degrees(88.0, -80.0, 89.0, 80.0),
+                Cap::from_center_angle(
+                    &Point(Vector {
+                        x: 0.0,
+                        y: 0.0,
+                        z: 1.0,
+                    }),
+                    &Angle::from(Deg(2.0)),
+                ),
+            ),
+            (
+                // Longitude span > 180 degrees.
+                rect_from_degrees(-30.0, -150.0, -10.0, 50.0),
+                Cap::from_center_angle(
+                    &Point(Vector {
+                        x: 0.0,
+                        y: 0.0,
+                        z: -1.0,
+                    }),
+                    &Angle::from(Deg(80.)),
+                ),
+            ),
+        ];
+
+        for (r, want) in &tests {
+            let got = r.cap_bound();
+            assert!(want.approx_eq(&got));
+        }
+    }
+
+    #[test]
+    fn test_rect_interval_ops() {
+        // Rectangle that covers one-quarter of the sphere.
+        let rect = rect_from_degrees(0., -180., 90., 0.);
+
+        // Test operations where one rectangle consists of a single point.
+        let rectMid = rect_from_degrees(45., -90., 45., -90.);
+        let rect180 = rect_from_degrees(0., -180., 0., -180.);
+        let northPole = rect_from_degrees(90., 0., 90., 0.);
+
+        struct Test<'a> {
+            rect: &'a Rect,
+            other: &'a Rect,
+            contains: bool,
+            intersects: bool,
+            union: &'a Rect,
+            intersection: &'a Rect,
+        };
+        let tests: [Test; 10] = [
+            Test {
+                rect: &rect,
+                other: &rectMid,
+                contains: true,
+                intersects: true,
+                union: &rect,
+                intersection: &rectMid,
+            },
+            Test {
+                rect: &rect,
+                other: &rect180,
+                contains: true,
+                intersects: true,
+                union: &rect,
+                intersection: &rect180,
+            },
+            Test {
+                rect: &rect,
+                other: &northPole,
+                contains: true,
+                intersects: true,
+                union: &rect,
+                intersection: &northPole,
+            },
+            Test {
+                rect: &rect,
+                other: &rect_from_degrees(-10., -1., 1., 20.),
+                contains: false,
+                intersects: true,
+                union: &rect_from_degrees(-10., 180., 90., 20.),
+                intersection: &rect_from_degrees(0., -1., 1., 0.),
+            },
+            Test {
+                rect: &rect,
+                other: &rect_from_degrees(-10., -1., 0., 20.),
+                contains: false,
+                intersects: true,
+                union: &rect_from_degrees(-10., 180., 90., 20.),
+                intersection: &rect_from_degrees(0., -1., 0., 0.),
+            },
+            Test {
+                rect: &rect,
+                other: &rect_from_degrees(-10., 0., 1., 20.),
+                contains: false,
+                intersects: true,
+                union: &rect_from_degrees(-10., 180., 90., 20.),
+                intersection: &rect_from_degrees(0., 0., 1., 0.),
+            },
+            Test {
+                rect: &rect_from_degrees(-15., -160., -15., -150.),
+                other: &rect_from_degrees(20., 145., 25., 155.),
+                contains: false,
+                intersects: false,
+                union: &rect_from_degrees(-15., 145., 25., -150.),
+                intersection: &Rect::empty(),
+            },
+            Test {
+                rect: &rect_from_degrees(70., -10., 90., -140.),
+                other: &rect_from_degrees(60., 175., 80., 5.),
+                contains: false,
+                intersects: true,
+                union: &rect_from_degrees(60., -180., 90., 180.),
+                intersection: &rect_from_degrees(70., 175., 80., 5.),
+            },
+            // Check that the intersection of two rectangles that overlap in latitude
+            // but not longitude is valid, and vice versa.
+            Test {
+                rect: &rect_from_degrees(12., 30., 60., 60.),
+                other: &rect_from_degrees(0., 0., 30., 18.),
+                contains: false,
+                intersects: false,
+                union: &rect_from_degrees(0., 0., 60., 60.),
+                intersection: &Rect::empty(),
+            },
+            Test {
+                rect: &rect_from_degrees(0., 0., 18., 42.),
+                other: &rect_from_degrees(30., 12., 42., 60.),
+                contains: false,
+                intersects: false,
+                union: &rect_from_degrees(0., 0., 42., 60.),
+                intersection: &Rect::empty(),
+            },
+        ];
+        for test in &tests {
+            assert_eq!(test.rect.contains(test.other), test.contains);
+
+            assert_eq!(test.rect.intersects(test.other), test.intersects);
+
+            assert_eq!(
+                rects_approx_equal(&test.rect.union(test.other), test.rect, EPSILON, EPSILON),
+                test.rect.contains(test.other)
+            );
+
+            assert_ne!(
+                test.rect.intersection(test.other).is_empty(),
+                test.rect.intersects(test.other)
+            );
+
+            assert!(rects_approx_equal(
+                &test.rect.union(test.other),
+                test.union,
+                EPSILON,
+                EPSILON
+            ));
+
+            assert!(rects_approx_equal(
+                &test.rect.intersection(test.other),
+                test.intersection,
+                EPSILON,
+                EPSILON
+            ));
+        }
+    }
+
+    #[test]
+    fn test_rect_cell_ops() {
+        let cell0 = Cell::from(Point(Vector {
+            x: 1. + 1e-12,
+            y: 1.,
+            z: 1.,
+        }));
+        let v0 = LatLng::from(cell0.vertex(0));
+
+        let cell202 = Cell::from(CellID::from_face_pos_level(2, 0, 2));
+        let bound202 = cell202.rect_bound();
+
+        struct Test<'a> {
+            r: &'a Rect,
+            c: &'a Cell,
+            contains: bool,
+            intersects: bool,
+        }
+        let tests: [Test; 15] = [
+            // Special cases
+            Test {
+                r: &Rect::empty(),
+                c: &Cell::from(CellID::from_face_pos_level(3, 0, 0)),
+                contains: false,
+                intersects: false,
+            },
+            Test {
+                r: &Rect::full(),
+                c: &Cell::from(CellID::from_face_pos_level(2, 0, 0)),
+                contains: true,
+                intersects: true,
+            },
+            Test {
+                r: &Rect::full(),
+                c: &Cell::from(CellID::from_face_pos_level(5, 0, 25)),
+                contains: true,
+                intersects: true,
+            },
+            // This rectangle includes the first quadrant of face 0.  It's expanded
+            // slightly because cell bounding rectangles are slightly conservative.
+            Test {
+                r: &rect_from_degrees(-45.1, -45.1, 0.1, 0.1),
+                c: &Cell::from(CellID::from_face_pos_level(0, 0, 0)),
+                contains: false,
+                intersects: true,
+            },
+            Test {
+                r: &rect_from_degrees(-45.1, -45.1, 0.1, 0.1),
+                c: &Cell::from(CellID::from_face_pos_level(0, 0, 1)),
+                contains: true,
+                intersects: true,
+            },
+            Test {
+                r: &rect_from_degrees(-45.1, -45.1, 0.1, 0.1),
+                c: &Cell::from(CellID::from_face_pos_level(1, 0, 1)),
+                contains: false,
+                intersects: false,
+            },
+            // This rectangle intersects the first quadrant of face 0.
+            Test {
+                r: &rect_from_degrees(-10., -45., 10., 0.),
+                c: &Cell::from(CellID::from_face_pos_level(0, 0, 0)),
+                contains: false,
+                intersects: true,
+            },
+            Test {
+                r: &rect_from_degrees(-10., -45., 10., 0.),
+                c: &Cell::from(CellID::from_face_pos_level(0, 0, 1)),
+                contains: false,
+                intersects: true,
+            },
+            Test {
+                r: &rect_from_degrees(-10., -45., 10., 0.),
+                c: &Cell::from(CellID::from_face_pos_level(1, 0, 1)),
+                contains: false,
+                intersects: false,
+            },
+            // Rectangle consisting of a single point.
+            Test {
+                r: &rect_from_degrees(4., 4., 4., 4.),
+                c: &Cell::from(CellID::from_face(0)),
+                contains: false,
+                intersects: true,
+            },
+            // Rectangles that intersect the bounding rectangle of a face
+            // but not the face itself.
+            Test {
+                r: &rect_from_degrees(41., -87., 42., -79.),
+                c: &Cell::from(CellID::from_face(2)),
+                contains: false,
+                intersects: false,
+            },
+            Test {
+                r: &rect_from_degrees(-41., 160., -40., -160.),
+                c: &Cell::from(CellID::from_face(5)),
+                contains: false,
+                intersects: false,
+            },
+            Test {
+                // This is the leaf cell at the top right hand corner of face 0.
+                // It has two angles of 60 degrees and two of 120 degrees.
+                r: &rect_from_degrees(
+                    v0.lat.deg() - 1e-8,
+                    v0.lng.deg() - 1e-8,
+                    v0.lat.deg() - 2e-10,
+                    v0.lng.deg() + 1e-10,
+                ),
+                c: &cell0,
+                contains: false,
+                intersects: false,
+            },
+            Test {
+                // Rectangles that intersect a face but where no vertex of one region
+                // is contained by the other region.  The first one passes through
+                // a corner of one of the face cells.
+                r: &rect_from_degrees(-37., -70., -36., -20.),
+                c: &Cell::from(CellID::from_face(5)),
+                contains: false,
+                intersects: true,
+            },
+            Test {
+                // These two intersect like a diamond and a square.
+                r: &rect_from_degrees(
+                    bound202.lo().lat.deg() + 3.,
+                    bound202.lo().lng.deg() + 3.,
+                    bound202.hi().lat.deg() - 3.,
+                    bound202.hi().lng.deg() - 3.,
+                ),
+                c: &cell202,
+                contains: false,
+                intersects: true,
+            },
+            /* FIXME
+            Test {
+                // from a bug report
+                r:          &rect_from_degrees(34.2572864, 135.2673642, 34.2707907, 135.2995742),
+                c:          &Cell::from(CellID(0x6007500000000000)),
+                contains:   false,
+                intersects: true
+            }*/
+        ];
+
+        for (i, test) in tests.iter().enumerate() {
+            println!("Test #{}", i);
+            assert_eq!(test.r.contains_cell(test.c), test.contains);
+            assert_eq!(test.r.intersects_cell(test.c), test.intersects);
+        }
+    }
+
+    #[test]
+    fn test_rect_contains_point() {
+        let r1 = rect_from_degrees(0., -180., 90., 0.);
+
+        let tests = [
+            (
+                &r1,
+                &Point(Vector {
+                    x: 0.5,
+                    y: -0.3,
+                    z: 0.1,
+                }),
+                true,
+            ),
+            (
+                &r1,
+                &Point(Vector {
+                    x: 0.5,
+                    y: 0.2,
+                    z: 0.1,
+                }),
+                false,
+            ),
+        ];
+        for &(r, p, want) in &tests {
+            assert_eq!(r.contains_point(p), want);
+        }
+    }
+
+    #[test]
+    fn test_rect_intersects_lat_edge() {
+        let tests = [
+            (
+                Point(Vector {
+                    x: -1.,
+                    y: -1.,
+                    z: 1.,
+                }),
+                Point(Vector {
+                    x: 1.,
+                    y: -1.,
+                    z: 1.,
+                }),
+                Angle::from(Deg(41.)),
+                Angle::from(Deg(-87.)).rad(),
+                Angle::from(Deg(-79.)).rad(),
+                false,
+            ),
+            (
+                Point(Vector {
+                    x: -1.,
+                    y: -1.,
+                    z: 1.,
+                }),
+                Point(Vector {
+                    x: 1.,
+                    y: -1.,
+                    z: 1.,
+                }),
+                Angle::from(Deg(42.)),
+                Angle::from(Deg(-87.)).rad(),
+                Angle::from(Deg(-79.)).rad(),
+                false,
+            ),
+            (
+                Point(Vector {
+                    x: -1.,
+                    y: -1.,
+                    z: -1.,
+                }),
+                Point(Vector {
+                    x: 1.,
+                    y: 1.,
+                    z: 0.,
+                }),
+                Angle::from(Deg(-3.)),
+                Angle::from(Deg(-1.)).rad(),
+                Angle::from(Deg(23.)).rad(),
+                false,
+            ),
+            (
+                Point(Vector {
+                    x: 1.,
+                    y: 0.,
+                    z: 1.,
+                }),
+                Point(Vector {
+                    x: 1.,
+                    y: -1.,
+                    z: 0.,
+                }),
+                Angle::from(Deg(-28.)),
+                Angle::from(Deg(69.)).rad(),
+                Angle::from(Deg(115.)).rad(),
+                false,
+            ),
+            (
+                Point(Vector {
+                    x: 0.,
+                    y: 1.,
+                    z: 0.,
+                }),
+                Point(Vector {
+                    x: 1.,
+                    y: -1.,
+                    z: -1.,
+                }),
+                Angle::from(Deg(44.)),
+                Angle::from(Deg(60.)).rad(),
+                Angle::from(Deg(177.)).rad(),
+                false,
+            ),
+            (
+                Point(Vector {
+                    x: 0.,
+                    y: 1.,
+                    z: 1.,
+                }),
+                Point(Vector {
+                    x: 0.,
+                    y: 1.,
+                    z: -1.,
+                }),
+                Angle::from(Deg(-25.)),
+                Angle::from(Deg(-74.)).rad(),
+                Angle::from(Deg(-165.)).rad(),
+                true,
+            ),
+            (
+                Point(Vector {
+                    x: 1.,
+                    y: 0.,
+                    z: 0.,
+                }),
+                Point(Vector {
+                    x: 0.,
+                    y: 0.,
+                    z: -1.,
+                }),
+                Angle::from(Deg(-4.)),
+                Angle::from(Deg(-152.)).rad(),
+                Angle::from(Deg(171.)).rad(),
+                true,
+            ),
+            // from a bug report
+            /* FIXME
+                ()            (
+                Point(Vector {
+                    x: -0.589375791872893683986945,
+                    y: 0.583248451588733285433364,
+                    z: 0.558978908075738245564423,
+                }),
+                Point(Vector {
+                    x: -0.587388131301997518107783,
+                    y: 0.581281455376392863776402,
+                    z: 0.563104832905072516524569,
+                }),
+                Angle::from(Deg(34.2572864)),
+                2.3608609,
+                2.3614230,
+                true,
+            ),*/
+        ];
+
+        for (a, b, lat, lng_lo, lng_hi, want) in &tests {
+            assert_eq!(
+                intersects_lat_edge(a, b, *lat, Interval::new(*lng_lo, *lng_hi)),
+                *want
+            );
+        }
+    }
+
+    fn test_rect_intersects_lng_edge() {
+        let tests = [
+            (
+                Point(Vector {
+                    x: -1.,
+                    y: -1.,
+                    z: 1.,
+                }),
+                Point(Vector {
+                    x: 1.,
+                    y: -1.,
+                    z: 1.,
+                }),
+                Angle::from(Deg(41.)).rad(),
+                Angle::from(Deg(42.)).rad(),
+                Angle::from(Deg(-79.)),
+                false,
+            ),
+            (
+                Point(Vector {
+                    x: -1.,
+                    y: -1.,
+                    z: 1.,
+                }),
+                Point(Vector {
+                    x: 1.,
+                    y: -1.,
+                    z: 1.,
+                }),
+                Angle::from(Deg(41.)).rad(),
+                Angle::from(Deg(42.)).rad(),
+                Angle::from(Deg(-87.)),
+                false,
+            ),
+            (
+                Point(Vector {
+                    x: -1.,
+                    y: -1.,
+                    z: 1.,
+                }),
+                Point(Vector {
+                    x: 1.,
+                    y: -1.,
+                    z: 1.,
+                }),
+                Angle::from(Deg(42.)).rad(),
+                Angle::from(Deg(41.)).rad(),
+                Angle::from(Deg(79.)),
+                false,
+            ),
+            (
+                Point(Vector {
+                    x: -1.,
+                    y: -1.,
+                    z: 1.,
+                }),
+                Point(Vector {
+                    x: 1.,
+                    y: -1.,
+                    z: 1.,
+                }),
+                Angle::from(Deg(41.)).rad(),
+                Angle::from(Deg(42.)).rad(),
+                Angle::from(Deg(87.)),
+                false,
+            ),
+            (
+                Point(Vector {
+                    x: 0.,
+                    y: -1.,
+                    z: -1.,
+                }),
+                Point(Vector {
+                    x: -1.,
+                    y: 0.,
+                    z: -1.,
+                }),
+                Angle::from(Deg(-87.)).rad(),
+                Angle::from(Deg(13.)).rad(),
+                Angle::from(Deg(-143.)),
+                true,
+            ),
+            (
+                Point(Vector {
+                    x: 1.,
+                    y: 1.,
+                    z: -1.,
+                }),
+                Point(Vector {
+                    x: 1.,
+                    y: -1.,
+                    z: 1.,
+                }),
+                Angle::from(Deg(-64.)).rad(),
+                Angle::from(Deg(13.)).rad(),
+                Angle::from(Deg(40.)),
+                true,
+            ),
+            (
+                Point(Vector {
+                    x: 1.,
+                    y: 1.,
+                    z: 0.,
+                }),
+                Point(Vector {
+                    x: -1.,
+                    y: 0.,
+                    z: -1.,
+                }),
+                Angle::from(Deg(-64.)).rad(),
+                Angle::from(Deg(56.)).rad(),
+                Angle::from(Deg(151.)),
+                true,
+            ),
+            (
+                Point(Vector {
+                    x: -1.,
+                    y: -1.,
+                    z: 0.,
+                }),
+                Point(Vector {
+                    x: 1.,
+                    y: -1.,
+                    z: -1.,
+                }),
+                Angle::from(Deg(-50.)).rad(),
+                Angle::from(Deg(18.)).rad(),
+                Angle::from(Deg(-84.)),
+                true,
+            ),
+        ];
+
+        for (a, b, lat_lo, lat_hi, lng, want) in &tests {
+            assert_eq!(
+                intersects_lng_edge(a, b, r1::interval::Interval {lo: *lat_lo, hi: *lat_hi}, *lng),
+                *want
+            );
+        }
+    }
+    /*
+    // intervalDistance returns the minimum distance (in radians) from X to the latitude
+    // line segment defined by the given latitude and longitude interval.
+    func intervalDistance(x LatLng, lat s1.Angle, iv s1.Interval) s1.Angle {
+        // Is x inside the longitude interval?
+        if iv.Contains(float64(x.Lng)) {
+            return s1.Angle(math.Abs(float64(x.Lat - lat)))
+        }
+
+        return minAngle(
+            x.Distance(LatLng{lat, s1.Angle(iv.Lo)}),
+            x.Distance(LatLng{lat, s1.Angle(iv.Hi)}))
+    }
+
+    // Returns the minimum distance from X to the latitude line segment defined by
+    // the given latitude and longitude interval.
+    func bruteForceRectLatLngDistance(r Rect, ll LatLng) s1.Angle {
+        pt := PointFromLatLng(ll)
+        if r.ContainsPoint(pt) {
+            return 0
+        }
+
+        loLat := intervalDistance(ll, s1.Angle(r.Lat.Lo), r.Lng)
+        hiLat := intervalDistance(ll, s1.Angle(r.Lat.Hi), r.Lng)
+        loLng := DistanceFromSegment(PointFromLatLng(ll),
+            PointFromLatLng(LatLng{s1.Angle(r.Lat.Lo), s1.Angle(r.Lng.Lo)}),
+            PointFromLatLng(LatLng{s1.Angle(r.Lat.Hi), s1.Angle(r.Lng.Lo)}))
+        hiLng := DistanceFromSegment(PointFromLatLng(ll),
+            PointFromLatLng(LatLng{s1.Angle(r.Lat.Lo), s1.Angle(r.Lng.Hi)}),
+            PointFromLatLng(LatLng{s1.Angle(r.Lat.Hi), s1.Angle(r.Lng.Hi)}))
+
+        return minAngle(loLat, hiLat, loLng, hiLng)
+    }
+
+    func TestDistanceRectFromLatLng(t *testing.T) {
+        // Rect that spans 180.
+        a := RectFromLatLng(LatLngFromDegrees(-1, -1)).AddPoint(LatLngFromDegrees(2, 1))
+        // Rect near north pole.
+        b := RectFromLatLng(LatLngFromDegrees(86, 0)).AddPoint(LatLngFromDegrees(88, 2))
+        // Rect that touches north pole.
+        c := RectFromLatLng(LatLngFromDegrees(88, 0)).AddPoint(LatLngFromDegrees(90, 2))
+
+        tests := []struct {
+            r        Rect
+            lat, lng float64 // In degrees.
+        }{
+            {a, -2, -1},
+            {a, 1, 2},
+            {b, 87, 3},
+            {b, 87, -1},
+            {b, 89, 1},
+            {b, 89, 181},
+            {b, 85, 1},
+            {b, 85, 181},
+            {b, 90, 0},
+            {c, 89, 3},
+            {c, 89, 90},
+            {c, 89, 181},
+        }
+
+        for _, test := range tests {
+            ll := LatLngFromDegrees(test.lat, test.lng)
+            got := test.r.DistanceToLatLng(ll)
+            want := bruteForceRectLatLngDistance(test.r, ll)
+            if !float64Near(float64(got), float64(want), 1e-10) {
+                t.Errorf("dist from %v to %v = %v, want %v", test.r, ll, got, want)
+            }
+        }
+    }
+
+    func TestDistanceRectFromLatLngRandomPairs(t *testing.T) {
+        latlng := func() LatLng { return LatLngFromPoint(randomPoint()) }
+
+        for i := 0; i < 10000; i++ {
+            r := RectFromLatLng(latlng()).AddPoint(latlng())
+            ll := latlng()
+            got := r.DistanceToLatLng(ll)
+            want := bruteForceRectLatLngDistance(r, ll)
+            if !float64Near(float64(got), float64(want), 1e-10) {
+                t.Errorf("dist from %v to %v = %v, want %v", r, ll, got, want)
+            }
+        }
+    }
+
+    // This function assumes that DirectedHausdorffDistance() always returns
+    // a distance from some point in a to b. So the function mainly tests whether
+    // the returned distance is large enough, and only does a weak test on whether
+    // it is small enough.
+    func verifyDirectedHausdorffDistance(t *testing.T, a, b Rect) {
+        t.Helper()
+
+        const resolution = 0.1
+
+        // Record the max sample distance as well as the sample point realizing the
+        // max for easier debugging.
+        var maxDistance s1.Angle
+
+        sampleSizeOnLat := int(a.Lat.Length()/resolution) + 1
+        sampleSizeOnLng := int(a.Lng.Length()/resolution) + 1
+
+        deltaOnLat := s1.Angle(a.Lat.Length()) / s1.Angle(sampleSizeOnLat)
+        deltaOnLng := s1.Angle(a.Lng.Length()) / s1.Angle(sampleSizeOnLng)
+
+        ll := LatLng{Lng: s1.Angle(a.Lng.Lo)}
+        for i := 0; i <= sampleSizeOnLng; i++ {
+            ll.Lat = s1.Angle(a.Lat.Lo)
+
+            for j := 0; j <= sampleSizeOnLat; j++ {
+                d := b.DistanceToLatLng(ll.Normalized())
+                maxDistance = maxAngle(maxDistance, d)
+                ll.Lat += deltaOnLat
+            }
+            ll.Lng += deltaOnLng
+        }
+
+        got := a.DirectedHausdorffDistance(b)
+
+        if got < maxDistance-1e-10 {
+            t.Errorf("hausdorff(%v, %v) = %v < %v-eps, but shouldn't", a, b, got, maxDistance)
+        } else if got > maxDistance+resolution {
+            t.Errorf("DirectedHausdorffDistance(%v, %v) = %v > %v+resolution, but shouldn't", a, b, got, maxDistance)
+        }
+    }
+
+    func TestRectDirectedHausdorffDistanceRandomPairs(t *testing.T) {
+        // Test random pairs.
+        rnd := func() LatLng { return LatLngFromPoint(randomPoint()) }
+        for i := 0; i < 1000; i++ {
+            a := RectFromLatLng(rnd()).AddPoint(rnd())
+            b := RectFromLatLng(rnd()).AddPoint(rnd())
+            // a and b are *minimum* bounding rectangles of two random points, in
+            // particular, their Voronoi diagrams are always of the same topology. We
+            // take the "complements" of a and b for more thorough testing.
+            a2 := Rect{Lat: a.Lat, Lng: a.Lng.Complement()}
+            b2 := Rect{Lat: b.Lat, Lng: b.Lng.Complement()}
+
+            // Note that "a" and "b" come from the same distribution, so there is no
+            // need to test pairs such as (b, a), (b, a2), etc.
+            verifyDirectedHausdorffDistance(t, a, b)
+            verifyDirectedHausdorffDistance(t, a2, b)
+            verifyDirectedHausdorffDistance(t, a, b2)
+            verifyDirectedHausdorffDistance(t, a2, b2)
+        }
+    }
+
+    func TestDirectedHausdorffDistanceContained(t *testing.T) {
+        // Caller rect is contained in callee rect. Should return 0.
+        a := rectFromDegrees(-10, 20, -5, 90)
+        tests := []Rect{
+            rectFromDegrees(-10, 20, -5, 90),
+            rectFromDegrees(-10, 19, -5, 91),
+            rectFromDegrees(-11, 20, -4, 90),
+            rectFromDegrees(-11, 19, -4, 91),
+        }
+        for _, test := range tests {
+            got, want := a.DirectedHausdorffDistance(test), s1.Angle(0)
+            if got != want {
+                t.Errorf("%v.DirectedHausdorffDistance(%v) = %v, want %v", a, test, got, want)
+            }
+        }
+    }
+
+    func TestDirectHausdorffDistancePointToRect(t *testing.T) {
+        // The Hausdorff distance from a point to a rect should be the same as its
+        // distance to the rect.
+        a1 := LatLngFromDegrees(5, 8)
+        a2 := LatLngFromDegrees(90, 10) // North pole.
+
+        tests := []struct {
+            ll LatLng
+            b  Rect
+        }{
+            {a1, rectFromDegrees(-85, -50, -80, 10)},
+            {a2, rectFromDegrees(-85, -50, -80, 10)},
+            {a1, rectFromDegrees(4, -10, 80, 10)},
+            {a2, rectFromDegrees(4, -10, 80, 10)},
+            {a1, rectFromDegrees(70, 170, 80, -170)},
+            {a2, rectFromDegrees(70, 170, 80, -170)},
+        }
+        for _, test := range tests {
+            a := RectFromLatLng(test.ll)
+            got, want := a.DirectedHausdorffDistance(test.b), test.b.DistanceToLatLng(test.ll)
+
+            if !float64Eq(float64(got), float64(want)) {
+                t.Errorf("hausdorff(%v, %v) = %v, want %v, as that's the closest dist", test.b, a, got, want)
+            }
+        }
+    }
+
+    func TestDirectedHausdorffDistanceRectToPoint(t *testing.T) {
+        a := rectFromDegrees(1, -8, 10, 20)
+        tests := []struct {
+            lat, lng float64 // Degrees.
+        }{{5, 8}, {-6, -100}, {-90, -20}, {90, 0}}
+        for _, test := range tests {
+            verifyDirectedHausdorffDistance(t, a, RectFromLatLng(LatLngFromDegrees(test.lat, test.lng)))
+        }
+    }
+
+    func TestDirectedHausdorffDistanceRectToRectNearPole(t *testing.T) {
+        // Tests near south pole.
+        a := rectFromDegrees(-87, 0, -85, 3)
+        tests := []Rect{
+            rectFromDegrees(-89, 1, -88, 2),
+            rectFromDegrees(-84, 1, -83, 2),
+            rectFromDegrees(-88, 90, -86, 91),
+            rectFromDegrees(-84, -91, -83, -90),
+            rectFromDegrees(-90, 181, -89, 182),
+            rectFromDegrees(-84, 181, -83, 182),
+        }
+        for _, test := range tests {
+            verifyDirectedHausdorffDistance(t, a, test)
+        }
+    }
+
+    func TestDirectedHausdorffDistanceRectToRectDegenerateCases(t *testing.T) {
+        // Rectangles that contain poles.
+        verifyDirectedHausdorffDistance(t,
+            rectFromDegrees(0, 10, 90, 20), rectFromDegrees(-4, -10, 4, 0))
+        verifyDirectedHausdorffDistance(t,
+            rectFromDegrees(-4, -10, 4, 0), rectFromDegrees(0, 10, 90, 20))
+
+        // Two rectangles share same or complement longitudinal intervals.
+        a := rectFromDegrees(-50, -10, 50, 10)
+        b := rectFromDegrees(30, -10, 60, 10)
+        verifyDirectedHausdorffDistance(t, a, b)
+
+        c := Rect{Lat: a.Lat, Lng: a.Lng.Complement()}
+        verifyDirectedHausdorffDistance(t, c, b)
+
+        // Rectangle a touches b_opposite_lng.
+        verifyDirectedHausdorffDistance(t,
+            rectFromDegrees(10, 170, 30, 180), rectFromDegrees(-50, -10, 50, 10))
+        verifyDirectedHausdorffDistance(t,
+            rectFromDegrees(10, -180, 30, -170), rectFromDegrees(-50, -10, 50, 10))
+
+        // Rectangle b's Voronoi diagram is degenerate (lng interval spans 180
+        // degrees), and a touches the degenerate Voronoi vertex.
+        verifyDirectedHausdorffDistance(t,
+            rectFromDegrees(-30, 170, 30, 180), rectFromDegrees(-10, -90, 10, 90))
+        verifyDirectedHausdorffDistance(t,
+            rectFromDegrees(-30, -180, 30, -170), rectFromDegrees(-10, -90, 10, 90))
+
+        // Rectangle a touches a voronoi vertex of rectangle b.
+        verifyDirectedHausdorffDistance(t,
+            rectFromDegrees(-20, 105, 20, 110), rectFromDegrees(-30, 5, 30, 15))
+        verifyDirectedHausdorffDistance(t,
+            rectFromDegrees(-20, 95, 20, 105), rectFromDegrees(-30, 5, 30, 15))
+    }
+
+    func TestRectApproxEqual(t *testing.T) {
+        // s1.Interval and r1.Interval have additional testing.
+
+        const ε = epsilon / 10
+        tests := []struct {
+            a, b Rect
+            want bool
+        }{
+            {EmptyRect(), rectFromDegrees(1, 5, 1, 5), true},
+            {rectFromDegrees(1, 5, 1, 5), EmptyRect(), true},
+
+            {rectFromDegrees(1, 5, 1, 5), rectFromDegrees(2, 7, 2, 7), false},
+            {rectFromDegrees(1, 5, 1, 5), rectFromDegrees(1+ε, 5+ε, 1+ε, 5+ε), true},
+        }
+
+        for _, test := range tests {
+            if got := test.a.ApproxEqual(test.b); got != test.want {
+                t.Errorf("%v.ApproxEquals(%v) = %t, want %t", test.a, test.b, got, test.want)
+            }
+        }
+    }
+
+    func TestRectCentroidEmptyFull(t *testing.T) {
+        // Empty and full rectangles.
+        if got, want := EmptyRect().Centroid(), (Point{}); !got.ApproxEqual(want) {
+            t.Errorf("%v.Centroid() = %v, want %v", EmptyRect(), got, want)
+        }
+        if got, want := FullRect().Centroid().Norm(), epsilon; !float64Eq(got, want) {
+            t.Errorf("%v.Centroid().Norm() = %v, want %v", FullRect(), got, want)
+        }
+    }
+
+    func testRectCentroidSplitting(t *testing.T, r Rect, leftSplits int) {
+        // Recursively verify that when a rectangle is split into two pieces, the
+        // centroids of the children sum to give the centroid of the parent.
+        var child0, child1 Rect
+        if oneIn(2) {
+            lat := randomUniformFloat64(r.Lat.Lo, r.Lat.Hi)
+            child0 = Rect{r1.Interval{r.Lat.Lo, lat}, r.Lng}
+            child1 = Rect{r1.Interval{lat, r.Lat.Hi}, r.Lng}
+        } else {
+            lng := randomUniformFloat64(r.Lng.Lo, r.Lng.Hi)
+            child0 = Rect{r.Lat, s1.Interval{r.Lng.Lo, lng}}
+            child1 = Rect{r.Lat, s1.Interval{lng, r.Lng.Hi}}
+        }
+
+        if got, want := r.Centroid().Sub(child0.Centroid().Vector).Sub(child1.Centroid().Vector).Norm(), 1e-15; got > want {
+            t.Errorf("%v.Centroid() - %v.Centroid() - %v.Centroid = %v, want ~0", r, child0, child1, got)
+        }
+        if leftSplits > 0 {
+            testRectCentroidSplitting(t, child0, leftSplits-1)
+            testRectCentroidSplitting(t, child1, leftSplits-1)
+        }
+    }
+
+    func TestRectCentroidFullRange(t *testing.T) {
+        // Rectangles that cover the full longitude range.
+        for i := 0; i < 100; i++ {
+            lat1 := randomUniformFloat64(-math.Pi/2, math.Pi/2)
+            lat2 := randomUniformFloat64(-math.Pi/2, math.Pi/2)
+            r := Rect{r1.Interval{lat1, lat2}, s1.FullInterval()}
+            centroid := r.Centroid()
+            if want := 0.5 * (math.Sin(lat1) + math.Sin(lat2)) * r.Area(); !float64Near(want, centroid.Z, epsilon) {
+                t.Errorf("%v.Centroid().Z was %v, want %v", r, centroid.Z, want)
+            }
+            if got := (r2.Point{centroid.X, centroid.Y}.Norm()); got > epsilon {
+                t.Errorf("%v.Centroid().Norm() was %v, want > %v ", r, got, epsilon)
+            }
+        }
+
+        // Rectangles that cover the full latitude range.
+        for i := 0; i < 100; i++ {
+            lat1 := randomUniformFloat64(-math.Pi, math.Pi)
+            lat2 := randomUniformFloat64(-math.Pi, math.Pi)
+            r := Rect{r1.Interval{-math.Pi / 2, math.Pi / 2}, s1.Interval{lat1, lat2}}
+            centroid := r.Centroid()
+
+            if got, want := math.Abs(centroid.Z), epsilon; got > want {
+                t.Errorf("math.Abs(%v.Centroid().Z) = %v, want <= %v", r, got, want)
+            }
+
+            if got, want := LatLngFromPoint(centroid).Lng.Radians(), r.Lng.Center(); !float64Near(got, want, epsilon) {
+                t.Errorf("%v.Lng.Radians() = %v, want %v", centroid, got, want)
+            }
+
+            alpha := 0.5 * r.Lng.Length()
+            if got, want := (r2.Point{centroid.X, centroid.Y}.Norm()), (0.25 * math.Pi * math.Sin(alpha) / alpha * r.Area()); !float64Near(got, want, epsilon) {
+                t.Errorf("%v.Centroid().Norm() = %v, want ~%v", got, want, epsilon)
+            }
+        }
+
+        // Finally, verify that when a rectangle is recursively split into pieces,
+        // the centroids of the pieces add to give the centroid of their parent.
+        // To make the code simpler we avoid rectangles that cross the 180 degree
+        // line of longitude.
+        testRectCentroidSplitting(t, Rect{r1.Interval{-math.Pi / 2, math.Pi / 2}, s1.Interval{-math.Pi, math.Pi}}, 10)
+         */
 }
