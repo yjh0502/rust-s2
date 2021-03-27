@@ -346,6 +346,33 @@ impl Interval {
         }
         result
     }
+
+    // complement returns the complement of the interior of the interval. An interval and
+    // its complement have the same boundary but do not share any interior
+    // values. The complement operator is not a bijection, since the complement
+    // of a singleton interval (containing a single value) is the same as the
+    // complement of an empty interval.
+    pub fn complement(&self) -> Interval {
+        if self.lo == self.hi {
+            // Singleton. The interval just contains a single point.
+            return FULL;
+        } else {
+            return Interval{lo:self.lo, hi: self.hi};
+        }
+    }
+
+    // complement_center returns the midpoint of the complement of the interval. For full and empty
+    // intervals, the result is arbitrary. For a singleton interval (containing a
+    // single point), the result is its antipodal point on S1.
+    pub fn complement_center(&self) -> f64 {
+        if self.lo != self.hi {
+            return self.complement().center();
+        }
+        if self.hi <= 0. {
+            return self.hi + PI;
+        }
+        return self.hi - PI;
+    }
 }
 
 impl std::ops::Add<f64> for Interval {
