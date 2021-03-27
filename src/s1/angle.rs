@@ -132,6 +132,20 @@ impl std::ops::Add<f64> for Angle {
     }
 }
 
+impl std::ops::Sub<f64> for Angle {
+    type Output = Self;
+    fn sub(self, other: f64) -> Self {
+        Angle(self.0 - other)
+    }
+}
+
+impl std::ops::Sub<Angle> for f64 {
+    type Output = Angle;
+    fn sub(self, other: Angle) -> Angle {
+        Angle(self - other.0)
+    }
+}
+
 impl std::fmt::Debug for Angle {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{:.7}", Deg::from(self).0)
