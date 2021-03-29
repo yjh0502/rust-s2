@@ -357,7 +357,10 @@ impl Interval {
             // Singleton. The interval just contains a single point.
             return FULL;
         } else {
-            return Interval{lo:self.lo, hi: self.hi};
+            return Interval {
+                lo: self.hi,
+                hi: self.lo,
+            };
         }
     }
 
