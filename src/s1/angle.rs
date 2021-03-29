@@ -117,6 +117,14 @@ impl Angle {
             return self;
         }
     }
+
+    pub fn min(self, other: Angle) -> Self {
+        if self.0 > other.0 {
+            return other;
+        } else {
+            return self;
+        }
+    }
 }
 
 impl std::ops::Mul<f64> for Angle {
