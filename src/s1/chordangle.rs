@@ -207,6 +207,14 @@ impl ChordAngle {
         self.0 >= 0. && self.0 <= 4. || self.is_special()
     }
 
+    pub fn max(self, other: Self) -> Self {
+        if self.0 < other.0 {
+            return other;
+        } else {
+            return self;
+        }
+    }
+
     /// max_point_error returns the maximum error size for a ChordAngle constructed
     /// from 2 Points x and y, assuming that x and y are normalized to within the
     /// bounds guaranteed by s2.Point.Normalize. The error is defined with respect to
