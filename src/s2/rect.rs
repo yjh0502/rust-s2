@@ -1178,11 +1178,11 @@ mod tests {
             },
             Test {
                 // from a bug report
-                r:          &Rect::from_degrees(34.2572864, 135.2673642, 34.2707907, 135.2995742),
-                c:          &Cell::from(CellID(0x6007500000000000)),
-                contains:   false,
-                intersects: true
-            }
+                r: &Rect::from_degrees(34.2572864, 135.2673642, 34.2707907, 135.2995742),
+                c: &Cell::from(CellID(0x6007500000000000)),
+                contains: false,
+                intersects: true,
+            },
         ];
 
         for test in &tests {
@@ -1336,8 +1336,7 @@ mod tests {
                 true,
             ),
             // from a bug report
-            /* FIXME
-                ()            (
+            (
                 Point(Vector {
                     x: -0.589375791872893683986945,
                     y: 0.583248451588733285433364,
@@ -1352,7 +1351,7 @@ mod tests {
                 2.3608609,
                 2.3614230,
                 true,
-            ),*/
+            ),
         ];
 
         for (a, b, lat, lng_lo, lng_hi, want) in &tests {
