@@ -377,7 +377,7 @@ fn intersects_lat_edge(a: &Point, b: &Point, lat: Angle, lng: interval::Interval
     // Extend this to an orthonormal frame (x,y,z) where x is the direction
     // where the great circle through AB achieves its maximium latitude.
     let y = z.cross(&Point::from_coords(0., 0., 1.)).normalize();
-    let x = y.cross(&z);
+    let x = y.cross(&z).normalize();
 
     // Compute the angle "theta" from the x-axis (in the x-y plane defined
     // above) where the great circle intersects the given line of latitude.
@@ -1062,7 +1062,7 @@ mod tests {
             contains: bool,
             intersects: bool,
         }
-        let tests: [Test; 15] = [
+        let tests: [Test; 16] = [
             // Special cases
             Test {
                 r: &Rect::empty(),
@@ -1176,14 +1176,13 @@ mod tests {
                 contains: false,
                 intersects: true,
             },
-            /* FIXME
             Test {
                 // from a bug report
                 r:          &Rect::from_degrees(34.2572864, 135.2673642, 34.2707907, 135.2995742),
                 c:          &Cell::from(CellID(0x6007500000000000)),
                 contains:   false,
                 intersects: true
-            }*/
+            }
         ];
 
         for test in &tests {
