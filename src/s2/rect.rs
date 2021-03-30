@@ -159,10 +159,33 @@ impl Rect {
 
     // extra functions
     pub fn approx_eq(&self, other: &Self) -> bool {
-        f64_eq(self.lat.lo, other.lat.lo)
-            && f64_eq(self.lat.hi, other.lat.hi)
-            && f64_eq(self.lng.lo, other.lng.lo)
-            && f64_eq(self.lng.hi, other.lng.hi)
+        self.lat.approx_eq(&other.lat) && self.lng.approx_eq(&other.lng)
+    }
+
+    // distance_to_latlng returns the minimum distance (measured along the surface of the sphere)
+    // from a given point to the rectangle (both its boundary and its interior).
+    // If self is empty, the result is meaningless.
+    // The latlng must be valid.
+    pub fn distance_to_latlng(&self, ll: &LatLng) -> Angle {
+        if self.lng.contains(ll.lng.rad()) {
+            return (ll.lat - self.lat.hi)
+                .max(self.lat.lo - ll.lat)
+                .max(Rad(0.).into());
+        }
+        let i = Interval::new(self.lng.hi, self.lng.complement_center());
+        let mut rect_lng = self.lng.lo;
+        if i.contains(ll.lng.rad()) {
+            rect_lng = self.lng.hi;
+        }
+        let lo = LatLng {
+            lat: Rad(self.lat.lo).into(),
+            lng: Rad(rect_lng).into(),
+        };
+        let hi = LatLng {
+            lat: Rad(self.lat.hi).into(),
+            lng: Rad(rect_lng).into(),
+        };
+        distance_from_segment(&Point::from(ll), &Point::from(lo), &Point::from(hi))
     }
 }
 
@@ -194,6 +217,7 @@ impl From<LatLng> for Rect {
 
 use crate::s2::cap::Cap;
 use crate::s2::cell::Cell;
+use crate::s2::edgeutil::distance_from_segment;
 use crate::s2::point::Point;
 use crate::s2::region::Region;
 
@@ -493,10 +517,7 @@ mod tests {
     use crate::predicates::sign;
     use crate::r1;
     use crate::r3::vector::Vector;
-    use crate::s1::*;
     use std::ops::Add;
-
-    const EPSILON: f64 = 1e-10;
 
     #[test]
     fn test_rect_empty_and_full() {
@@ -542,7 +563,6 @@ mod tests {
     fn test_rect_from_latlng() {
         let ll = LatLng::from_degrees(23.0, 47.0);
         let got = Rect::from(ll.clone());
-
         assert!(got.is_point());
         assert_eq!(got.center(), ll);
     }
@@ -560,13 +580,6 @@ mod tests {
         }
     }
 
-    fn rects_approx_equal(a: &Rect, b: &Rect, tol_lat: f64, tol_lng: f64) -> bool {
-        return (a.lat.lo - b.lat.lo).abs() < tol_lat
-            && (a.lat.hi - b.lat.hi).abs() < tol_lat
-            && (a.lng.lo - b.lng.lo).abs() < tol_lng
-            && (a.lng.hi - b.lng.hi).abs() < tol_lng;
-    }
-
     #[test]
     fn test_rect_from_center_size() {
         let tests = [(
@@ -575,12 +588,7 @@ mod tests {
             rect_from_degrees(60.0, 140.0, 90.0, -160.0),
         )];
         for (center, size, want) in &tests {
-            assert!(rects_approx_equal(
-                &Rect::from_center_size(center.clone(), size.clone()),
-                want,
-                EPSILON,
-                EPSILON
-            ));
+            assert!(want.approx_eq(&Rect::from_center_size(center.clone(), size.clone())));
         }
     }
 
@@ -623,7 +631,7 @@ mod tests {
 
         for (input, point, want) in &tests {
             let got = input.add(point);
-            assert!(rects_approx_equal(&got, want, EPSILON, EPSILON));
+            assert!(want.approx_eq(&got));
         }
     }
 
@@ -833,7 +841,7 @@ mod tests {
 
         for (input, margin, want) in &tests {
             let got = input.expanded(margin);
-            assert!(rects_approx_equal(&got, want, EPSILON, EPSILON));
+            assert!(want.approx_eq(&got));
         }
     }
 
@@ -857,7 +865,7 @@ mod tests {
 
         for (r, want) in &tests {
             let got = r.polar_closure();
-            assert!(rects_approx_equal(&got, want, EPSILON, EPSILON));
+            assert!(want.approx_eq(&got));
         }
     }
 
@@ -914,9 +922,9 @@ mod tests {
         let rect = rect_from_degrees(0., -180., 90., 0.);
 
         // Test operations where one rectangle consists of a single point.
-        let rectMid = rect_from_degrees(45., -90., 45., -90.);
+        let rect_mid = rect_from_degrees(45., -90., 45., -90.);
         let rect180 = rect_from_degrees(0., -180., 0., -180.);
-        let northPole = rect_from_degrees(90., 0., 90., 0.);
+        let north_pole = rect_from_degrees(90., 0., 90., 0.);
 
         struct Test<'a> {
             rect: &'a Rect,
@@ -929,11 +937,11 @@ mod tests {
         let tests: [Test; 10] = [
             Test {
                 rect: &rect,
-                other: &rectMid,
+                other: &rect_mid,
                 contains: true,
                 intersects: true,
                 union: &rect,
-                intersection: &rectMid,
+                intersection: &rect_mid,
             },
             Test {
                 rect: &rect,
@@ -945,11 +953,11 @@ mod tests {
             },
             Test {
                 rect: &rect,
-                other: &northPole,
+                other: &north_pole,
                 contains: true,
                 intersects: true,
                 union: &rect,
-                intersection: &northPole,
+                intersection: &north_pole,
             },
             Test {
                 rect: &rect,
@@ -1016,7 +1024,7 @@ mod tests {
             assert_eq!(test.rect.intersects(test.other), test.intersects);
 
             assert_eq!(
-                rects_approx_equal(&test.rect.union(test.other), test.rect, EPSILON, EPSILON),
+                test.rect.approx_eq(&test.rect.union(test.other)),
                 test.rect.contains(test.other)
             );
 
@@ -1025,19 +1033,11 @@ mod tests {
                 test.rect.intersects(test.other)
             );
 
-            assert!(rects_approx_equal(
-                &test.rect.union(test.other),
-                test.union,
-                EPSILON,
-                EPSILON
-            ));
+            assert!(test.union.approx_eq(&test.rect.union(test.other)));
 
-            assert!(rects_approx_equal(
-                &test.rect.intersection(test.other),
-                test.intersection,
-                EPSILON,
-                EPSILON
-            ));
+            assert!(test
+                .intersection
+                .approx_eq(&test.rect.intersection(test.other)));
         }
     }
 
@@ -1183,8 +1183,7 @@ mod tests {
             }*/
         ];
 
-        for (i, test) in tests.iter().enumerate() {
-            println!("Test #{}", i);
+        for test in &tests {
             assert_eq!(test.r.contains_cell(test.c), test.contains);
             assert_eq!(test.r.intersects_cell(test.c), test.intersects);
         }
@@ -1362,6 +1361,7 @@ mod tests {
         }
     }
 
+    #[test]
     fn test_rect_intersects_lng_edge() {
         let tests = [
             (
@@ -1496,296 +1496,316 @@ mod tests {
 
         for (a, b, lat_lo, lat_hi, lng, want) in &tests {
             assert_eq!(
-                intersects_lng_edge(a, b, r1::interval::Interval {lo: *lat_lo, hi: *lat_hi}, *lng),
+                intersects_lng_edge(
+                    a,
+                    b,
+                    r1::interval::Interval {
+                        lo: *lat_lo,
+                        hi: *lat_hi
+                    },
+                    *lng
+                ),
                 *want
             );
         }
     }
-    /*
-    // intervalDistance returns the minimum distance (in radians) from X to the latitude
+
+    // interval_distance returns the minimum distance (in radians) from X to the latitude
     // line segment defined by the given latitude and longitude interval.
-    func intervalDistance(x LatLng, lat s1.Angle, iv s1.Interval) s1.Angle {
+    fn interval_distance(x: &LatLng, lat: Angle, iv: Interval) -> Angle {
         // Is x inside the longitude interval?
-        if iv.Contains(float64(x.Lng)) {
-            return s1.Angle(math.Abs(float64(x.Lat - lat)))
+        if iv.contains(x.lng.rad()) {
+            return Rad((x.lat.rad() - lat.rad()).abs()).into(); //FIXME
         }
 
-        return minAngle(
-            x.Distance(LatLng{lat, s1.Angle(iv.Lo)}),
-            x.Distance(LatLng{lat, s1.Angle(iv.Hi)}))
+        return x
+            .distance(&LatLng {
+                lat: lat,
+                lng: Rad(iv.lo).into(),
+            })
+            .min(x.distance(&LatLng {
+                lat: lat,
+                lng: Rad(iv.hi).into(),
+            }));
     }
 
     // Returns the minimum distance from X to the latitude line segment defined by
     // the given latitude and longitude interval.
-    func bruteForceRectLatLngDistance(r Rect, ll LatLng) s1.Angle {
-        pt := PointFromLatLng(ll)
-        if r.ContainsPoint(pt) {
-            return 0
+    fn brute_force_rect_latlng_distance(r: &Rect, ll: &LatLng) -> Angle {
+        let pt = &Point::from(ll);
+        if r.contains_point(pt) {
+            return Rad(0.).into();
         }
 
-        loLat := intervalDistance(ll, s1.Angle(r.Lat.Lo), r.Lng)
-        hiLat := intervalDistance(ll, s1.Angle(r.Lat.Hi), r.Lng)
-        loLng := DistanceFromSegment(PointFromLatLng(ll),
-            PointFromLatLng(LatLng{s1.Angle(r.Lat.Lo), s1.Angle(r.Lng.Lo)}),
-            PointFromLatLng(LatLng{s1.Angle(r.Lat.Hi), s1.Angle(r.Lng.Lo)}))
-        hiLng := DistanceFromSegment(PointFromLatLng(ll),
-            PointFromLatLng(LatLng{s1.Angle(r.Lat.Lo), s1.Angle(r.Lng.Hi)}),
-            PointFromLatLng(LatLng{s1.Angle(r.Lat.Hi), s1.Angle(r.Lng.Hi)}))
+        let lo_lat = interval_distance(ll, Rad(r.lat.lo).into(), r.lng);
+        let hi_lat = interval_distance(ll, Rad(r.lat.hi).into(), r.lng);
+        let lo_lng = distance_from_segment(
+            &Point::from(ll),
+            &Point::from(LatLng {
+                lat: Rad(r.lat.lo).into(),
+                lng: Rad(r.lng.lo).into(),
+            }),
+            &Point::from(LatLng {
+                lat: Rad(r.lat.hi).into(),
+                lng: Rad(r.lng.lo).into(),
+            }),
+        );
+        let hi_lng = distance_from_segment(
+            &Point::from(ll),
+            &Point::from(LatLng {
+                lat: Rad(r.lat.lo).into(),
+                lng: Rad(r.lng.hi).into(),
+            }),
+            &Point::from(LatLng {
+                lat: Rad(r.lat.hi).into(),
+                lng: Rad(r.lng.hi).into(),
+            }),
+        );
 
-        return minAngle(loLat, hiLat, loLng, hiLng)
+        return lo_lat.min(hi_lat).min(lo_lng).min(hi_lng);
     }
 
-    func TestDistanceRectFromLatLng(t *testing.T) {
+    #[test]
+    fn test_distance_rect_from_latlng() {
         // Rect that spans 180.
-        a := RectFromLatLng(LatLngFromDegrees(-1, -1)).AddPoint(LatLngFromDegrees(2, 1))
+        let a = &Rect::from(LatLng::from_degrees(-1., -1.)).add(&LatLng::from_degrees(2., 1.));
         // Rect near north pole.
-        b := RectFromLatLng(LatLngFromDegrees(86, 0)).AddPoint(LatLngFromDegrees(88, 2))
+        let b = &Rect::from(LatLng::from_degrees(86., 0.)).add(&LatLng::from_degrees(88., 2.));
         // Rect that touches north pole.
-        c := RectFromLatLng(LatLngFromDegrees(88, 0)).AddPoint(LatLngFromDegrees(90, 2))
+        let c = &Rect::from(LatLng::from_degrees(88., 0.)).add(&LatLng::from_degrees(90., 2.));
 
-        tests := []struct {
-            r        Rect
-            lat, lng float64 // In degrees.
-        }{
-            {a, -2, -1},
-            {a, 1, 2},
-            {b, 87, 3},
-            {b, 87, -1},
-            {b, 89, 1},
-            {b, 89, 181},
-            {b, 85, 1},
-            {b, 85, 181},
-            {b, 90, 0},
-            {c, 89, 3},
-            {c, 89, 90},
-            {c, 89, 181},
-        }
+        let tests = [
+            (a, -2., -1.),
+            (a, 1., 2.),
+            (b, 87., 3.),
+            (b, 87., -1.),
+            (b, 89., 1.),
+            (b, 89., 181.),
+            (b, 85., 1.),
+            (b, 85., 181.),
+            (b, 90., 0.),
+            (c, 89., 3.),
+            (c, 89., 90.),
+            (c, 89., 181.),
+        ];
 
-        for _, test := range tests {
-            ll := LatLngFromDegrees(test.lat, test.lng)
-            got := test.r.DistanceToLatLng(ll)
-            want := bruteForceRectLatLngDistance(test.r, ll)
-            if !float64Near(float64(got), float64(want), 1e-10) {
-                t.Errorf("dist from %v to %v = %v, want %v", test.r, ll, got, want)
-            }
+        for &(r, lat, lng) in &tests {
+            let ll = &LatLng::from_degrees(lat, lng);
+            let got = r.distance_to_latlng(ll);
+            let want = brute_force_rect_latlng_distance(r, ll);
+            assert!(f64_near(got.rad(), want.rad(), 1e-10));
         }
     }
+    /*
+        func TestDistanceRectFromLatLngRandomPairs(t *testing.T) {
+            latlng := func() LatLng { return LatLngFromPoint(randomPoint()) }
 
-    func TestDistanceRectFromLatLngRandomPairs(t *testing.T) {
-        latlng := func() LatLng { return LatLngFromPoint(randomPoint()) }
-
-        for i := 0; i < 10000; i++ {
-            r := RectFromLatLng(latlng()).AddPoint(latlng())
-            ll := latlng()
-            got := r.DistanceToLatLng(ll)
-            want := bruteForceRectLatLngDistance(r, ll)
-            if !float64Near(float64(got), float64(want), 1e-10) {
-                t.Errorf("dist from %v to %v = %v, want %v", r, ll, got, want)
+            for i := 0; i < 10000; i++ {
+                r := RectFromLatLng(latlng()).AddPoint(latlng())
+                ll := latlng()
+                got := r.DistanceToLatLng(ll)
+                want := bruteForceRectLatLngDistance(r, ll)
+                if !float64Near(float64(got), float64(want), 1e-10) {
+                    t.Errorf("dist from %v to %v = %v, want %v", r, ll, got, want)
+                }
             }
         }
-    }
 
-    // This function assumes that DirectedHausdorffDistance() always returns
-    // a distance from some point in a to b. So the function mainly tests whether
-    // the returned distance is large enough, and only does a weak test on whether
-    // it is small enough.
-    func verifyDirectedHausdorffDistance(t *testing.T, a, b Rect) {
-        t.Helper()
+        // This function assumes that DirectedHausdorffDistance() always returns
+        // a distance from some point in a to b. So the function mainly tests whether
+        // the returned distance is large enough, and only does a weak test on whether
+        // it is small enough.
+        func verifyDirectedHausdorffDistance(t *testing.T, a, b Rect) {
+            t.Helper()
 
-        const resolution = 0.1
+            const resolution = 0.1
 
-        // Record the max sample distance as well as the sample point realizing the
-        // max for easier debugging.
-        var maxDistance s1.Angle
+            // Record the max sample distance as well as the sample point realizing the
+            // max for easier debugging.
+            var maxDistance s1.Angle
 
-        sampleSizeOnLat := int(a.Lat.Length()/resolution) + 1
-        sampleSizeOnLng := int(a.Lng.Length()/resolution) + 1
+            sampleSizeOnLat := int(a.Lat.Length()/resolution) + 1
+            sampleSizeOnLng := int(a.Lng.Length()/resolution) + 1
 
-        deltaOnLat := s1.Angle(a.Lat.Length()) / s1.Angle(sampleSizeOnLat)
-        deltaOnLng := s1.Angle(a.Lng.Length()) / s1.Angle(sampleSizeOnLng)
+            deltaOnLat := s1.Angle(a.Lat.Length()) / s1.Angle(sampleSizeOnLat)
+            deltaOnLng := s1.Angle(a.Lng.Length()) / s1.Angle(sampleSizeOnLng)
 
-        ll := LatLng{Lng: s1.Angle(a.Lng.Lo)}
-        for i := 0; i <= sampleSizeOnLng; i++ {
-            ll.Lat = s1.Angle(a.Lat.Lo)
+            ll := LatLng{Lng: s1.Angle(a.Lng.Lo)}
+            for i := 0; i <= sampleSizeOnLng; i++ {
+                ll.Lat = s1.Angle(a.Lat.Lo)
 
-            for j := 0; j <= sampleSizeOnLat; j++ {
-                d := b.DistanceToLatLng(ll.Normalized())
-                maxDistance = maxAngle(maxDistance, d)
-                ll.Lat += deltaOnLat
+                for j := 0; j <= sampleSizeOnLat; j++ {
+                    d := b.DistanceToLatLng(ll.Normalized())
+                    maxDistance = maxAngle(maxDistance, d)
+                    ll.Lat += deltaOnLat
+                }
+                ll.Lng += deltaOnLng
             }
-            ll.Lng += deltaOnLng
+
+            got := a.DirectedHausdorffDistance(b)
+
+            if got < maxDistance-1e-10 {
+                t.Errorf("hausdorff(%v, %v) = %v < %v-eps, but shouldn't", a, b, got, maxDistance)
+            } else if got > maxDistance+resolution {
+                t.Errorf("DirectedHausdorffDistance(%v, %v) = %v > %v+resolution, but shouldn't", a, b, got, maxDistance)
+            }
         }
 
-        got := a.DirectedHausdorffDistance(b)
+        func TestRectDirectedHausdorffDistanceRandomPairs(t *testing.T) {
+            // Test random pairs.
+            rnd := func() LatLng { return LatLngFromPoint(randomPoint()) }
+            for i := 0; i < 1000; i++ {
+                a := RectFromLatLng(rnd()).AddPoint(rnd())
+                b := RectFromLatLng(rnd()).AddPoint(rnd())
+                // a and b are *minimum* bounding rectangles of two random points, in
+                // particular, their Voronoi diagrams are always of the same topology. We
+                // take the "complements" of a and b for more thorough testing.
+                a2 := Rect{Lat: a.Lat, Lng: a.Lng.Complement()}
+                b2 := Rect{Lat: b.Lat, Lng: b.Lng.Complement()}
 
-        if got < maxDistance-1e-10 {
-            t.Errorf("hausdorff(%v, %v) = %v < %v-eps, but shouldn't", a, b, got, maxDistance)
-        } else if got > maxDistance+resolution {
-            t.Errorf("DirectedHausdorffDistance(%v, %v) = %v > %v+resolution, but shouldn't", a, b, got, maxDistance)
+                // Note that "a" and "b" come from the same distribution, so there is no
+                // need to test pairs such as (b, a), (b, a2), etc.
+                verifyDirectedHausdorffDistance(t, a, b)
+                verifyDirectedHausdorffDistance(t, a2, b)
+                verifyDirectedHausdorffDistance(t, a, b2)
+                verifyDirectedHausdorffDistance(t, a2, b2)
+            }
         }
-    }
 
-    func TestRectDirectedHausdorffDistanceRandomPairs(t *testing.T) {
-        // Test random pairs.
-        rnd := func() LatLng { return LatLngFromPoint(randomPoint()) }
-        for i := 0; i < 1000; i++ {
-            a := RectFromLatLng(rnd()).AddPoint(rnd())
-            b := RectFromLatLng(rnd()).AddPoint(rnd())
-            // a and b are *minimum* bounding rectangles of two random points, in
-            // particular, their Voronoi diagrams are always of the same topology. We
-            // take the "complements" of a and b for more thorough testing.
-            a2 := Rect{Lat: a.Lat, Lng: a.Lng.Complement()}
-            b2 := Rect{Lat: b.Lat, Lng: b.Lng.Complement()}
+        func TestDirectedHausdorffDistanceContained(t *testing.T) {
+            // Caller rect is contained in callee rect. Should return 0.
+            a := rectFromDegrees(-10, 20, -5, 90)
+            tests := []Rect{
+                rectFromDegrees(-10, 20, -5, 90),
+                rectFromDegrees(-10, 19, -5, 91),
+                rectFromDegrees(-11, 20, -4, 90),
+                rectFromDegrees(-11, 19, -4, 91),
+            }
+            for _, test := range tests {
+                got, want := a.DirectedHausdorffDistance(test), s1.Angle(0)
+                if got != want {
+                    t.Errorf("%v.DirectedHausdorffDistance(%v) = %v, want %v", a, test, got, want)
+                }
+            }
+        }
 
-            // Note that "a" and "b" come from the same distribution, so there is no
-            // need to test pairs such as (b, a), (b, a2), etc.
+        func TestDirectHausdorffDistancePointToRect(t *testing.T) {
+            // The Hausdorff distance from a point to a rect should be the same as its
+            // distance to the rect.
+            a1 := LatLngFromDegrees(5, 8)
+            a2 := LatLngFromDegrees(90, 10) // North pole.
+
+            tests := []struct {
+                ll LatLng
+                b  Rect
+            }{
+                {a1, rectFromDegrees(-85, -50, -80, 10)},
+                {a2, rectFromDegrees(-85, -50, -80, 10)},
+                {a1, rectFromDegrees(4, -10, 80, 10)},
+                {a2, rectFromDegrees(4, -10, 80, 10)},
+                {a1, rectFromDegrees(70, 170, 80, -170)},
+                {a2, rectFromDegrees(70, 170, 80, -170)},
+            }
+            for _, test := range tests {
+                a := RectFromLatLng(test.ll)
+                got, want := a.DirectedHausdorffDistance(test.b), test.b.DistanceToLatLng(test.ll)
+
+                if !float64Eq(float64(got), float64(want)) {
+                    t.Errorf("hausdorff(%v, %v) = %v, want %v, as that's the closest dist", test.b, a, got, want)
+                }
+            }
+        }
+
+        func TestDirectedHausdorffDistanceRectToPoint(t *testing.T) {
+            a := rectFromDegrees(1, -8, 10, 20)
+            tests := []struct {
+                lat, lng float64 // Degrees.
+            }{{5, 8}, {-6, -100}, {-90, -20}, {90, 0}}
+            for _, test := range tests {
+                verifyDirectedHausdorffDistance(t, a, RectFromLatLng(LatLngFromDegrees(test.lat, test.lng)))
+            }
+        }
+
+        func TestDirectedHausdorffDistanceRectToRectNearPole(t *testing.T) {
+            // Tests near south pole.
+            a := rectFromDegrees(-87, 0, -85, 3)
+            tests := []Rect{
+                rectFromDegrees(-89, 1, -88, 2),
+                rectFromDegrees(-84, 1, -83, 2),
+                rectFromDegrees(-88, 90, -86, 91),
+                rectFromDegrees(-84, -91, -83, -90),
+                rectFromDegrees(-90, 181, -89, 182),
+                rectFromDegrees(-84, 181, -83, 182),
+            }
+            for _, test := range tests {
+                verifyDirectedHausdorffDistance(t, a, test)
+            }
+        }
+
+        func TestDirectedHausdorffDistanceRectToRectDegenerateCases(t *testing.T) {
+            // Rectangles that contain poles.
+            verifyDirectedHausdorffDistance(t,
+                rectFromDegrees(0, 10, 90, 20), rectFromDegrees(-4, -10, 4, 0))
+            verifyDirectedHausdorffDistance(t,
+                rectFromDegrees(-4, -10, 4, 0), rectFromDegrees(0, 10, 90, 20))
+
+            // Two rectangles share same or complement longitudinal intervals.
+            a := rectFromDegrees(-50, -10, 50, 10)
+            b := rectFromDegrees(30, -10, 60, 10)
             verifyDirectedHausdorffDistance(t, a, b)
-            verifyDirectedHausdorffDistance(t, a2, b)
-            verifyDirectedHausdorffDistance(t, a, b2)
-            verifyDirectedHausdorffDistance(t, a2, b2)
+
+            c := Rect{Lat: a.Lat, Lng: a.Lng.Complement()}
+            verifyDirectedHausdorffDistance(t, c, b)
+
+            // Rectangle a touches b_opposite_lng.
+            verifyDirectedHausdorffDistance(t,
+                rectFromDegrees(10, 170, 30, 180), rectFromDegrees(-50, -10, 50, 10))
+            verifyDirectedHausdorffDistance(t,
+                rectFromDegrees(10, -180, 30, -170), rectFromDegrees(-50, -10, 50, 10))
+
+            // Rectangle b's Voronoi diagram is degenerate (lng interval spans 180
+            // degrees), and a touches the degenerate Voronoi vertex.
+            verifyDirectedHausdorffDistance(t,
+                rectFromDegrees(-30, 170, 30, 180), rectFromDegrees(-10, -90, 10, 90))
+            verifyDirectedHausdorffDistance(t,
+                rectFromDegrees(-30, -180, 30, -170), rectFromDegrees(-10, -90, 10, 90))
+
+            // Rectangle a touches a voronoi vertex of rectangle b.
+            verifyDirectedHausdorffDistance(t,
+                rectFromDegrees(-20, 105, 20, 110), rectFromDegrees(-30, 5, 30, 15))
+            verifyDirectedHausdorffDistance(t,
+                rectFromDegrees(-20, 95, 20, 105), rectFromDegrees(-30, 5, 30, 15))
         }
-    }
-
-    func TestDirectedHausdorffDistanceContained(t *testing.T) {
-        // Caller rect is contained in callee rect. Should return 0.
-        a := rectFromDegrees(-10, 20, -5, 90)
-        tests := []Rect{
-            rectFromDegrees(-10, 20, -5, 90),
-            rectFromDegrees(-10, 19, -5, 91),
-            rectFromDegrees(-11, 20, -4, 90),
-            rectFromDegrees(-11, 19, -4, 91),
-        }
-        for _, test := range tests {
-            got, want := a.DirectedHausdorffDistance(test), s1.Angle(0)
-            if got != want {
-                t.Errorf("%v.DirectedHausdorffDistance(%v) = %v, want %v", a, test, got, want)
-            }
-        }
-    }
-
-    func TestDirectHausdorffDistancePointToRect(t *testing.T) {
-        // The Hausdorff distance from a point to a rect should be the same as its
-        // distance to the rect.
-        a1 := LatLngFromDegrees(5, 8)
-        a2 := LatLngFromDegrees(90, 10) // North pole.
-
-        tests := []struct {
-            ll LatLng
-            b  Rect
-        }{
-            {a1, rectFromDegrees(-85, -50, -80, 10)},
-            {a2, rectFromDegrees(-85, -50, -80, 10)},
-            {a1, rectFromDegrees(4, -10, 80, 10)},
-            {a2, rectFromDegrees(4, -10, 80, 10)},
-            {a1, rectFromDegrees(70, 170, 80, -170)},
-            {a2, rectFromDegrees(70, 170, 80, -170)},
-        }
-        for _, test := range tests {
-            a := RectFromLatLng(test.ll)
-            got, want := a.DirectedHausdorffDistance(test.b), test.b.DistanceToLatLng(test.ll)
-
-            if !float64Eq(float64(got), float64(want)) {
-                t.Errorf("hausdorff(%v, %v) = %v, want %v, as that's the closest dist", test.b, a, got, want)
-            }
-        }
-    }
-
-    func TestDirectedHausdorffDistanceRectToPoint(t *testing.T) {
-        a := rectFromDegrees(1, -8, 10, 20)
-        tests := []struct {
-            lat, lng float64 // Degrees.
-        }{{5, 8}, {-6, -100}, {-90, -20}, {90, 0}}
-        for _, test := range tests {
-            verifyDirectedHausdorffDistance(t, a, RectFromLatLng(LatLngFromDegrees(test.lat, test.lng)))
-        }
-    }
-
-    func TestDirectedHausdorffDistanceRectToRectNearPole(t *testing.T) {
-        // Tests near south pole.
-        a := rectFromDegrees(-87, 0, -85, 3)
-        tests := []Rect{
-            rectFromDegrees(-89, 1, -88, 2),
-            rectFromDegrees(-84, 1, -83, 2),
-            rectFromDegrees(-88, 90, -86, 91),
-            rectFromDegrees(-84, -91, -83, -90),
-            rectFromDegrees(-90, 181, -89, 182),
-            rectFromDegrees(-84, 181, -83, 182),
-        }
-        for _, test := range tests {
-            verifyDirectedHausdorffDistance(t, a, test)
-        }
-    }
-
-    func TestDirectedHausdorffDistanceRectToRectDegenerateCases(t *testing.T) {
-        // Rectangles that contain poles.
-        verifyDirectedHausdorffDistance(t,
-            rectFromDegrees(0, 10, 90, 20), rectFromDegrees(-4, -10, 4, 0))
-        verifyDirectedHausdorffDistance(t,
-            rectFromDegrees(-4, -10, 4, 0), rectFromDegrees(0, 10, 90, 20))
-
-        // Two rectangles share same or complement longitudinal intervals.
-        a := rectFromDegrees(-50, -10, 50, 10)
-        b := rectFromDegrees(30, -10, 60, 10)
-        verifyDirectedHausdorffDistance(t, a, b)
-
-        c := Rect{Lat: a.Lat, Lng: a.Lng.Complement()}
-        verifyDirectedHausdorffDistance(t, c, b)
-
-        // Rectangle a touches b_opposite_lng.
-        verifyDirectedHausdorffDistance(t,
-            rectFromDegrees(10, 170, 30, 180), rectFromDegrees(-50, -10, 50, 10))
-        verifyDirectedHausdorffDistance(t,
-            rectFromDegrees(10, -180, 30, -170), rectFromDegrees(-50, -10, 50, 10))
-
-        // Rectangle b's Voronoi diagram is degenerate (lng interval spans 180
-        // degrees), and a touches the degenerate Voronoi vertex.
-        verifyDirectedHausdorffDistance(t,
-            rectFromDegrees(-30, 170, 30, 180), rectFromDegrees(-10, -90, 10, 90))
-        verifyDirectedHausdorffDistance(t,
-            rectFromDegrees(-30, -180, 30, -170), rectFromDegrees(-10, -90, 10, 90))
-
-        // Rectangle a touches a voronoi vertex of rectangle b.
-        verifyDirectedHausdorffDistance(t,
-            rectFromDegrees(-20, 105, 20, 110), rectFromDegrees(-30, 5, 30, 15))
-        verifyDirectedHausdorffDistance(t,
-            rectFromDegrees(-20, 95, 20, 105), rectFromDegrees(-30, 5, 30, 15))
-    }
-
-    func TestRectApproxEqual(t *testing.T) {
+    */
+    #[test]
+    fn test_rect_approx_equal() {
         // s1.Interval and r1.Interval have additional testing.
 
-        const ε = epsilon / 10
-        tests := []struct {
-            a, b Rect
-            want bool
-        }{
-            {EmptyRect(), rectFromDegrees(1, 5, 1, 5), true},
-            {rectFromDegrees(1, 5, 1, 5), EmptyRect(), true},
+        let e: f64 = 1e-15;
+        let tests = [
+            (Rect::empty(), rect_from_degrees(1., 5., 1., 5.), true),
+            (rect_from_degrees(1., 5., 1., 5.), Rect::empty(), true),
+            (
+                rect_from_degrees(1., 5., 1., 5.),
+                rect_from_degrees(2., 7., 2., 7.),
+                false,
+            ),
+            (
+                rect_from_degrees(1., 5., 1., 5.),
+                rect_from_degrees(1. + e, 5. + e, 1. + e, 5. + e),
+                true,
+            ),
+        ];
 
-            {rectFromDegrees(1, 5, 1, 5), rectFromDegrees(2, 7, 2, 7), false},
-            {rectFromDegrees(1, 5, 1, 5), rectFromDegrees(1+ε, 5+ε, 1+ε, 5+ε), true},
-        }
-
-        for _, test := range tests {
-            if got := test.a.ApproxEqual(test.b); got != test.want {
-                t.Errorf("%v.ApproxEquals(%v) = %t, want %t", test.a, test.b, got, test.want)
-            }
-        }
-    }
-
-    func TestRectCentroidEmptyFull(t *testing.T) {
-        // Empty and full rectangles.
-        if got, want := EmptyRect().Centroid(), (Point{}); !got.ApproxEqual(want) {
-            t.Errorf("%v.Centroid() = %v, want %v", EmptyRect(), got, want)
-        }
-        if got, want := FullRect().Centroid().Norm(), epsilon; !float64Eq(got, want) {
-            t.Errorf("%v.Centroid().Norm() = %v, want %v", FullRect(), got, want)
+        for (a, b, want) in &tests {
+            assert_eq!(a.approx_eq(b), *want);
         }
     }
-
-    func testRectCentroidSplitting(t *testing.T, r Rect, leftSplits int) {
+ /* 
+    fn testRectCentroidSplitting() {
         // Recursively verify that when a rectangle is split into two pieces, the
         // centroids of the children sum to give the centroid of the parent.
+        let xx = Rect::default();
         var child0, child1 Rect
         if oneIn(2) {
             lat := randomUniformFloat64(r.Lat.Lo, r.Lat.Hi)
@@ -1804,8 +1824,8 @@ mod tests {
             testRectCentroidSplitting(t, child0, leftSplits-1)
             testRectCentroidSplitting(t, child1, leftSplits-1)
         }
-    }
-
+    }*/
+/*
     func TestRectCentroidFullRange(t *testing.T) {
         // Rectangles that cover the full longitude range.
         for i := 0; i < 100; i++ {
