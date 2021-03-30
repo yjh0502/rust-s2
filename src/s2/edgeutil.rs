@@ -703,7 +703,7 @@ mod tests {
             let closest = project(&x, &a, &b);
             assert!(closest.approx_eq(&want_p));
 
-            let (min_distance, ok) = update_min_distance(&x, &a, &b, ChordAngle(0.), false);
+            let (_min_distance, ok) = update_min_distance(&x, &a, &b, ChordAngle(0.), false);
             assert!(!ok);
 
             let (min_distance, ok) = update_min_distance(&x, &a, &b, ChordAngle::inf(), false);
@@ -736,7 +736,7 @@ mod tests {
         let (min_distance, ok) = update_min_distance(&x, &a, &b, ChordAngle::inf(), false);
         assert!(ok);
         let min_distance = min_distance.successor();
-        let (min_distance, ok) = update_min_distance(&x, &a, &b, min_distance, false);
+        let (_, ok) = update_min_distance(&x, &a, &b, min_distance, false);
         assert!(ok);
     }
 
@@ -809,7 +809,7 @@ mod tests {
                 false,
             ),
         ];
-        for (x, a, b, min_dist, want) in &tests {
+        for (x, a, b, min_dist, _want) in &tests {
             let (_, ok) = update_min_distance(x, a, b, *min_dist, false);
             assert!(ok);
         }
@@ -1048,7 +1048,7 @@ mod tests {
             let b = &Point(test.b.normalize());
 
             let max_distance = chordangle::STRAIGHT;
-            let (max_distance, ok) = update_max_distance(x, a, b, max_distance);
+            let (_, ok) = update_max_distance(x, a, b, max_distance);
             assert!(!ok);
 
             let max_distance = chordangle::NEGATIVE;
