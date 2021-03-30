@@ -49,6 +49,19 @@ impl Rect {
         Rect::from(center).expanded(&half)
     }
 
+    pub fn from_degrees(lat_lo: f64, lng_lo: f64, lat_hi: f64, lng_hi: f64) -> Self {
+        Rect {
+            lat: r1::interval::Interval {
+                lo: Angle::from(Deg(lat_lo)).rad(),
+                hi: Angle::from(Deg(lat_hi)).rad(),
+            },
+            lng: Interval::new(
+                Angle::from(Deg(lng_lo)).rad(),
+                Angle::from(Deg(lng_hi)).rad(),
+            ),
+        }
+    }
+
     pub fn is_valid(&self) -> bool {
         self.lat.lo.abs() <= PI / 2.
             && self.lat.hi <= PI / 2.
@@ -567,25 +580,12 @@ mod tests {
         assert_eq!(got.center(), ll);
     }
 
-    fn rect_from_degrees(lat_lo: f64, lng_lo: f64, lat_hi: f64, lng_hi: f64) -> Rect {
-        Rect {
-            lat: r1::interval::Interval {
-                lo: Angle::from(Deg(lat_lo)).rad(),
-                hi: Angle::from(Deg(lat_hi)).rad(),
-            },
-            lng: Interval::new(
-                Angle::from(Deg(lng_lo)).rad(),
-                Angle::from(Deg(lng_hi)).rad(),
-            ),
-        }
-    }
-
     #[test]
     fn test_rect_from_center_size() {
         let tests = [(
             LatLng::from_degrees(80.0, 170.0),
             LatLng::from_degrees(40.0, 60.0),
-            rect_from_degrees(60.0, 140.0, 90.0, -160.0),
+            Rect::from_degrees(60.0, 140.0, 90.0, -160.0),
         )];
         for (center, size, want) in &tests {
             assert!(want.approx_eq(&Rect::from_center_size(center.clone(), size.clone())));
@@ -601,31 +601,31 @@ mod tests {
                     lng: interval::EMPTY,
                 },
                 LatLng::from_degrees(0.0, 0.0),
-                rect_from_degrees(0.0, 0.0, 0.0, 0.0),
+                Rect::from_degrees(0.0, 0.0, 0.0, 0.0),
             ),
             (
-                rect_from_degrees(0.0, 0.0, 0.0, 0.0),
+                Rect::from_degrees(0.0, 0.0, 0.0, 0.0),
                 LatLng {
                     lat: Rad(0.0).into(),
                     lng: Rad(-PI / 2.0).into(),
                 },
-                rect_from_degrees(0.0, -90.0, 0.0, 0.0),
+                Rect::from_degrees(0.0, -90.0, 0.0, 0.0),
             ),
             (
-                rect_from_degrees(0.0, -90.0, 0.0, 0.0),
+                Rect::from_degrees(0.0, -90.0, 0.0, 0.0),
                 LatLng {
                     lat: Rad(PI / 4.0).into(),
                     lng: Rad(-PI).into(),
                 },
-                rect_from_degrees(0.0, -180.0, 45.0, 0.0),
+                Rect::from_degrees(0.0, -180.0, 45.0, 0.0),
             ),
             (
-                rect_from_degrees(0.0, -180.0, 45.0, 0.0),
+                Rect::from_degrees(0.0, -180.0, 45.0, 0.0),
                 LatLng {
                     lat: Rad(PI / 2.0).into(),
                     lng: Rad(0.0).into(),
                 },
-                rect_from_degrees(0.0, -180.0, 90.0, 0.0),
+                Rect::from_degrees(0.0, -180.0, 90.0, 0.0),
             ),
         ];
 
@@ -711,22 +711,22 @@ mod tests {
     fn test_contains_latlng() {
         let tests = [
             (
-                rect_from_degrees(0.0, -180.0, 90.0, 0.0),
+                Rect::from_degrees(0.0, -180.0, 90.0, 0.0),
                 LatLng::from_degrees(30.0, -45.0),
                 true,
             ),
             (
-                rect_from_degrees(0.0, -180.0, 90.0, 0.0),
+                Rect::from_degrees(0.0, -180.0, 90.0, 0.0),
                 LatLng::from_degrees(30.0, 45.0),
                 false,
             ),
             (
-                rect_from_degrees(0.0, -180.0, 90.0, 0.0),
+                Rect::from_degrees(0.0, -180.0, 90.0, 0.0),
                 LatLng::from_degrees(0.0, -180.0),
                 true,
             ),
             (
-                rect_from_degrees(0.0, -180.0, 90.0, 0.0),
+                Rect::from_degrees(0.0, -180.0, 90.0, 0.0),
                 LatLng::from_degrees(90.0, 0.0),
                 true,
             ),
@@ -741,9 +741,9 @@ mod tests {
     fn test_rect_expanded() {
         let tests = [
             (
-                rect_from_degrees(70.0, 150.0, 80.0, 170.0),
+                Rect::from_degrees(70.0, 150.0, 80.0, 170.0),
                 LatLng::from_degrees(20.0, 30.0),
-                rect_from_degrees(50.0, 120.0, 90.0, -160.0),
+                Rect::from_degrees(50.0, 120.0, 90.0, -160.0),
             ),
             (
                 Rect::empty(),
@@ -756,35 +756,35 @@ mod tests {
                 Rect::full(),
             ),
             (
-                rect_from_degrees(-90.0, 170.0, 10.0, 20.0),
+                Rect::from_degrees(-90.0, 170.0, 10.0, 20.0),
                 LatLng::from_degrees(30.0, 80.0),
-                rect_from_degrees(-90.0, -180.0, 40.0, 180.0),
+                Rect::from_degrees(-90.0, -180.0, 40.0, 180.0),
             ),
             // Negative margins.
             (
-                rect_from_degrees(10.0, -50.0, 60.0, 70.0),
+                Rect::from_degrees(10.0, -50.0, 60.0, 70.0),
                 LatLng::from_degrees(-10.0, -10.0),
-                rect_from_degrees(20.0, -40.0, 50.0, 60.0),
+                Rect::from_degrees(20.0, -40.0, 50.0, 60.0),
             ),
             (
-                rect_from_degrees(-20.0, -180.0, 20.0, 180.0),
+                Rect::from_degrees(-20.0, -180.0, 20.0, 180.0),
                 LatLng::from_degrees(-10.0, -10.0),
-                rect_from_degrees(-10.0, -180.0, 10.0, 180.0),
+                Rect::from_degrees(-10.0, -180.0, 10.0, 180.0),
             ),
             (
-                rect_from_degrees(-20.0, -180.0, 20.0, 180.0),
+                Rect::from_degrees(-20.0, -180.0, 20.0, 180.0),
                 LatLng::from_degrees(-30.0, -30.0),
                 Rect::empty(),
             ),
             (
-                rect_from_degrees(-90.0, 10.0, 90.0, 11.0),
+                Rect::from_degrees(-90.0, 10.0, 90.0, 11.0),
                 LatLng::from_degrees(-10.0, -10.0),
                 Rect::empty(),
             ),
             (
-                rect_from_degrees(-90.0, 10.0, 90.0, 100.0),
+                Rect::from_degrees(-90.0, 10.0, 90.0, 100.0),
                 LatLng::from_degrees(-10.0, -10.0),
-                rect_from_degrees(-80.0, 20.0, 80.0, 90.0),
+                Rect::from_degrees(-80.0, 20.0, 80.0, 90.0),
             ),
             (
                 Rect::empty(),
@@ -794,36 +794,36 @@ mod tests {
             (
                 Rect::full(),
                 LatLng::from_degrees(-50.0, -50.0),
-                rect_from_degrees(-40.0, -180.0, 40.0, 180.0),
+                Rect::from_degrees(-40.0, -180.0, 40.0, 180.0),
             ),
             // Mixed margins.
             (
-                rect_from_degrees(10.0, -50.0, 60.0, 70.0),
+                Rect::from_degrees(10.0, -50.0, 60.0, 70.0),
                 LatLng::from_degrees(-10.0, 30.0),
-                rect_from_degrees(20.0, -80.0, 50.0, 100.0),
+                Rect::from_degrees(20.0, -80.0, 50.0, 100.0),
             ),
             (
-                rect_from_degrees(-20.0, -180.0, 20.0, 180.0),
+                Rect::from_degrees(-20.0, -180.0, 20.0, 180.0),
                 LatLng::from_degrees(10.0, -500.0),
-                rect_from_degrees(-30.0, -180.0, 30.0, 180.0),
+                Rect::from_degrees(-30.0, -180.0, 30.0, 180.0),
             ),
             (
-                rect_from_degrees(-90.0, -180.0, 80.0, 180.0),
+                Rect::from_degrees(-90.0, -180.0, 80.0, 180.0),
                 LatLng::from_degrees(-30.0, 500.0),
-                rect_from_degrees(-60.0, -180.0, 50.0, 180.0),
+                Rect::from_degrees(-60.0, -180.0, 50.0, 180.0),
             ),
             (
-                rect_from_degrees(-80.0, -100.0, 80.0, 150.0),
+                Rect::from_degrees(-80.0, -100.0, 80.0, 150.0),
                 LatLng::from_degrees(30.0, -50.0),
-                rect_from_degrees(-90.0, -50.0, 90.0, 100.0),
+                Rect::from_degrees(-90.0, -50.0, 90.0, 100.0),
             ),
             (
-                rect_from_degrees(0.0, -180.0, 50.0, 180.0),
+                Rect::from_degrees(0.0, -180.0, 50.0, 180.0),
                 LatLng::from_degrees(-30.0, 500.0),
                 Rect::empty(),
             ),
             (
-                rect_from_degrees(-80.0, 10.0, 70.0, 20.0),
+                Rect::from_degrees(-80.0, 10.0, 70.0, 20.0),
                 LatLng::from_degrees(30.0, -200.0),
                 Rect::empty(),
             ),
@@ -849,18 +849,21 @@ mod tests {
     fn test_rect_polar_closure() {
         let tests = [
             (
-                rect_from_degrees(-89.0, 0.0, 89.0, 1.0),
-                rect_from_degrees(-89.0, 0.0, 89.0, 1.0),
+                Rect::from_degrees(-89.0, 0.0, 89.0, 1.0),
+                Rect::from_degrees(-89.0, 0.0, 89.0, 1.0),
             ),
             (
-                rect_from_degrees(-90.0, -30.0, -45.0, 100.0),
-                rect_from_degrees(-90.0, -180.0, -45.0, 180.0),
+                Rect::from_degrees(-90.0, -30.0, -45.0, 100.0),
+                Rect::from_degrees(-90.0, -180.0, -45.0, 180.0),
             ),
             (
-                rect_from_degrees(89.0, 145.0, 90.0, 146.0),
-                rect_from_degrees(89.0, -180.0, 90.0, 180.0),
+                Rect::from_degrees(89.0, 145.0, 90.0, 146.0),
+                Rect::from_degrees(89.0, -180.0, 90.0, 180.0),
             ),
-            (rect_from_degrees(-90.0, -145.0, 90.0, -144.0), Rect::full()),
+            (
+                Rect::from_degrees(-90.0, -145.0, 90.0, -144.0),
+                Rect::full(),
+            ),
         ];
 
         for (r, want) in &tests {
@@ -874,7 +877,7 @@ mod tests {
         let tests = [
             (
                 // Bounding cap at center is smaller.
-                rect_from_degrees(-45.0, -45.0, 45.0, 45.0),
+                Rect::from_degrees(-45.0, -45.0, 45.0, 45.0),
                 Cap::from_center_height(
                     &Point(Vector {
                         x: 1.0,
@@ -886,7 +889,7 @@ mod tests {
             ),
             (
                 // Bounding cap at north pole is smaller.
-                rect_from_degrees(88.0, -80.0, 89.0, 80.0),
+                Rect::from_degrees(88.0, -80.0, 89.0, 80.0),
                 Cap::from_center_angle(
                     &Point(Vector {
                         x: 0.0,
@@ -898,7 +901,7 @@ mod tests {
             ),
             (
                 // Longitude span > 180 degrees.
-                rect_from_degrees(-30.0, -150.0, -10.0, 50.0),
+                Rect::from_degrees(-30.0, -150.0, -10.0, 50.0),
                 Cap::from_center_angle(
                     &Point(Vector {
                         x: 0.0,
@@ -919,12 +922,12 @@ mod tests {
     #[test]
     fn test_rect_interval_ops() {
         // Rectangle that covers one-quarter of the sphere.
-        let rect = rect_from_degrees(0., -180., 90., 0.);
+        let rect = Rect::from_degrees(0., -180., 90., 0.);
 
         // Test operations where one rectangle consists of a single point.
-        let rect_mid = rect_from_degrees(45., -90., 45., -90.);
-        let rect180 = rect_from_degrees(0., -180., 0., -180.);
-        let north_pole = rect_from_degrees(90., 0., 90., 0.);
+        let rect_mid = Rect::from_degrees(45., -90., 45., -90.);
+        let rect180 = Rect::from_degrees(0., -180., 0., -180.);
+        let north_pole = Rect::from_degrees(90., 0., 90., 0.);
 
         struct Test<'a> {
             rect: &'a Rect,
@@ -961,60 +964,60 @@ mod tests {
             },
             Test {
                 rect: &rect,
-                other: &rect_from_degrees(-10., -1., 1., 20.),
+                other: &Rect::from_degrees(-10., -1., 1., 20.),
                 contains: false,
                 intersects: true,
-                union: &rect_from_degrees(-10., 180., 90., 20.),
-                intersection: &rect_from_degrees(0., -1., 1., 0.),
+                union: &Rect::from_degrees(-10., 180., 90., 20.),
+                intersection: &Rect::from_degrees(0., -1., 1., 0.),
             },
             Test {
                 rect: &rect,
-                other: &rect_from_degrees(-10., -1., 0., 20.),
+                other: &Rect::from_degrees(-10., -1., 0., 20.),
                 contains: false,
                 intersects: true,
-                union: &rect_from_degrees(-10., 180., 90., 20.),
-                intersection: &rect_from_degrees(0., -1., 0., 0.),
+                union: &Rect::from_degrees(-10., 180., 90., 20.),
+                intersection: &Rect::from_degrees(0., -1., 0., 0.),
             },
             Test {
                 rect: &rect,
-                other: &rect_from_degrees(-10., 0., 1., 20.),
+                other: &Rect::from_degrees(-10., 0., 1., 20.),
                 contains: false,
                 intersects: true,
-                union: &rect_from_degrees(-10., 180., 90., 20.),
-                intersection: &rect_from_degrees(0., 0., 1., 0.),
+                union: &Rect::from_degrees(-10., 180., 90., 20.),
+                intersection: &Rect::from_degrees(0., 0., 1., 0.),
             },
             Test {
-                rect: &rect_from_degrees(-15., -160., -15., -150.),
-                other: &rect_from_degrees(20., 145., 25., 155.),
+                rect: &Rect::from_degrees(-15., -160., -15., -150.),
+                other: &Rect::from_degrees(20., 145., 25., 155.),
                 contains: false,
                 intersects: false,
-                union: &rect_from_degrees(-15., 145., 25., -150.),
+                union: &Rect::from_degrees(-15., 145., 25., -150.),
                 intersection: &Rect::empty(),
             },
             Test {
-                rect: &rect_from_degrees(70., -10., 90., -140.),
-                other: &rect_from_degrees(60., 175., 80., 5.),
+                rect: &Rect::from_degrees(70., -10., 90., -140.),
+                other: &Rect::from_degrees(60., 175., 80., 5.),
                 contains: false,
                 intersects: true,
-                union: &rect_from_degrees(60., -180., 90., 180.),
-                intersection: &rect_from_degrees(70., 175., 80., 5.),
+                union: &Rect::from_degrees(60., -180., 90., 180.),
+                intersection: &Rect::from_degrees(70., 175., 80., 5.),
             },
             // Check that the intersection of two rectangles that overlap in latitude
             // but not longitude is valid, and vice versa.
             Test {
-                rect: &rect_from_degrees(12., 30., 60., 60.),
-                other: &rect_from_degrees(0., 0., 30., 18.),
+                rect: &Rect::from_degrees(12., 30., 60., 60.),
+                other: &Rect::from_degrees(0., 0., 30., 18.),
                 contains: false,
                 intersects: false,
-                union: &rect_from_degrees(0., 0., 60., 60.),
+                union: &Rect::from_degrees(0., 0., 60., 60.),
                 intersection: &Rect::empty(),
             },
             Test {
-                rect: &rect_from_degrees(0., 0., 18., 42.),
-                other: &rect_from_degrees(30., 12., 42., 60.),
+                rect: &Rect::from_degrees(0., 0., 18., 42.),
+                other: &Rect::from_degrees(30., 12., 42., 60.),
                 contains: false,
                 intersects: false,
-                union: &rect_from_degrees(0., 0., 42., 60.),
+                union: &Rect::from_degrees(0., 0., 42., 60.),
                 intersection: &Rect::empty(),
             },
         ];
@@ -1082,45 +1085,45 @@ mod tests {
             // This rectangle includes the first quadrant of face 0.  It's expanded
             // slightly because cell bounding rectangles are slightly conservative.
             Test {
-                r: &rect_from_degrees(-45.1, -45.1, 0.1, 0.1),
+                r: &Rect::from_degrees(-45.1, -45.1, 0.1, 0.1),
                 c: &Cell::from(CellID::from_face_pos_level(0, 0, 0)),
                 contains: false,
                 intersects: true,
             },
             Test {
-                r: &rect_from_degrees(-45.1, -45.1, 0.1, 0.1),
+                r: &Rect::from_degrees(-45.1, -45.1, 0.1, 0.1),
                 c: &Cell::from(CellID::from_face_pos_level(0, 0, 1)),
                 contains: true,
                 intersects: true,
             },
             Test {
-                r: &rect_from_degrees(-45.1, -45.1, 0.1, 0.1),
+                r: &Rect::from_degrees(-45.1, -45.1, 0.1, 0.1),
                 c: &Cell::from(CellID::from_face_pos_level(1, 0, 1)),
                 contains: false,
                 intersects: false,
             },
             // This rectangle intersects the first quadrant of face 0.
             Test {
-                r: &rect_from_degrees(-10., -45., 10., 0.),
+                r: &Rect::from_degrees(-10., -45., 10., 0.),
                 c: &Cell::from(CellID::from_face_pos_level(0, 0, 0)),
                 contains: false,
                 intersects: true,
             },
             Test {
-                r: &rect_from_degrees(-10., -45., 10., 0.),
+                r: &Rect::from_degrees(-10., -45., 10., 0.),
                 c: &Cell::from(CellID::from_face_pos_level(0, 0, 1)),
                 contains: false,
                 intersects: true,
             },
             Test {
-                r: &rect_from_degrees(-10., -45., 10., 0.),
+                r: &Rect::from_degrees(-10., -45., 10., 0.),
                 c: &Cell::from(CellID::from_face_pos_level(1, 0, 1)),
                 contains: false,
                 intersects: false,
             },
             // Rectangle consisting of a single point.
             Test {
-                r: &rect_from_degrees(4., 4., 4., 4.),
+                r: &Rect::from_degrees(4., 4., 4., 4.),
                 c: &Cell::from(CellID::from_face(0)),
                 contains: false,
                 intersects: true,
@@ -1128,13 +1131,13 @@ mod tests {
             // Rectangles that intersect the bounding rectangle of a face
             // but not the face itself.
             Test {
-                r: &rect_from_degrees(41., -87., 42., -79.),
+                r: &Rect::from_degrees(41., -87., 42., -79.),
                 c: &Cell::from(CellID::from_face(2)),
                 contains: false,
                 intersects: false,
             },
             Test {
-                r: &rect_from_degrees(-41., 160., -40., -160.),
+                r: &Rect::from_degrees(-41., 160., -40., -160.),
                 c: &Cell::from(CellID::from_face(5)),
                 contains: false,
                 intersects: false,
@@ -1142,7 +1145,7 @@ mod tests {
             Test {
                 // This is the leaf cell at the top right hand corner of face 0.
                 // It has two angles of 60 degrees and two of 120 degrees.
-                r: &rect_from_degrees(
+                r: &Rect::from_degrees(
                     v0.lat.deg() - 1e-8,
                     v0.lng.deg() - 1e-8,
                     v0.lat.deg() - 2e-10,
@@ -1156,14 +1159,14 @@ mod tests {
                 // Rectangles that intersect a face but where no vertex of one region
                 // is contained by the other region.  The first one passes through
                 // a corner of one of the face cells.
-                r: &rect_from_degrees(-37., -70., -36., -20.),
+                r: &Rect::from_degrees(-37., -70., -36., -20.),
                 c: &Cell::from(CellID::from_face(5)),
                 contains: false,
                 intersects: true,
             },
             Test {
                 // These two intersect like a diamond and a square.
-                r: &rect_from_degrees(
+                r: &Rect::from_degrees(
                     bound202.lo().lat.deg() + 3.,
                     bound202.lo().lng.deg() + 3.,
                     bound202.hi().lat.deg() - 3.,
@@ -1176,7 +1179,7 @@ mod tests {
             /* FIXME
             Test {
                 // from a bug report
-                r:          &rect_from_degrees(34.2572864, 135.2673642, 34.2707907, 135.2995742),
+                r:          &Rect::from_degrees(34.2572864, 135.2673642, 34.2707907, 135.2995742),
                 c:          &Cell::from(CellID(0x6007500000000000)),
                 contains:   false,
                 intersects: true
@@ -1191,7 +1194,7 @@ mod tests {
 
     #[test]
     fn test_rect_contains_point() {
-        let r1 = rect_from_degrees(0., -180., 90., 0.);
+        let r1 = Rect::from_degrees(0., -180., 90., 0.);
 
         let tests = [
             (
@@ -1783,16 +1786,16 @@ mod tests {
 
         let e: f64 = 1e-15;
         let tests = [
-            (Rect::empty(), rect_from_degrees(1., 5., 1., 5.), true),
-            (rect_from_degrees(1., 5., 1., 5.), Rect::empty(), true),
+            (Rect::empty(), Rect::from_degrees(1., 5., 1., 5.), true),
+            (Rect::from_degrees(1., 5., 1., 5.), Rect::empty(), true),
             (
-                rect_from_degrees(1., 5., 1., 5.),
-                rect_from_degrees(2., 7., 2., 7.),
+                Rect::from_degrees(1., 5., 1., 5.),
+                Rect::from_degrees(2., 7., 2., 7.),
                 false,
             ),
             (
-                rect_from_degrees(1., 5., 1., 5.),
-                rect_from_degrees(1. + e, 5. + e, 1. + e, 5. + e),
+                Rect::from_degrees(1., 5., 1., 5.),
+                Rect::from_degrees(1. + e, 5. + e, 1. + e, 5. + e),
                 true,
             ),
         ];
@@ -1801,7 +1804,7 @@ mod tests {
             assert_eq!(a.approx_eq(b), *want);
         }
     }
- /* 
+    /*
     fn testRectCentroidSplitting() {
         // Recursively verify that when a rectangle is split into two pieces, the
         // centroids of the children sum to give the centroid of the parent.
@@ -1825,7 +1828,7 @@ mod tests {
             testRectCentroidSplitting(t, child1, leftSplits-1)
         }
     }*/
-/*
+    /*
     func TestRectCentroidFullRange(t *testing.T) {
         // Rectangles that cover the full longitude range.
         for i := 0; i < 100; i++ {
