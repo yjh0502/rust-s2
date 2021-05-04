@@ -109,6 +109,22 @@ impl Angle {
             Angle(rem)
         }
     }
+
+    pub fn max(self, other: Angle) -> Self {
+        if self.0 < other.0 {
+            return other;
+        } else {
+            return self;
+        }
+    }
+
+    pub fn min(self, other: Angle) -> Self {
+        if self.0 > other.0 {
+            return other;
+        } else {
+            return self;
+        }
+    }
 }
 
 impl std::ops::Mul<f64> for Angle {
@@ -121,6 +137,20 @@ impl std::ops::Add<f64> for Angle {
     type Output = Self;
     fn add(self, other: f64) -> Self {
         Angle(self.0 + other)
+    }
+}
+
+impl std::ops::Sub<f64> for Angle {
+    type Output = Self;
+    fn sub(self, other: f64) -> Self {
+        Angle(self.0 - other)
+    }
+}
+
+impl std::ops::Sub<Angle> for f64 {
+    type Output = Angle;
+    fn sub(self, other: Angle) -> Angle {
+        Angle(self - other.0)
     }
 }
 

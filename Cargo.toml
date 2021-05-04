@@ -15,6 +15,7 @@ documentation = "https://docs.rs/rust-s2"
 keywords = ["geo", "s2"]
 
 [dependencies]
+float_extras = "0.1.6"
 lazy_static = "1"
 rand = "0.5"
 cgmath = "0.16"

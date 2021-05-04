@@ -9,7 +9,7 @@ use std::f64::consts::PI;
 const NORTH_POLE_LAT: f64 = PI / 2.;
 const SOUTH_POLE_LAT: f64 = PI / -2.;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct LatLng {
     pub lat: Angle,
@@ -25,6 +25,13 @@ impl std::fmt::Debug for LatLng {
 impl LatLng {
     pub fn new(lat: Angle, lng: Angle) -> Self {
         LatLng { lat, lng }
+    }
+
+    pub fn from_degrees(lat: f64, lng: f64) -> Self {
+        LatLng {
+            lat: Angle::from(Deg(lat)),
+            lng: Angle::from(Deg(lng)),
+        }
     }
 
     pub fn is_valid(&self) -> bool {

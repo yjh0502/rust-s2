@@ -20,6 +20,7 @@ use std::f64::consts::PI;
 
 use crate::consts::*;
 use crate::s1::angle::*;
+use float_extras::f64::nextafter;
 
 /// ChordAngle represents the angle subtended by a chord (i.e., the straight
 /// line segment connecting two points on the sphere). Its representation
@@ -52,6 +53,9 @@ pub const RIGHT: ChordAngle = ChordAngle(2f64);
 /// STRAIGHT represents a chord angle of 180 degrees (a "straight angle").
 /// This is the maximum finite chord angle.
 pub const STRAIGHT: ChordAngle = ChordAngle(4f64);
+
+// MAXLENGTH2 is the square of the maximum length allowed in a ChordAngle.
+pub const MAXLENGTH2: f64 = 4.0;
 
 impl<'a> From<&'a Angle> for ChordAngle {
     /// returns a ChordAngle from the given Angle.
@@ -203,6 +207,14 @@ impl ChordAngle {
         self.0 >= 0. && self.0 <= 4. || self.is_special()
     }
 
+    pub fn max(self, other: Self) -> Self {
+        if self.0 < other.0 {
+            return other;
+        } else {
+            return self;
+        }
+    }
+
     /// max_point_error returns the maximum error size for a ChordAngle constructed
     /// from 2 Points x and y, assuming that x and y are normalized to within the
     /// bounds guaranteed by s2.Point.Normalize. The error is defined with respect to
@@ -247,6 +259,16 @@ impl ChordAngle {
     /// tan returns the tangent of this chord angle.
     pub fn tan(&self) -> f64 {
         self.sin() / self.cos()
+    }
+
+    pub fn successor(&self) -> Self {
+        if self.0 >= MAXLENGTH2 {
+            return ChordAngle::inf();
+        } else if self.0 < 0. {
+            return ChordAngle(0.);
+        } else {
+            return ChordAngle(nextafter(self.0, 10.));
+        }
     }
 }
 

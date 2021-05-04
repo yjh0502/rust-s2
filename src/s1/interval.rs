@@ -346,6 +346,60 @@ impl Interval {
         }
         result
     }
+
+    // complement returns the complement of the interior of the interval. An interval and
+    // its complement have the same boundary but do not share any interior
+    // values. The complement operator is not a bijection, since the complement
+    // of a singleton interval (containing a single value) is the same as the
+    // complement of an empty interval.
+    pub fn complement(&self) -> Interval {
+        if self.lo == self.hi {
+            // Singleton. The interval just contains a single point.
+            return FULL;
+        } else {
+            return Interval {
+                lo: self.hi,
+                hi: self.lo,
+            };
+        }
+    }
+
+    // complement_center returns the midpoint of the complement of the interval. For full and empty
+    // intervals, the result is arbitrary. For a singleton interval (containing a
+    // single point), the result is its antipodal point on S1.
+    pub fn complement_center(&self) -> f64 {
+        if self.lo != self.hi {
+            return self.complement().center();
+        }
+        if self.hi <= 0. {
+            return self.hi + PI;
+        }
+        return self.hi - PI;
+    }
+    // approx_eq reports whether this interval can be transformed into the given
+    // interval by moving each endpoint by at most ε, without the
+    // endpoints crossing (which would invert the interval). Empty and full
+    // intervals are considered to start at an arbitrary point on the unit circle,
+    // so any interval with (length <= 2*ε) matches the empty interval, and
+    // any interval with (length >= 2*π - 2*ε) matches the full interval.
+    pub fn approx_eq(&self, other: &Self) -> bool {
+        if self.is_empty() {
+            other.len() < 2. * EPSILON
+        } else if other.is_empty() {
+            self.len() < 2. * EPSILON
+        } else if self.is_full() {
+            other.len() >= 2. * (PI - EPSILON)
+        } else if other.is_full() {
+            self.len() >= 2. * (PI - EPSILON)
+        }
+        // The purpose of the last test below is to verify that moving the endpoints
+        // does not invert the interval, e.g. [-1e20, 1e20] vs. [1e20, -1e20].
+        else {
+            ((other.lo - self.lo) % (2. * PI)).abs() <= EPSILON
+                && ((other.hi - self.hi) % (2. * PI)).abs() <= EPSILON
+                && (self.len() - other.len()).abs() <= 2. * EPSILON
+        }
+    }
 }
 
 impl std::ops::Add<f64> for Interval {
