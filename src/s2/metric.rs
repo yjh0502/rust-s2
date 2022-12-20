@@ -175,96 +175,58 @@ mod tests {
     use super::*;
 
     #[test]
-    #[ignore]
     fn test_metric() {
         assert_eq!(9, MIN_WIDTHMETRIC.max_level(0.001256));
 
         // Check that the maximum aspect ratio of an individual cell is consistent
         // with the global minimums and maximums.
         assert!(MAX_EDGE_ASPECT >= 1.);
-        assert!(MAX_EDGEMETRIC.deriv / MIN_EDGEMETRIC.deriv <= MAX_EDGE_ASPECT);
+        assert!(MAX_EDGE_ASPECT <= MAX_EDGEMETRIC.deriv / MIN_EDGEMETRIC.deriv);
 
         assert!(MAX_DIAG_ASPECT >= 1.);
-        assert!(MAX_DIAGMETRIC.deriv / MIN_DIAGMETRIC.deriv <= MAX_DIAG_ASPECT);
+        assert!(MAX_DIAG_ASPECT <= MAX_DIAGMETRIC.deriv / MIN_DIAGMETRIC.deriv);
 
         // Check that area is consistent with edge and width.
-        assert!(MIN_WIDTHMETRIC.deriv / MIN_EDGEMETRIC.deriv - 1e-15 <= MIN_AREAMETRIC.deriv);
-        assert!(MAX_WIDTHMETRIC.deriv / MAX_EDGEMETRIC.deriv + 1e-15 >= MAX_AREAMETRIC.deriv);
+        assert!(MIN_AREAMETRIC.deriv >= MIN_WIDTHMETRIC.deriv * MIN_EDGEMETRIC.deriv - 1e-15);
+        assert!(MAX_AREAMETRIC.deriv <= MAX_WIDTHMETRIC.deriv * MAX_EDGEMETRIC.deriv + 1e-15);
+
+        for level in -2..(MAX_LEVEL as i32 + 4) {
+            let mut width = MIN_WIDTHMETRIC.deriv * 2.0_f64.powf(-level as f64);
+            if width >= (MAX_LEVEL + 3) as f64 {
+                width = 0.0;
+            }
+
+            // Check boundary cases (exactly equal to a threshold value).
+            let expected = level.clamp(0, MAX_LEVEL as i32) as u64;
+            assert!(MIN_WIDTHMETRIC.min_level(width) == expected);
+            assert!(MIN_WIDTHMETRIC.max_level(width) == expected);
+            assert!(MIN_WIDTHMETRIC.closest_level(width) == expected);
+
+            // Also check non-boundary cases.
+            assert!(MIN_WIDTHMETRIC.min_level(1.2 * width) == expected);
+            assert!(MIN_WIDTHMETRIC.max_level(0.8 * width) == expected);
+            assert!(MIN_WIDTHMETRIC.closest_level(1.2 * width) == expected);
+            assert!(MIN_WIDTHMETRIC.closest_level(0.8 * width) == expected);
+        }
     }
-}
 
-/*
-package s2
-
-import (
-    "math"
-    "testing"
-)
-
-func TestMetric(t *testing.T) {
-    if got := MinWidthMetric.Deriv*MinEdgeMetric.Deriv - 1e-15; MinAreaMetric.Deriv < got {
-        t.Errorf("Min Area: %v*%v = %v, want >= %v", MinWidthMetric.Deriv, MinEdgeMetric.Deriv, got, MinAreaMetric.Deriv)
-    }
-    if got := MaxWidthMetric.Deriv*MaxEdgeMetric.Deriv + 1e-15; MaxAreaMetric.Deriv > got {
-        t.Errorf("Max Area: %v*%v = %v, want <= %v", MaxWidthMetric.Deriv, MaxEdgeMetric.Deriv, got, MaxAreaMetric.Deriv)
-    }
-
-    for level := -2; level <= maxLevel+3; level++ {
-        width := MinWidthMetric.Deriv * math.Pow(2, float64(-level))
-        if level >= maxLevel+3 {
-            width = 0
-        }
-
-        // Check boundary cases (exactly equal to a threshold value).
-        expected := int(math.Max(0, math.Min(maxLevel, float64(level))))
-
-        if MinWidthMetric.MinLevel(width) != expected {
-            t.Errorf("MinWidthMetric.MinLevel(%v) = %v, want %v", width, MinWidthMetric.MinLevel(width), expected)
-        }
-        if MinWidthMetric.MaxLevel(width) != expected {
-            t.Errorf("MinWidthMetric.MaxLevel(%v) = %v, want %v", width, MinWidthMetric.MaxLevel(width), expected)
-        }
-        if MinWidthMetric.ClosestLevel(width) != expected {
-            t.Errorf("MinWidthMetric.ClosestLevel(%v) = %v, want %v", width, MinWidthMetric.ClosestLevel(width), expected)
-        }
-
-        // Also check non-boundary cases.
-        if got := MinWidthMetric.MinLevel(1.2 * width); got != expected {
-            t.Errorf("non-boundary MinWidthMetric.MinLevel(%v) = %v, want %v", 1.2*width, got, expected)
-        }
-        if got := MinWidthMetric.MaxLevel(0.8 * width); got != expected {
-            t.Errorf("non-boundary MinWidthMetric.MaxLevel(%v) = %v, want %v", 0.8*width, got, expected)
-        }
-        if got := MinWidthMetric.ClosestLevel(1.2 * width); got != expected {
-            t.Errorf("non-boundary larger MinWidthMetric.ClosestLevel(%v) = %v, want %v", 1.2*width, got, expected)
-        }
-        if got := MinWidthMetric.ClosestLevel(0.8 * width); got != expected {
-            t.Errorf("non-boundary smaller MinWidthMetric.ClosestLevel(%v) = %v, want %v", 0.8*width, got, expected)
+    #[test]
+    fn test_metric_size_relations() {
+        // Check that min <= avg <= max for each metric.
+        let tests = vec![
+            (
+                MIN_ANGLE_SPANMETRIC,
+                AVG_ANGLE_SPANMETRIC,
+                MAX_ANGLE_SPANMETRIC,
+            ),
+            (MIN_WIDTHMETRIC, AVG_WIDTHMETRIC, MAX_WIDTHMETRIC),
+            (MIN_EDGEMETRIC, AVG_EDGEMETRIC, MAX_EDGEMETRIC),
+            (MIN_DIAGMETRIC, AVG_DIAGMETRIC, MAX_DIAGMETRIC),
+            (MIN_AREAMETRIC, AVG_AREAMETRIC, MAX_AREAMETRIC),
+        ];
+        for test in tests {
+            assert!(test.0.deriv <= test.1.deriv);
+            assert!(test.1.deriv <= test.2.deriv);
         }
     }
 }
-
-func TestMetricSizeRelations(t *testing.T) {
-    // check that min <= avg <= max for each metric.
-    tests := []struct {
-        min Metric
-        avg Metric
-        max Metric
-    }{
-        {MinAngleSpanMetric, AvgAngleSpanMetric, MaxAngleSpanMetric},
-        {MinWidthMetric, AvgWidthMetric, MaxWidthMetric},
-        {MinEdgeMetric, AvgEdgeMetric, MaxEdgeMetric},
-        {MinDiagMetric, AvgDiagMetric, MaxDiagMetric},
-        {MinAreaMetric, AvgAreaMetric, MaxAreaMetric},
-    }
-
-    for _, test := range tests {
-        if test.min.Deriv > test.avg.Deriv {
-            t.Errorf("Min %v > Avg %v", test.min.Deriv, test.avg.Deriv)
-        }
-        if test.avg.Deriv > test.max.Deriv {
-            t.Errorf("Avg %v > Max %v", test.avg.Deriv, test.max.Deriv)
-        }
-    }
-}
-*/
