@@ -607,7 +607,7 @@ mod tests {
         }
         if interior {
             for ci in covering.0.iter() {
-                assert!(true, r.contains_cell(&Cell::from(ci)));
+                assert_eq!(true, r.contains_cell(&Cell::from(ci)));
             }
         } else {
             let mut temp_coverer = covering.clone();

@@ -936,7 +936,7 @@ mod tests {
             intersects: bool,
             union: &'a Rect,
             intersection: &'a Rect,
-        };
+        }
         let tests: [Test; 10] = [
             Test {
                 rect: &rect,
