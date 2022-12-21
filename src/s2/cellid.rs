@@ -907,8 +907,8 @@ lazy_static! {
         );
         [lookup_pos, lookup_ij]
     };
-    static ref LOOKUP_POS: &'static [u64] = { LOOKUP_TBL[0].as_slice() };
-    static ref LOOKUP_IJ: &'static [u64] = { LOOKUP_TBL[1].as_slice() };
+    static ref LOOKUP_POS: &'static [u64] = LOOKUP_TBL[0].as_slice();
+    static ref LOOKUP_IJ: &'static [u64] = LOOKUP_TBL[1].as_slice();
 }
 
 /// init_lookup_cell initializes the lookupIJ table at init time.

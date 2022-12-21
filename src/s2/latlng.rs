@@ -135,10 +135,10 @@ mod tests {
     fn test_latlng_normalized_case(descr: &str, pos: LatLng, want: LatLng) {
         let desc: String = descr.into();
         let normalized = pos.normalized();
-        assert!(normalized.is_valid(), desc);
+        assert!(normalized.is_valid(), "{}", desc);
 
         let distance = normalized.distance(&want);
-        assert!(distance < s1::Deg(1e-13).into(), desc);
+        assert!(distance < s1::Deg(1e-13).into(), "{}", desc);
     }
 
     #[test]

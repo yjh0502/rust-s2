@@ -822,7 +822,7 @@ mod tests {
             a: Vector,
             b: Vector,
             dist_rad: f64,
-        };
+        }
         let tests: [Test; 12] = [
             Test {
                 x: Vector {
