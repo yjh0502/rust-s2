@@ -9,7 +9,7 @@ use std::f64::consts::PI;
 const NORTH_POLE_LAT: f64 = PI / 2.;
 const SOUTH_POLE_LAT: f64 = PI / -2.;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct LatLng {
     pub lat: Angle,
@@ -130,6 +130,12 @@ mod tests {
                 z: $z as f64,
             })
         };
+    }
+
+    #[test]
+    fn test_latlng_default() {
+        // Same as geo.s2.LatLng{} in Go.
+        assert_eq!(LatLng::default(), ll!(0.0, 0.0));
     }
 
     fn test_latlng_normalized_case(descr: &str, pos: LatLng, want: LatLng) {

@@ -21,7 +21,7 @@ use crate::consts::EPSILON;
 use crate::s1::angle::*;
 
 /// Vector represents a point in ℝ³.
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Vector {
     pub x: f64,
@@ -292,6 +292,11 @@ mod tests {
                 z: $z,
             }
         };
+    }
+
+    #[test]
+    fn test_vector_default() {
+        assert_eq!(Vector::default(), V!(0., 0., 0.));
     }
 
     #[test]
