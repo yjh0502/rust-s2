@@ -460,6 +460,7 @@ mod tests {
     use super::*;
     use rand::Rng;
     use std;
+    use std::collections::BTreeMap;
 
     use crate::s2::random;
 
@@ -471,27 +472,35 @@ mod tests {
         assert!(std::mem::size_of::<Cell>() <= MAX_CELL_SIZE);
     }
 
-    /*
-    use std::collections::{btree_map, BTreeMap};
-    fn incr<K>(m: &mut BTreeMap<K, usize>, k: K)
-        where K: std::cmp::Ord
-    {
-        match m.entry(k) {
-            btree_map::Entry::Occupied(mut e) => {
-                let item = e.get_mut();
-                *item = *item + 1;
-            }
-            btree_map::Entry::Vacant(e) => {
-                e.insert(1);
-            }
-        };
+    // Other than Go, Rust does not make it easy to implement maps with
+    // floating-point keys. This is intentional: Floating-point numbers
+    // should not be tested for exact equality, which is essentially what
+    // happens when using f64 as keys in a map. Nonetheless, the unit tests
+    // on S2Cell count how often the “same” point gets returned as vertex
+    // or edge. For the purpose of testing, we work with Strings that can
+    // easily be used as map keys.
+    fn format_f64(f: f64) -> String {
+        if f == 0.0 || f == -0.0 {
+            String::from("±0.0")
+        } else {
+            format!("{:0.20}", f)
+        }
     }
-    */
 
-    //XXX
+    fn incr(m: &mut BTreeMap<String, usize>, p: Point) {
+        let key = format!(
+            "{},{},{}",
+            format_f64(p.0.x),
+            format_f64(p.0.y),
+            format_f64(p.0.z)
+        );
+        *m.entry(key).or_insert(0) += 1;
+    }
+
     #[test]
-    #[ignore]
     fn test_cell_faces() {
+        let mut edge_counts = BTreeMap::new();
+        let mut vert_counts = BTreeMap::new();
         for face in 0..6 {
             let id = CellID::from_face(face);
             let cell = Cell::from(&id);
@@ -499,38 +508,35 @@ mod tests {
             assert_eq!(cell.id, id);
             assert_eq!(cell.face as u64, face);
             assert_eq!(cell.level, 0);
+
+            // Top-level faces have alternating orientations
+            // to get RHS coordinates.
             assert_eq!(cell.orientation, cell.face & SWAP_MASK);
 
-            assert_eq!(false, cell.is_leaf());
-
+            assert_eq!(cell.is_leaf(), false);
             let verts = cell.vertices();
             for k in 0..4 {
                 let edge = cell.edge(k);
-                let vert = &verts[k];
-                let vert_cross = &verts[(k + 1) & 3];
-                /*
+                let vert = verts[k];
                 incr(&mut edge_counts, edge);
                 incr(&mut vert_counts, vert);
-                */
 
+                let vert_cross = verts[(k + 1) & 3];
                 assert_f64_eq!(0., vert.0.dot(&edge.0));
                 assert_f64_eq!(0., vert_cross.0.dot(&edge.0));
                 assert_f64_eq!(1., vert.0.cross(&vert_cross.0).normalize().dot(&edge.0));
             }
         }
-        /*
-        // Check that edges have multiplicity 2 and vertices have multiplicity 3.
-        for k, v := range edgeCounts {
-            if v != 2 {
-                t.Errorf("edge %v counts wrong, got %d, want 2", k, v)
-            }
+
+        // Check that edges have multiplicity 2 and vertices have
+        // multiplicity 3.
+        for (k, v) in &edge_counts {
+            assert_eq!(*v, 2, "edge {} counts wrong, got {}, want 2", k, v);
         }
-        for k, v := range vertexCounts {
-            if v != 3 {
-                t.Errorf("vertex %v counts wrong, got %d, want 3", k, v)
-            }
+
+        for (k, v) in &vert_counts {
+            assert_eq!(*v, 3, "vertex {} counts wrong, got {}, want 3", k, v);
         }
-        */
     }
 
     fn test_cell_children_case(cell: &Cell) {
