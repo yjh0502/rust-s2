@@ -3,6 +3,7 @@ use std::f64::consts::PI;
 
 use crate::consts::*;
 use crate::r1;
+use crate::r3::vector::Vector;
 use crate::s1::*;
 use crate::s2::edgeutil;
 use crate::s2::latlng::LatLng;
@@ -447,6 +448,91 @@ impl Rect {
     pub fn contains_point(&self, p: &Point) -> bool {
         self.contains_latlng(&LatLng::from(p))
     }
+
+    // Centroid returns the true centroid of the given Rect multiplied
+    // by its surface area. The result is not unit length, so you may
+    // want to normalize it.  Note that in general the centroid is
+    // *not* at the center of the rectangle, and in fact it may not
+    // even be contained by the rectangle. (It is the “center of mass”
+    // of the rectangle viewed as subset of the unit sphere, i.e. it is
+    // the point in space about which this curved shape would rotate.)
+    //
+    // The reason for multiplying the result by the rectangle area is
+    // to make it easier to compute the centroid of more complicated
+    // shapes. The centroid of a union of disjoint regions can be
+    // computed simply by adding their centroid results.
+    pub fn centroid(&self) -> Point {
+        // When a sphere is divided into slices of constant thickness
+        // by a set of parallel planes, all slices have the same
+        // surface area. This implies that the z-component of the
+        // centroid is simply the midpoint of the z-interval spanned
+        // by the Rect.
+        //
+        // Similarly, it is easy to see that the (x,y) of the centroid
+        // lies in the plane through the midpoint of the rectangle’s
+        // longitude interval.  We only need to determine the distance
+        // ”d“ of this point from the z-axis.
+        //
+        // Let’s restrict our attention to a particular z-value. In
+        // this z-plane, the Rect is a circular arc. The centroid of
+        // this arc lies on a radial line through the midpoint of
+        // the arc, and a distance from the z-axis of
+        //
+        //     r * (sin(alpha) / alpha)
+        //
+        // where r = sqrt(1-z^2) is the radius of the arc, and “alpha”
+        // is half of the arc length (i.e., the arc covers longitudes
+        // [-alpha, alpha]).
+        //
+        // To find the centroid distance from the z-axis for the entire
+        // rectangle, we just need to integrate over the z-interval.
+        // This gives
+        //
+        //    d = Integrate[sqrt(1-z^2)*sin(alpha)/alpha, z1..z2] / (z2 - z1)
+        //
+        // where [z1, z2] is the range of z-values covered by the rectangle.
+        // This simplifies to
+        //
+        //    d = sin(alpha)/(2*alpha*(z2-z1))*(z2*r2 - z1*r1 + theta2 - theta1)
+        //
+        // where [theta1, theta2] is the latitude interval, z1=sin(theta1),
+        // z2=sin(theta2), r1=cos(theta1), and r2=cos(theta2).
+        //
+        // Finally, we want to return not the centroid itself, but the
+        // centroid scaled by the area of the rectangle. The area of the
+        // rectangle is
+        //
+        //    A = 2 * alpha * (z2 - z1)
+        //
+        // which fortunately appears in the denominator of “d”.
+
+        if self.is_empty() {
+            // The C++ version of the S2 library returns S2Point(),
+            // the Go port returns s2.Point{}. Both are at (0.0, 0.0, 0.0).
+            // TODO: Return Point::default() once that is implemented.
+            return Point(Vector {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            });
+        }
+
+        let z1 = self.lat.lo.sin();
+        let z2 = self.lat.hi.sin();
+        let r1 = self.lat.lo.cos();
+        let r2 = self.lat.hi.cos();
+
+        let alpha = 0.5 * self.lng.len();
+        let r = alpha.sin() * (r2 * z2 - r1 * z1 + self.lat.len());
+        let lng = self.lng.center();
+        let z = alpha * (z2 + z1) * (z2 - z1); // scaled by the area
+
+        Point(Vector {
+            x: r * lng.cos(),
+            y: r * lng.sin(),
+            z: z,
+        })
+    }
 }
 
 /*
@@ -524,12 +610,14 @@ func (r Rect) IntersectsCell(c Cell) bool {
 #[allow(non_upper_case_globals)]
 mod tests {
     use super::*;
-    use std::f64::consts::PI;
+    use std::f64::consts::{FRAC_PI_2, PI};
 
     use crate::cellid::CellID;
     use crate::predicates::sign;
     use crate::r1;
     use crate::r3::vector::Vector;
+    use crate::s2::random;
+    use rand::Rng;
     use std::ops::Add;
 
     #[test]
@@ -1802,71 +1890,113 @@ mod tests {
             assert_eq!(a.approx_eq(b), *want);
         }
     }
-    /*
-    fn testRectCentroidSplitting() {
-        // Recursively verify that when a rectangle is split into two pieces, the
-        // centroids of the children sum to give the centroid of the parent.
-        let xx = Rect::default();
-        var child0, child1 Rect
-        if oneIn(2) {
-            lat := randomUniformFloat64(r.Lat.Lo, r.Lat.Hi)
-            child0 = Rect{r1.Interval{r.Lat.Lo, lat}, r.Lng}
-            child1 = Rect{r1.Interval{lat, r.Lat.Hi}, r.Lng}
-        } else {
-            lng := randomUniformFloat64(r.Lng.Lo, r.Lng.Hi)
-            child0 = Rect{r.Lat, s1.Interval{r.Lng.Lo, lng}}
-            child1 = Rect{r.Lat, s1.Interval{lng, r.Lng.Hi}}
-        }
 
-        if got, want := r.Centroid().Sub(child0.Centroid().Vector).Sub(child1.Centroid().Vector).Norm(), 1e-15; got > want {
-            t.Errorf("%v.Centroid() - %v.Centroid() - %v.Centroid = %v, want ~0", r, child0, child1, got)
+    #[test]
+    fn test_rect_centroid_empty_full() {
+        let p0 = Point(Vector {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        });
+        assert_eq!(Rect::empty().centroid(), p0);
+        assert_f64_eq!(Rect::full().centroid().norm(), EPSILON);
+    }
+
+    /// Recursively verify that when a rectangle is split into two pieces,
+    /// the centroids of the children sum to give the centroid of the parent.
+    fn test_rect_centroid_splitting(r: Rect, splits_left: i32) {
+        let mut rng = random::rng();
+        let child0: Rect;
+        let child1: Rect;
+        if random::one_in(&mut rng, 2) {
+            let lat_lo = r.lat.lo.min(r.lat.hi);
+            let lat_hi = r.lat.lo.max(r.lat.hi);
+            let lat = rng.gen_range(lat_lo, lat_hi);
+            child0 = Rect {
+                lat: r1::interval::Interval::new(r.lat.lo, lat),
+                lng: r.lng,
+            };
+            child1 = Rect {
+                lat: r1::interval::Interval::new(lat, r.lat.hi),
+                lng: r.lng,
+            };
+        } else {
+            let lng_lo = r.lng.lo.min(r.lng.hi);
+            let lng_hi = r.lng.lo.max(r.lng.hi);
+            let lng = rng.gen_range(lng_lo, lng_hi);
+            child0 = Rect {
+                lat: r.lat,
+                lng: Interval {
+                    lo: r.lng.lo,
+                    hi: lng,
+                },
+            };
+            child1 = Rect {
+                lat: r.lat,
+                lng: Interval {
+                    lo: lng,
+                    hi: r.lng.hi,
+                },
+            };
         }
-        if leftSplits > 0 {
-            testRectCentroidSplitting(t, child0, leftSplits-1)
-            testRectCentroidSplitting(t, child1, leftSplits-1)
+        let got = (r.centroid() - child0.centroid() - child1.centroid()).norm();
+        assert!(
+            got <= 1e-15,
+            "want ~0, got {:?}, r={:?}, child0={:?}, child1={:?}",
+            got,
+            r,
+            child0,
+            child1
+        );
+        if splits_left > 0 {
+            test_rect_centroid_splitting(child0, splits_left - 1);
+            test_rect_centroid_splitting(child1, splits_left - 1);
         }
-    }*/
-    /*
-    func TestRectCentroidFullRange(t *testing.T) {
+    }
+
+    #[test]
+    fn test_rect_centroid_full_range() {
+        let mut rng = random::rng();
+
         // Rectangles that cover the full longitude range.
-        for i := 0; i < 100; i++ {
-            lat1 := randomUniformFloat64(-math.Pi/2, math.Pi/2)
-            lat2 := randomUniformFloat64(-math.Pi/2, math.Pi/2)
-            r := Rect{r1.Interval{lat1, lat2}, s1.FullInterval()}
-            centroid := r.Centroid()
-            if want := 0.5 * (math.Sin(lat1) + math.Sin(lat2)) * r.Area(); !float64Near(want, centroid.Z, epsilon) {
-                t.Errorf("%v.Centroid().Z was %v, want %v", r, centroid.Z, want)
-            }
-            if got := (r2.Point{centroid.X, centroid.Y}.Norm()); got > epsilon {
-                t.Errorf("%v.Centroid().Norm() was %v, want > %v ", r, got, epsilon)
-            }
+        for _ in 0..100 {
+            let lat1 = rng.gen_range(-FRAC_PI_2, FRAC_PI_2);
+            let lat2 = rng.gen_range(-FRAC_PI_2, FRAC_PI_2);
+            let r = Rect {
+                lat: r1::interval::Interval::new(lat1, lat2),
+                lng: VALID_RECT_LNG_RANGE,
+            };
+            let centroid = r.centroid();
+            let want = 0.5 * (lat1.sin() + lat2.sin()) * r.area();
+            assert_f64_eq!(centroid.0.z, want);
         }
 
         // Rectangles that cover the full latitude range.
-        for i := 0; i < 100; i++ {
-            lat1 := randomUniformFloat64(-math.Pi, math.Pi)
-            lat2 := randomUniformFloat64(-math.Pi, math.Pi)
-            r := Rect{r1.Interval{-math.Pi / 2, math.Pi / 2}, s1.Interval{lat1, lat2}}
-            centroid := r.Centroid()
-
-            if got, want := math.Abs(centroid.Z), epsilon; got > want {
-                t.Errorf("math.Abs(%v.Centroid().Z) = %v, want <= %v", r, got, want)
-            }
-
-            if got, want := LatLngFromPoint(centroid).Lng.Radians(), r.Lng.Center(); !float64Near(got, want, epsilon) {
-                t.Errorf("%v.Lng.Radians() = %v, want %v", centroid, got, want)
-            }
-
-            alpha := 0.5 * r.Lng.Length()
-            if got, want := (r2.Point{centroid.X, centroid.Y}.Norm()), (0.25 * math.Pi * math.Sin(alpha) / alpha * r.Area()); !float64Near(got, want, epsilon) {
-                t.Errorf("%v.Centroid().Norm() = %v, want ~%v", got, want, epsilon)
-            }
+        for _ in 0..100 {
+            let lng1 = rng.gen_range(-PI, PI);
+            let lng2 = rng.gen_range(-PI, PI);
+            let r = Rect {
+                lat: VALID_RECT_LAT_RANGE,
+                lng: Interval::new(lng1, lng2),
+            };
+            let centroid = r.centroid();
+            assert!(centroid.0.z.abs() <= EPSILON);
+            assert_f64_eq!(r.lng.center(), LatLng::from(centroid).lng.rad());
+            let alpha = 0.5 * r.lng.len();
+            let p = crate::r2::point::Point::new(centroid.0.x, centroid.0.y);
+            assert_f64_eq!(0.25 * PI * alpha.sin() / alpha * r.area(), p.norm());
         }
 
-        // Finally, verify that when a rectangle is recursively split into pieces,
-        // the centroids of the pieces add to give the centroid of their parent.
-        // To make the code simpler we avoid rectangles that cross the 180 degree
-        // line of longitude.
-        testRectCentroidSplitting(t, Rect{r1.Interval{-math.Pi / 2, math.Pi / 2}, s1.Interval{-math.Pi, math.Pi}}, 10)
-         */
+        // Finally, verify that when a rectangle is recursively split
+        // into pieces, the centroids of the pieces add to give the
+        // centroid of their parent.  To make the code simpler we avoid
+        // rectangles that cross the 180 degree line of longitude.
+        test_rect_centroid_splitting(
+            Rect {
+                lat: VALID_RECT_LAT_RANGE,
+                lng: VALID_RECT_LNG_RANGE,
+            },
+            10,
+        );
+    }
 }
