@@ -54,23 +54,23 @@ use std::f64::consts::PI;
 ///
 /// When testing for equality, you should allow for numerical errors (float64Eq)
 /// or convert to discrete E5/E6/E7 values first.
-#[derive(Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Default, PartialEq, PartialOrd)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Angle(f64);
-#[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
+#[derive(Clone, Copy, Default, PartialEq, PartialOrd, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Rad(pub f64);
-#[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
+#[derive(Clone, Copy, Default, PartialEq, PartialOrd, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Deg(pub f64);
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
+#[derive(Clone, Copy, Default, PartialEq, PartialOrd, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct E5(pub i32);
-#[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
+#[derive(Clone, Copy, Default, PartialEq, PartialOrd, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct E6(pub i32);
-#[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
+#[derive(Clone, Copy, Default, PartialEq, PartialOrd, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct E7(pub i32);
 
@@ -238,6 +238,12 @@ mod tests {
     #[test]
     fn test_empty_value() {
         assert_eq!(Deg::from(Angle(0.)).0, 0.);
+        assert_eq!(Angle::default().0, 0.);
+        assert_eq!(Rad::default().0, 0.);
+        assert_eq!(Deg::default().0, 0.);
+        assert_eq!(E5::default().0, 0);
+        assert_eq!(E6::default().0, 0);
+        assert_eq!(E7::default().0, 0);
     }
 
     #[test]
