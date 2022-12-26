@@ -399,12 +399,12 @@ mod tests {
     fn test_siti_st_roundtrip() {
         let mut rng = random::rng();
         for _ in 0..1000 {
-            let si = rng.gen_range(0, MAX_SITI);
+            let si = rng.gen_range(0..MAX_SITI);
             assert_eq!(st_to_siti(siti_to_st(si)), si);
         }
 
         for _ in 0..1000 {
-            let st = rng.gen_range(0., 1f64);
+            let st = rng.gen_range(0.0..1f64);
             let error = siti_to_st(st_to_siti(st)) - st;
             assert!(error.abs() < (1. / MAX_LEVEL as f64));
         }
@@ -449,10 +449,10 @@ mod tests {
             }
 
             {
-                let face_random = rng.gen_range(0, NUM_FACES);
+                let face_random = rng.gen_range(0..NUM_FACES);
                 let mask = (std::u64::MAX << (MAX_LEVEL - level)) & (MAX_SITI - 1);
-                let si_random = rng.gen_range(0, MAX_SITI) & mask;
-                let ti_random = rng.gen_range(0, MAX_SITI) & mask;
+                let si_random = rng.gen_range(0..MAX_SITI) & mask;
+                let ti_random = rng.gen_range(0..MAX_SITI) & mask;
 
                 let lower_mask = (1 << (MAX_LEVEL - level)) - 1;
                 assert!(si_random < MAX_SITI && (si_random & lower_mask) == 0);

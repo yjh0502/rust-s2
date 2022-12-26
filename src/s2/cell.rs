@@ -819,7 +819,7 @@ mod tests {
 
         for _ in 0..1000 {
             let cell = Cell::from(&random::cellid(&mut rng));
-            let i1 = rng.gen_range(0, 4);
+            let i1 = rng.gen_range(0..4);
             let i2 = (i1 + 1) & 3;
             let v1 = &cell.vertices()[i1];
 
@@ -827,7 +827,7 @@ mod tests {
                 &mut rng,
                 Cap::from_center_angle(&cell.vertex(i2), &Angle::from(Rad(EPSILON))),
             );
-            let p = edgeutil::interpolate(rng.gen_range(0., 1.), &v1, &v2);
+            let p = edgeutil::interpolate(rng.gen_range(0.0..1.0), &v1, &v2);
 
             assert!(Cell::from(&CellID::from(&p)).contains_point(&p));
         }

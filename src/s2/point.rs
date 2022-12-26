@@ -774,7 +774,7 @@ mod tests {
             let p = Point::from(f.x);
             let x = Point::from(f.y);
             let y = Point::from(f.z);
-            let d = 1e-4 * 1e-4f64.powf(rng.gen_range(0., 1.));
+            let d = 1e-4 * 1e-4f64.powf(rng.gen_range(0.0..1.0));
 
             // Make a triangle with two equal sides.
             {

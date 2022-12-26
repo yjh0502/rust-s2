@@ -1851,7 +1851,7 @@ mod tests {
         if random::one_in(&mut rng, 2) {
             let lat_lo = r.lat.lo.min(r.lat.hi);
             let lat_hi = r.lat.lo.max(r.lat.hi);
-            let lat = rng.gen_range(lat_lo, lat_hi);
+            let lat = rng.gen_range(lat_lo..lat_hi);
             child0 = Rect {
                 lat: r1::interval::Interval::new(r.lat.lo, lat),
                 lng: r.lng,
@@ -1863,7 +1863,7 @@ mod tests {
         } else {
             let lng_lo = r.lng.lo.min(r.lng.hi);
             let lng_hi = r.lng.lo.max(r.lng.hi);
-            let lng = rng.gen_range(lng_lo, lng_hi);
+            let lng = rng.gen_range(lng_lo..lng_hi);
             child0 = Rect {
                 lat: r.lat,
                 lng: Interval {
@@ -1900,8 +1900,8 @@ mod tests {
 
         // Rectangles that cover the full longitude range.
         for _ in 0..100 {
-            let lat1 = rng.gen_range(-FRAC_PI_2, FRAC_PI_2);
-            let lat2 = rng.gen_range(-FRAC_PI_2, FRAC_PI_2);
+            let lat1 = rng.gen_range(-FRAC_PI_2..FRAC_PI_2);
+            let lat2 = rng.gen_range(-FRAC_PI_2..FRAC_PI_2);
             let r = Rect {
                 lat: r1::interval::Interval::new(lat1, lat2),
                 lng: VALID_RECT_LNG_RANGE,
@@ -1913,8 +1913,8 @@ mod tests {
 
         // Rectangles that cover the full latitude range.
         for _ in 0..100 {
-            let lng1 = rng.gen_range(-PI, PI);
-            let lng2 = rng.gen_range(-PI, PI);
+            let lng1 = rng.gen_range(-PI..PI);
+            let lng2 = rng.gen_range(-PI..PI);
             let r = Rect {
                 lat: VALID_RECT_LAT_RANGE,
                 lng: Interval::new(lng1, lng2),

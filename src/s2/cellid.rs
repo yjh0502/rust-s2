@@ -1163,7 +1163,7 @@ pub mod tests {
             }
             let level = match max_diff {
                 0 => id.level(),
-                _ => id.level() + rng.gen_range(0, max_diff),
+                _ => id.level() + rng.gen_range(0..max_diff),
             };
 
             let mut want = Vec::new();
@@ -1692,7 +1692,7 @@ pub mod tests {
         R: Rng,
     {
         if random::one_in(r, 2) {
-            let v = r.gen_range(rect.y.lo, rect.y.hi);
+            let v = r.gen_range(rect.y.lo..rect.y.hi);
             let u = if random::one_in(r, 2) {
                 rect.x.lo
             } else {
@@ -1700,7 +1700,7 @@ pub mod tests {
             };
             (u, v)
         } else {
-            let u = r.gen_range(rect.x.lo, rect.x.hi);
+            let u = r.gen_range(rect.x.lo..rect.x.hi);
             let v = if random::one_in(r, 2) {
                 rect.y.lo
             } else {
@@ -1739,14 +1739,14 @@ pub mod tests {
         for _ in 0..1000 {
             let id = random::cellid(&mut rng);
             let distance: s1::Angle =
-                s1::Deg(rng.gen_range(-MAX_DIST_DEGREES, MAX_DIST_DEGREES)).into();
+                s1::Deg(rng.gen_range(-MAX_DIST_DEGREES..MAX_DIST_DEGREES)).into();
 
             let bound = id.bound_uv();
             let expanded = expanded_by_distance_uv(&bound, &distance);
 
             for _ in 0..10 {
                 // Choose a point on the boundary of the rectangle.
-                let face = rng.gen_range(0, NUM_FACES);
+                let face = rng.gen_range(0..NUM_FACES);
                 let (center_u, center_v) = sample_boundary(&mut rng, &bound);
                 let center = Point(face_uv_to_xyz(face, center_u, center_v).normalize());
 
