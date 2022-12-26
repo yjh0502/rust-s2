@@ -14,17 +14,14 @@ documentation = "https://docs.rs/rust-s2"
 
 keywords = ["geo", "s2"]
 
+[features]
+serde = ["dep:serde", "bigdecimal/serde"]
+
 [dependencies]
 float_extras = "0.1.6"
 lazy_static = "1.4.0"
 rand = "0.8.5"
 cgmath = "0.18.0"
 libm = "0.2.6"
-bigdecimal = "0.3.0"
+bigdecimal = { version = "0.3.0", default_features = false }
 serde = { version = "1.0.151", features = ["serde_derive"], optional = true }
-
-[profile.release]
-debug = 2
-
-[target.'cfg(feature="serde")'.dependencies]
-bigdecimal = { version = "0.3.0", features = ["serde"] }
