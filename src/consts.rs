@@ -24,11 +24,13 @@ macro_rules! assert_f64_eq {
     };
 }
 
+#[allow(unused)]
 /// f64_eq reports whether the two values are within the default epsilon.
 pub fn f64_eq(x: f64, y: f64) -> bool {
     f64_near(x, y, EPSILON)
 }
 
+#[allow(unused)]
 /// f64_near reports whether the two values are within the specified epsilon.
 pub fn f64_near(x: f64, y: f64, eps: f64) -> bool {
     (x - y).abs() <= eps

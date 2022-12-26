@@ -148,6 +148,7 @@ pub fn interpolate_at_distance(ax: &Angle, a: &Point, b: &Point) -> Point {
     Point(v)
 }
 
+#[allow(unused)]
 // project returns the point along the edge AB that is closest to the point X.
 // The fractional distance of this point along the edge AB can be obtained
 // using distance_fraction.
@@ -194,6 +195,7 @@ fn update_min_distance(
     (dist, true)
 }
 
+#[allow(unused)]
 // update_max_distance checks if the distance from X to the edge AB is greater
 // than maxDist, and if so, returns the updated value and true.
 // Otherwise it returns false. The case A == B is handled correctly.
