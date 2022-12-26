@@ -16,20 +16,19 @@ limitations under the License.
 
 use crate::r3;
 use bigdecimal;
-use bigdecimal::ToPrimitive;
+use bigdecimal::{FromPrimitive, ToPrimitive};
 use std::str::FromStr;
 
 pub fn prec_str(s: String) -> bigdecimal::BigDecimal {
-    let f = bigdecimal::BigDecimal::from_str(&s).unwrap();
-    return f;
+    bigdecimal::BigDecimal::from_str(&s).unwrap()
 }
 
 pub fn prec_int(i: i64) -> bigdecimal::BigDecimal {
-    return bigdecimal::BigDecimal::from(i);
+    bigdecimal::BigDecimal::from(i)
 }
 
 pub fn prec_float(f: f64) -> bigdecimal::BigDecimal {
-    return bigdecimal::BigDecimal::from(f);
+    bigdecimal::BigDecimal::from_f64(f).unwrap()
 }
 
 /// PreciseVector represents a point in ℝ³ using high-precision values.
