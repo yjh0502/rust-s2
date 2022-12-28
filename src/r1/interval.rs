@@ -169,6 +169,19 @@ impl Interval {
             (self.lo - other.lo).abs() <= EPSILON && (self.hi - other.hi).abs() <= EPSILON
         }
     }
+
+    /// Returns the Hausdorff distance to the given interval.
+    /// For two intervals x and y, this distance is defined as
+    /// h(x, y) = max_{p in x} min_{q in y} d(p, q).
+    pub fn directed_hausdorff_distance(&self, other: &Self) -> f64 {
+        if self.is_empty() {
+            return 0.0;
+        }
+        if other.is_empty() {
+            return f64::INFINITY;
+        }
+        0_f64.max((self.hi - other.hi).max(other.lo - self.lo))
+    }
 }
 
 impl std::ops::Add<f64> for Interval {
@@ -346,5 +359,14 @@ mod tests {
         test_approx_eq(&I!(1. + 3. * EPSILON, 2. - EPSILON), &I!(1., 2.), false);
         test_approx_eq(&I!(1. - EPSILON, 2. + 3. * EPSILON), &I!(1., 2.), false);
         test_approx_eq(&I!(1. + EPSILON, 2. - 3. * EPSILON), &I!(1., 2.), false);
+    }
+
+    #[test]
+    fn test_directed_hausdorff_distance() {
+        assert_eq!(EMPTY.directed_hausdorff_distance(&UNIT), 0.0);
+        assert_eq!(UNIT.directed_hausdorff_distance(&EMPTY), f64::INFINITY);
+        assert_f64_eq!(HALF.directed_hausdorff_distance(&HALF), 0.0);
+        assert_f64_eq!(HALF.directed_hausdorff_distance(&I!(1., 2.)), 0.5);
+        assert_f64_eq!(I!(1., 2.).directed_hausdorff_distance(&HALF), 1.5);
     }
 }
