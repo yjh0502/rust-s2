@@ -513,14 +513,7 @@ impl Rect {
         // which fortunately appears in the denominator of “d”.
 
         if self.is_empty() {
-            // The C++ version of the S2 library returns S2Point(),
-            // the Go port returns s2.Point{}. Both are at (0.0, 0.0, 0.0).
-            // TODO: Return Point::default() once that is implemented.
-            return Point(Vector {
-                x: 0.0,
-                y: 0.0,
-                z: 0.0,
-            });
+            return Point::default();
         }
 
         let z1 = self.lat.lo.sin();
@@ -1833,12 +1826,7 @@ mod tests {
 
     #[test]
     fn test_rect_centroid_empty_full() {
-        let p0 = Point(Vector {
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
-        });
-        assert_eq!(Rect::empty().centroid(), p0);
+        assert_eq!(Rect::empty().centroid(), Point::default());
         assert_f64_eq!(Rect::full().centroid().norm(), EPSILON);
     }
 
