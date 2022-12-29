@@ -18,6 +18,10 @@ jobs:
         with:
           command: check
           args: --features serde
+      - uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all --check
 
   test:
     name: Run Test Suite
