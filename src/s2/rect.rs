@@ -1618,21 +1618,20 @@ mod tests {
             assert!(f64_near(got.rad(), want.rad(), 1e-10));
         }
     }
-    /*
-        func TestDistanceRectFromLatLngRandomPairs(t *testing.T) {
-            latlng := func() LatLng { return LatLngFromPoint(randomPoint()) }
 
-            for i := 0; i < 10000; i++ {
-                r := RectFromLatLng(latlng()).AddPoint(latlng())
-                ll := latlng()
-                got := r.DistanceToLatLng(ll)
-                want := bruteForceRectLatLngDistance(r, ll)
-                if !float64Near(float64(got), float64(want), 1e-10) {
-                    t.Errorf("dist from %v to %v = %v, want %v", r, ll, got, want)
-                }
-            }
+    #[test]
+    fn test_distance_rect_from_latlng_random_pairs() {
+        let mut rng = random::rng();
+        for _ in 0..10000 {
+            let r = random::rect(&mut rng);
+            let ll = random::latlng(&mut rng);
+            let got = r.distance_to_latlng(&ll);
+            let want = brute_force_rect_latlng_distance(&r, &ll);
+            assert!(f64_near(got.rad(), want.rad(), 1e-10));
         }
+    }
 
+    /*
         // This function assumes that DirectedHausdorffDistance() always returns
         // a distance from some point in a to b. So the function mainly tests whether
         // the returned distance is large enough, and only does a weak test on whether
