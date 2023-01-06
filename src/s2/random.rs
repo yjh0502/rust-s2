@@ -3,7 +3,9 @@ use std::f64::consts::PI;
 
 use crate::s2::cap::Cap;
 use crate::s2::cellid::*;
+use crate::s2::latlng::LatLng;
 use crate::s2::point::{self, Point};
+use crate::s2::rect::Rect;
 use rand;
 use rand::Rng;
 
@@ -38,6 +40,15 @@ pub fn point<R: Rng>(rng: &mut R) -> Point {
         rng.gen_range(-1.0..1.0),
         rng.gen_range(-1.0..1.0),
     )
+}
+
+pub fn latlng<R: Rng>(rng: &mut R) -> LatLng {
+    LatLng::from(point::<R>(rng))
+}
+
+pub fn rect<R: Rng>(rng: &mut R) -> Rect {
+    use std::ops::Add;
+    Rect::from(latlng::<R>(rng)).add(&latlng::<R>(rng))
 }
 
 pub fn frame<R: Rng>(rng: &mut R) -> cgmath::Matrix3<f64> {
