@@ -1,5 +1,5 @@
 use std;
-use std::f64::consts::PI;
+use std::f64::consts::{FRAC_PI_2, PI};
 
 use crate::consts::*;
 use crate::r1;
@@ -200,6 +200,174 @@ impl Rect {
             lng: Rad(rect_lng).into(),
         };
         distance_from_segment(&Point::from(ll), &Point::from(lo), &Point::from(hi))
+    }
+
+    /// hausdorff_distance returns the undirected Hausdorff distance
+    /// (measured along the surface of the sphere) to the given rect.
+    /// The Hausdorff distance between rectangle A and rectangle B is given by
+    ///     H(A, B) = max{h(A, B), h(B, A)}.
+    pub fn hausdorff_distance(&self, other: &Self) -> Angle {
+        self.directed_hausdorff_distance(other)
+            .max(other.directed_hausdorff_distance(self))
+    }
+
+    /// directed_hausdorff_distance returns the directed Hausdorff distance
+    /// (measured along the surface of the sphere) to the given Rect.
+    /// The directed Hausdorff distance from rectangle A to rectangle B
+    /// is given by
+    ///     h(A, B) = max_{p in A} min_{q in B} d(p, q).
+    pub fn directed_hausdorff_distance(&self, other: &Self) -> Angle {
+        if self.is_empty() {
+            return Angle::from(Rad(0.));
+        }
+        if other.is_empty() {
+            return Angle::from(Rad(PI));
+        }
+        let lng_distance = self.lng.directed_hausdorff_distance(&other.lng);
+        return Self::hausdorff_distance_helper(lng_distance, &self.lat, &other.lat);
+    }
+
+    /// Return the directed Hausdorff distance from one longitudinal edge
+    /// spanning latitude range `a` to the other longitudinal edge
+    /// spanning latitude range `b`, with their longitudinal difference
+    /// given by `lng_diff`.
+    fn hausdorff_distance_helper(
+        lng_diff: Angle,
+        a: &r1::interval::Interval,
+        b: &r1::interval::Interval,
+    ) -> Angle {
+        // By symmetry, we can assume a's longtitude is 0 and b's
+        // longtitude is lng_diff. Call b's two endpoints b_lo and
+        // b_hi. Let H be the hemisphere containing a and delimited by
+        // the longitude line of b. The Voronoi diagram of b on H has
+        // three edges (portions of great circles) all orthogonal to b
+        // and meeting at b_lo cross b_hi.
+        //
+        // E1: (b_lo, b_lo cross b_hi)
+        // E2: (b_hi, b_lo cross b_hi)
+        // E3: (-b_mid, b_lo cross b_hi), where b_mid is the midpoint of b
+        //
+        // They subdivide H into three Voronoi regions. Depending on how
+        // longitude 0 (which contains edge a) intersects these regions,
+        // we distinguish two cases:
+        //
+        // Case 1: it intersects three regions. This occurs when
+        //         lng_diff <= M_PI_2.
+        // Case 2: it intersects only two regions. This occurs when
+        //         lng_diff > M_PI_2.
+        //
+        // In the first case, the directed Hausdorff distance to edge b
+        // can only be realized by the following points on a:
+        //
+        // A1: two endpoints of a.
+        // A2: intersection of a with the equator, if b also intersects
+        //     the equator.
+        //
+        // In the second case, the directed Hausdorff distance to edge b
+        // can only be  realized by the following points on a:
+        //
+        // B1: two endpoints of a.
+        // B2: intersection of a with E3.
+        // B3: farthest point from b_lo to the interior of D,
+        //     and farthest point from b_hi to the interior of U, if any,
+        //     where D (resp. U) is the portion of edge a below (resp. above)
+        //     the intersection point from B2.
+        let lng_diff_rad = lng_diff.rad();
+        assert!(lng_diff_rad >= 0.0 && lng_diff_rad <= PI);
+        if lng_diff_rad == 0.0 {
+            return Angle::from(Rad(a.directed_hausdorff_distance(b)));
+        }
+
+        // Assumed longitude of b.
+        let b_lng = lng_diff;
+
+        // Two endpoints of b.
+        let b_lo = Point::from(LatLng::new(Rad(b.lo).into(), b_lng));
+        let b_hi = Point::from(LatLng::new(Rad(b.hi).into(), b_lng));
+
+        // Cases A1 and B1.
+        let zero = Angle::default();
+        let a_lo = Point::from(LatLng::new(Rad(a.lo).into(), zero));
+        let a_hi = Point::from(LatLng::new(Rad(a.hi).into(), zero));
+        let mut max_distance = distance_from_segment(&a_lo, &b_lo, &b_hi)
+            .max(distance_from_segment(&a_hi, &b_lo, &b_hi));
+
+        if lng_diff_rad <= FRAC_PI_2 {
+            // Case A2.
+            if a.contains(0.0) && b.contains(0.0) {
+                max_distance = max_distance.max(lng_diff);
+            }
+            return max_distance;
+        }
+
+        // Case B2.
+        let p = Self::bisector_intersection(b, b_lng.rad());
+        let p_lat = p.latitude().rad();
+        if a.contains(p_lat) {
+            max_distance = max_distance.max(p.distance(&b_lo));
+        }
+
+        // Case B3.
+        if p_lat > a.lo {
+            let interval = r1::interval::Interval::new(a.lo, p_lat.min(a.hi));
+            if let Some(dist) = Self::interior_max_distance(&interval, &b_lo) {
+                max_distance = max_distance.max(dist);
+            }
+        }
+        if p_lat < a.hi {
+            let interval = r1::interval::Interval::new(p_lat.max(a.lo), a.hi);
+            if let Some(dist) = Self::interior_max_distance(&interval, &b_hi) {
+                max_distance = max_distance.max(dist);
+            }
+        }
+
+        max_distance
+    }
+
+    /// Return the intersection of longitude 0 with the bisector of an edge
+    /// on longitude `lng` and spanning latitude range `lat`.
+    fn bisector_intersection(lat: &r1::interval::Interval, lng: f64) -> Point {
+        let lng = lng.abs();
+        let lat_center = lat.center();
+
+        // A vector orthogonal to the bisector of the given longitudinal edge.
+        let ortho_bisector = if lat_center >= 0.0 {
+            LatLng::new(
+                Angle::from(Rad(lat_center - FRAC_PI_2)),
+                Angle::from(Rad(lng)),
+            )
+        } else {
+            LatLng::new(
+                Angle::from(Rad(-lat_center - FRAC_PI_2)),
+                Angle::from(Rad(lng - PI)),
+            )
+        };
+
+        // A vector orthogonal to longitude 0.
+        let ortho_lng = Point::from_coords(0.0, -1.0, 0.0);
+        ortho_lng.cross(&Point::from(ortho_bisector))
+    }
+
+    /// Return the max distance from a point b to the segment spanning
+    /// latitude range a_lat on longitude 0, if the max occurs in the
+    /// interior of a_lat. Otherwise return None.
+    fn interior_max_distance(a_lat: &r1::interval::Interval, b: &Point) -> Option<Angle> {
+        // Longitude 0 is in the y=0 plane. b.x >= 0 implies that
+        // the maximum does not occur in the interior of a_lat.
+        if a_lat.is_empty() || b.0.x >= 0.0 {
+            return None;
+        }
+
+        // Project b to the y=0 plane. The antipodal of the normalized
+        // projection is the point at which the maxium distance from b
+        // occurs, if it is contained in a_lat.
+        let intersection_point = Point::from_coords(-b.0.x, 0.0, -b.0.z);
+        let intersection_lat = LatLng::from(intersection_point).lat;
+        if a_lat.interior_contains(intersection_lat.rad()) {
+            return Some(b.distance(&intersection_point));
+        } else {
+            return None;
+        }
     }
 }
 
@@ -1631,173 +1799,195 @@ mod tests {
         }
     }
 
-    /*
-        // This function assumes that DirectedHausdorffDistance() always returns
-        // a distance from some point in a to b. So the function mainly tests whether
-        // the returned distance is large enough, and only does a weak test on whether
-        // it is small enough.
-        func verifyDirectedHausdorffDistance(t *testing.T, a, b Rect) {
-            t.Helper()
-
-            const resolution = 0.1
-
-            // Record the max sample distance as well as the sample point realizing the
-            // max for easier debugging.
-            var maxDistance s1.Angle
-
-            sampleSizeOnLat := int(a.Lat.Length()/resolution) + 1
-            sampleSizeOnLng := int(a.Lng.Length()/resolution) + 1
-
-            deltaOnLat := s1.Angle(a.Lat.Length()) / s1.Angle(sampleSizeOnLat)
-            deltaOnLng := s1.Angle(a.Lng.Length()) / s1.Angle(sampleSizeOnLng)
-
-            ll := LatLng{Lng: s1.Angle(a.Lng.Lo)}
-            for i := 0; i <= sampleSizeOnLng; i++ {
-                ll.Lat = s1.Angle(a.Lat.Lo)
-
-                for j := 0; j <= sampleSizeOnLat; j++ {
-                    d := b.DistanceToLatLng(ll.Normalized())
-                    maxDistance = maxAngle(maxDistance, d)
-                    ll.Lat += deltaOnLat
-                }
-                ll.Lng += deltaOnLng
+    // This function assumes that DirectedHausdorffDistance() always
+    // returns a distance from some point in a to b. So the function
+    // mainly tests whether the returned distance is large enough,
+    // and only does a weak test on whether it is small enough.
+    fn verify_directed_hausdorff_distance(a: &Rect, b: &Rect) {
+        let resolution = 0.1;
+        let mut max_distance = Angle::default();
+        let sample_size_on_lat = (a.lat.len() / resolution).round() as i32 + 1;
+        let sample_size_on_lng = (a.lng.len() / resolution).round() as i32 + 1;
+        let delta_on_lat = a.lat.len() / sample_size_on_lat as f64;
+        let delta_on_lng = a.lng.len() / sample_size_on_lng as f64;
+        let mut ll = LatLng::new(Angle::default(), Angle::from(Rad(a.lng.lo)));
+        for _ in 0..=sample_size_on_lng {
+            ll.lat = Angle::from(Rad(a.lat.lo));
+            for _ in 0..=sample_size_on_lat {
+                let d = b.distance_to_latlng(&ll.normalized());
+                max_distance = max_distance.max(d);
+                ll.lat = ll.lat + delta_on_lat;
             }
-
-            got := a.DirectedHausdorffDistance(b)
-
-            if got < maxDistance-1e-10 {
-                t.Errorf("hausdorff(%v, %v) = %v < %v-eps, but shouldn't", a, b, got, maxDistance)
-            } else if got > maxDistance+resolution {
-                t.Errorf("DirectedHausdorffDistance(%v, %v) = %v > %v+resolution, but shouldn't", a, b, got, maxDistance)
-            }
+            ll.lng = ll.lng + delta_on_lng;
         }
 
-        func TestRectDirectedHausdorffDistanceRandomPairs(t *testing.T) {
-            // Test random pairs.
-            rnd := func() LatLng { return LatLngFromPoint(randomPoint()) }
-            for i := 0; i < 1000; i++ {
-                a := RectFromLatLng(rnd()).AddPoint(rnd())
-                b := RectFromLatLng(rnd()).AddPoint(rnd())
-                // a and b are *minimum* bounding rectangles of two random points, in
-                // particular, their Voronoi diagrams are always of the same topology. We
-                // take the "complements" of a and b for more thorough testing.
-                a2 := Rect{Lat: a.Lat, Lng: a.Lng.Complement()}
-                b2 := Rect{Lat: b.Lat, Lng: b.Lng.Complement()}
+        let got = a.directed_hausdorff_distance(b);
+        assert!(
+            max_distance.rad() <= got.rad() + 1e-10,
+            "hausdorff({:?}, {:?}) = {:?} < {:?} - ε, but shouldn’t",
+            a,
+            b,
+            got,
+            max_distance
+        );
+        assert!(
+            max_distance.rad() >= got.rad() - resolution,
+            "hausdorff({:?}, {:?}) = {:?} > {:?} + resolution, but shouldn’t",
+            a,
+            b,
+            got,
+            max_distance
+        );
+    }
 
-                // Note that "a" and "b" come from the same distribution, so there is no
-                // need to test pairs such as (b, a), (b, a2), etc.
-                verifyDirectedHausdorffDistance(t, a, b)
-                verifyDirectedHausdorffDistance(t, a2, b)
-                verifyDirectedHausdorffDistance(t, a, b2)
-                verifyDirectedHausdorffDistance(t, a2, b2)
-            }
+    #[test]
+    fn test_directed_hausdorff_distance_random_pairs() {
+        let mut rng = random::rng();
+        for _ in 0..1000 {
+            let a = random::rect(&mut rng);
+            let b = random::rect(&mut rng);
+
+            // a and b are *minimum* bounding rectangles of two random points,
+            // in particular, their Voronoi diagrams are always of the same
+            // topology. We take the "complements" of a and b for more
+            // thorough testing.
+            let a2 = Rect {
+                lat: a.lat,
+                lng: a.lng.complement(),
+            };
+            let b2 = Rect {
+                lat: b.lat,
+                lng: b.lng.complement(),
+            };
+
+            // Note that "a" and "b" come from the same distribution, so
+            // there is no need to test pairs such as (b, a), (b, a2), etc.
+            verify_directed_hausdorff_distance(&a, &b);
+            verify_directed_hausdorff_distance(&a2, &b);
+            verify_directed_hausdorff_distance(&a, &b2);
+            verify_directed_hausdorff_distance(&a2, &b2);
         }
+    }
 
-        func TestDirectedHausdorffDistanceContained(t *testing.T) {
-            // Caller rect is contained in callee rect. Should return 0.
-            a := rectFromDegrees(-10, 20, -5, 90)
-            tests := []Rect{
-                rectFromDegrees(-10, 20, -5, 90),
-                rectFromDegrees(-10, 19, -5, 91),
-                rectFromDegrees(-11, 20, -4, 90),
-                rectFromDegrees(-11, 19, -4, 91),
-            }
-            for _, test := range tests {
-                got, want := a.DirectedHausdorffDistance(test), s1.Angle(0)
-                if got != want {
-                    t.Errorf("%v.DirectedHausdorffDistance(%v) = %v, want %v", a, test, got, want)
-                }
-            }
+    #[test]
+    fn test_directed_hausdorff_distance_contained() {
+        // Caller rect is contained in callee rect. Should return 0.
+        let a = Rect::from_degrees(-10., 20., -5., 90.);
+        let tests = vec![
+            Rect::from_degrees(-10., 20., -5., 90.),
+            Rect::from_degrees(-10., 19., -5., 91.),
+            Rect::from_degrees(-11., 20., -4., 90.),
+            Rect::from_degrees(-11., 19., -4., 91.),
+        ];
+        for test in tests {
+            let got = a.directed_hausdorff_distance(&test);
+            assert_f64_eq!(got.rad(), 0.0);
         }
+    }
 
-        func TestDirectHausdorffDistancePointToRect(t *testing.T) {
-            // The Hausdorff distance from a point to a rect should be the same as its
-            // distance to the rect.
-            a1 := LatLngFromDegrees(5, 8)
-            a2 := LatLngFromDegrees(90, 10) // North pole.
-
-            tests := []struct {
-                ll LatLng
-                b  Rect
-            }{
-                {a1, rectFromDegrees(-85, -50, -80, 10)},
-                {a2, rectFromDegrees(-85, -50, -80, 10)},
-                {a1, rectFromDegrees(4, -10, 80, 10)},
-                {a2, rectFromDegrees(4, -10, 80, 10)},
-                {a1, rectFromDegrees(70, 170, 80, -170)},
-                {a2, rectFromDegrees(70, 170, 80, -170)},
-            }
-            for _, test := range tests {
-                a := RectFromLatLng(test.ll)
-                got, want := a.DirectedHausdorffDistance(test.b), test.b.DistanceToLatLng(test.ll)
-
-                if !float64Eq(float64(got), float64(want)) {
-                    t.Errorf("hausdorff(%v, %v) = %v, want %v, as that's the closest dist", test.b, a, got, want)
-                }
-            }
+    #[test]
+    fn test_directed_hausdorff_distance_point_to_rect() {
+        // The Hausdorff distance from a point to a rect should be
+        // the same as its distance to the rect.
+        let a1 = LatLng::from_degrees(5., 8.);
+        let a2 = LatLng::from_degrees(90., 10.); // North pole.
+        let tests = vec![
+            (a1, Rect::from_degrees(-85., -50., -80., 10.)),
+            (a2, Rect::from_degrees(-85., -50., -80., 10.)),
+            (a1, Rect::from_degrees(4., -10., 80., 10.)),
+            (a2, Rect::from_degrees(4., -10., 80., 10.)),
+            (a1, Rect::from_degrees(70., 170., 80., -170.)),
+            (a2, Rect::from_degrees(70., 170., 80., -170.)),
+        ];
+        for test in tests {
+            let a = Rect::from(test.0);
+            let got = a.directed_hausdorff_distance(&test.1).rad();
+            let want = test.1.distance_to_latlng(&test.0).rad();
+            assert_f64_eq!(got, want);
         }
+    }
 
-        func TestDirectedHausdorffDistanceRectToPoint(t *testing.T) {
-            a := rectFromDegrees(1, -8, 10, 20)
-            tests := []struct {
-                lat, lng float64 // Degrees.
-            }{{5, 8}, {-6, -100}, {-90, -20}, {90, 0}}
-            for _, test := range tests {
-                verifyDirectedHausdorffDistance(t, a, RectFromLatLng(LatLngFromDegrees(test.lat, test.lng)))
-            }
+    #[test]
+    fn test_directed_hausdorff_distance_rect_to_point() {
+        let a = Rect::from_degrees(1., -8., 10., 20.);
+        let tests = vec![(5, 8), (-6, -100), (-90, -20), (90, 0)];
+        for test in tests {
+            let ll = LatLng::from_degrees(test.0 as f64, test.1 as f64);
+            verify_directed_hausdorff_distance(&a, &Rect::from(ll));
         }
+    }
 
-        func TestDirectedHausdorffDistanceRectToRectNearPole(t *testing.T) {
-            // Tests near south pole.
-            a := rectFromDegrees(-87, 0, -85, 3)
-            tests := []Rect{
-                rectFromDegrees(-89, 1, -88, 2),
-                rectFromDegrees(-84, 1, -83, 2),
-                rectFromDegrees(-88, 90, -86, 91),
-                rectFromDegrees(-84, -91, -83, -90),
-                rectFromDegrees(-90, 181, -89, 182),
-                rectFromDegrees(-84, 181, -83, 182),
-            }
-            for _, test := range tests {
-                verifyDirectedHausdorffDistance(t, a, test)
-            }
+    #[test]
+    fn test_directed_hausdorff_distance_rect_to_rect_near_pole() {
+        let a = Rect::from_degrees(-87., 0., -85., 3.);
+        let tests = vec![
+            Rect::from_degrees(-89., 1., -88., 2.),
+            Rect::from_degrees(-84., 1., -83., 2.),
+            Rect::from_degrees(-88., 90., -86., 91.),
+            Rect::from_degrees(-84., -91., -83., -90.),
+            Rect::from_degrees(-90., 181., -89., 182.),
+            Rect::from_degrees(-84., 181., -83., 182.),
+        ];
+        for test in tests {
+            verify_directed_hausdorff_distance(&a, &test);
         }
+    }
 
-        func TestDirectedHausdorffDistanceRectToRectDegenerateCases(t *testing.T) {
-            // Rectangles that contain poles.
-            verifyDirectedHausdorffDistance(t,
-                rectFromDegrees(0, 10, 90, 20), rectFromDegrees(-4, -10, 4, 0))
-            verifyDirectedHausdorffDistance(t,
-                rectFromDegrees(-4, -10, 4, 0), rectFromDegrees(0, 10, 90, 20))
+    #[test]
+    fn test_directed_hausdorff_distance_rect_to_rect_degenerate_cases() {
+        // Rectangles that contain poles.
+        verify_directed_hausdorff_distance(
+            &Rect::from_degrees(0., 10., 90., 20.),
+            &Rect::from_degrees(-4., -10., 4., 0.),
+        );
+        verify_directed_hausdorff_distance(
+            &Rect::from_degrees(-4., -10., 4., 0.),
+            &Rect::from_degrees(0., 10., 90., 20.),
+        );
 
-            // Two rectangles share same or complement longitudinal intervals.
-            a := rectFromDegrees(-50, -10, 50, 10)
-            b := rectFromDegrees(30, -10, 60, 10)
-            verifyDirectedHausdorffDistance(t, a, b)
+        // Two rectangles share same or complement longitudinal intervals.
+        let a = Rect::from_degrees(-50., -10., 50., 10.);
+        let b = Rect::from_degrees(30., -10., 60., 10.);
+        verify_directed_hausdorff_distance(&a, &b);
 
-            c := Rect{Lat: a.Lat, Lng: a.Lng.Complement()}
-            verifyDirectedHausdorffDistance(t, c, b)
+        let c = Rect {
+            lat: a.lat,
+            lng: a.lng.complement(),
+        };
+        verify_directed_hausdorff_distance(&c, &b);
 
-            // Rectangle a touches b_opposite_lng.
-            verifyDirectedHausdorffDistance(t,
-                rectFromDegrees(10, 170, 30, 180), rectFromDegrees(-50, -10, 50, 10))
-            verifyDirectedHausdorffDistance(t,
-                rectFromDegrees(10, -180, 30, -170), rectFromDegrees(-50, -10, 50, 10))
+        // Rectangle a touches b_opposite_lng.
+        verify_directed_hausdorff_distance(
+            &Rect::from_degrees(10., 170., 30., 180.),
+            &Rect::from_degrees(-50., -10., 50., 10.),
+        );
+        verify_directed_hausdorff_distance(
+            &Rect::from_degrees(10., -180., 30., -170.),
+            &Rect::from_degrees(-50., -10., 50., 10.),
+        );
 
-            // Rectangle b's Voronoi diagram is degenerate (lng interval spans 180
-            // degrees), and a touches the degenerate Voronoi vertex.
-            verifyDirectedHausdorffDistance(t,
-                rectFromDegrees(-30, 170, 30, 180), rectFromDegrees(-10, -90, 10, 90))
-            verifyDirectedHausdorffDistance(t,
-                rectFromDegrees(-30, -180, 30, -170), rectFromDegrees(-10, -90, 10, 90))
+        // Rectangle b's Voronoi diagram is degenerate (lng interval spans
+        // 180 degrees), and a touches the degenerate Voronoi vertex.
+        verify_directed_hausdorff_distance(
+            &Rect::from_degrees(-30., 170., 30., 180.),
+            &Rect::from_degrees(-10., -90., 10., 90.),
+        );
+        verify_directed_hausdorff_distance(
+            &Rect::from_degrees(-30., -180., 30., -170.),
+            &Rect::from_degrees(-10., -90., 10., 90.),
+        );
 
-            // Rectangle a touches a voronoi vertex of rectangle b.
-            verifyDirectedHausdorffDistance(t,
-                rectFromDegrees(-20, 105, 20, 110), rectFromDegrees(-30, 5, 30, 15))
-            verifyDirectedHausdorffDistance(t,
-                rectFromDegrees(-20, 95, 20, 105), rectFromDegrees(-30, 5, 30, 15))
-        }
-    */
+        // Rectangle a touches a Voronoi vertex of rectangle b.
+        verify_directed_hausdorff_distance(
+            &Rect::from_degrees(-20., 105., 20., 110.),
+            &Rect::from_degrees(-30., 5., 30., 15.),
+        );
+        verify_directed_hausdorff_distance(
+            &Rect::from_degrees(-20., 95., 20., 105.),
+            &Rect::from_degrees(-30., 5., 30., 15.),
+        );
+    }
+
     #[test]
     fn test_rect_approx_equal() {
         // s1.Interval and r1.Interval have additional testing.
