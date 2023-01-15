@@ -2,7 +2,7 @@
 name = "s2"
 edition = "2018"
 
-version = "0.0.11"
+version = "0.0.12"
 authors = ["Jihyun Yu <yjh0502@gmail.com>"]
 
 license = "Apache-2.0"
