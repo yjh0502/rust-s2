@@ -455,6 +455,28 @@ impl Rect {
         self.contains_latlng(&LatLng::from(p))
     }
 
+    /// Returns true if and only if the interior of this rectangle
+    /// contains all points of the given other rectangle (including
+    /// its boundary).
+    pub fn interior_contains(&self, other: &Self) -> bool {
+        self.lat.interior_contains_interval(&other.lat)
+            && self.lng.interior_contains_interval(&other.lng)
+    }
+
+    /// Returns true if and only if the given latlng is contained in
+    /// the interior of the region (i.e. the region excluding its
+    /// boundary). The argument must be normalized.
+    pub fn interior_contains_latlng(&self, ll: &LatLng) -> bool {
+        self.lat.interior_contains(ll.lat.rad()) && self.lng.interior_contains(ll.lng.rad())
+    }
+
+    /// Returns true if and only if the given point is contained in
+    /// the interior of the region (i.e. the region excluding its
+    /// boundary).  The point `p` does not need to be normalized.
+    pub fn interior_contains_point(&self, p: &Point) -> bool {
+        self.interior_contains_latlng(&LatLng::from(p))
+    }
+
     // Centroid returns the true centroid of the given Rect multiplied
     // by its surface area. The result is not unit length, so you may
     // want to normalize it.  Note that in general the centroid is
@@ -536,7 +558,7 @@ impl Rect {
 
 /*
 // BUG: The major differences from the C++ version are:
-//   - GetCentroid, Get*Distance, Vertex, InteriorContains(LatLng|Rect|Point)
+//   - GetCentroid, Get*Distance, Vertex
 */
 
 #[cfg(test)]
@@ -756,6 +778,24 @@ mod tests {
         for (input, ll, want) in &tests {
             assert_eq!(input.contains_latlng(ll), *want);
         }
+    }
+
+    #[test]
+    fn test_interior_contains_latlng() {
+        let eq_m180 = LatLng::from_degrees(0., -180.0);
+        let north_pole = LatLng::from_degrees(90., 0.);
+        let r = Rect::from(eq_m180).add(&north_pole);
+        assert!(r.interior_contains_latlng(&LatLng::from_degrees(30., -45.)));
+        assert!(!r.interior_contains_latlng(&LatLng::from_degrees(30., 45.)));
+        assert!(!r.interior_contains_latlng(&eq_m180));
+        assert!(!r.interior_contains_latlng(&north_pole));
+    }
+
+    #[test]
+    fn test_interior_contains_point() {
+        let r = Rect::from_degrees(0.0, -180.0, 90.0, 0.0);
+        assert!(r.interior_contains_point(&Point::from_coords(0.5, -0.3, 0.1)));
+        assert!(!r.interior_contains_point(&Point::from_coords(0.5, 0.2, 0.1)));
     }
 
     #[test]
