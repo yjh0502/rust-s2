@@ -20,6 +20,7 @@ use std::f64::consts::PI;
 
 use crate::consts::*;
 use crate::r1;
+use crate::s1::angle::{Angle, Rad};
 
 /// Interval represents a closed interval on a unit circle.
 /// Zero-length intervals (where Lo == Hi) represent single points.
@@ -376,6 +377,37 @@ impl Interval {
         }
         return self.hi - PI;
     }
+
+    // directed_hausdorff_distance returns the Hausdorff distance to the given
+    // interval. For two intervals i and y, this distance is defined by
+    //     h(i, y) = max_{p in i} min_{q in y} d(p, q),
+    // where d(.,.) is measured along S1.
+    pub fn directed_hausdorff_distance(&self, y: &Self) -> Angle {
+        if y.contains_interval(self) {
+            return Angle::from(Rad(0.)); // Includes the case self is empty.
+        }
+        if y.is_empty() {
+            return Angle::from(Rad(PI)); // Maximum possible distance on S1.
+        }
+        let y_complement_center = y.complement_center();
+        if self.contains(y_complement_center) {
+            let pdist = positive_distance(y.hi, y_complement_center);
+            return Angle::from(Rad(pdist));
+        }
+
+        // The Hausdorff distance is realized by either two hi endpoints
+        // or two lo endpoints, whichever is farther apart.
+        let mut hi_hi = 0.0;
+        if Interval::new(y.hi, y_complement_center).contains(self.hi) {
+            hi_hi = positive_distance(y.hi, self.hi);
+        }
+        let mut lo_lo = 0.0;
+        if Interval::new(y_complement_center, y.lo).contains(self.lo) {
+            lo_lo = positive_distance(self.lo, y.lo);
+        }
+        Angle::from(Rad(hi_hi.max(lo_lo)))
+    }
+
     // approx_eq reports whether this interval can be transformed into the given
     // interval by moving each endpoint by at most ε, without the
     // endpoints crossing (which would invert the interval). Empty and full
@@ -914,5 +946,24 @@ mod tests {
         assert_eq!(*quad2, quad123.expanded(-PI / 2.));
         assert_eq!(*quad4, quad341.expanded(-PI / 2.));
         assert_eq!(*quad1, quad412.expanded(-PI / 2.));
+    }
+
+    #[test]
+    fn test_interval_directed_hausdorff_distance() {
+        // An interval whose complement center is 0.
+        let cc0 = Interval::new(3., -3.);
+        let tests = vec![
+            (*empty, *empty, 0.),
+            (*empty, *mid12, 0.),
+            (*mid12, *empty, PI),
+            (*quad12, *quad123, 0.),
+            (Interval::new(-0.1, 0.2), cc0, 3.0),
+            (Interval::new(0.1, 0.2), cc0, 3.0 - 0.1),
+            (Interval::new(-0.2, -0.1), cc0, 3.0 - 0.1),
+        ];
+        for test in tests {
+            let got = test.0.directed_hausdorff_distance(&test.1).rad();
+            assert_f64_eq!(got, test.2);
+        }
     }
 }
