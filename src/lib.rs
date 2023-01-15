@@ -1,8 +1,5 @@
 #[macro_use]
 extern crate lazy_static;
-extern crate cgmath;
-extern crate libm;
-extern crate rand;
 
 #[cfg(feature = "serde")]
 #[macro_use]

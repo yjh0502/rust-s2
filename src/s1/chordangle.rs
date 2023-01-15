@@ -20,6 +20,8 @@ use std::f64::consts::PI;
 
 use crate::consts::*;
 use crate::s1::angle::*;
+
+#[cfg(feature = "float_extras")]
 use float_extras::f64::nextafter;
 
 /// ChordAngle represents the angle subtended by a chord (i.e., the straight
@@ -261,6 +263,7 @@ impl ChordAngle {
         self.sin() / self.cos()
     }
 
+    #[cfg(feature = "float_extras")]
     pub fn successor(&self) -> Self {
         if self.0 >= MAXLENGTH2 {
             return ChordAngle::inf();

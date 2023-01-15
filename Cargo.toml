@@ -15,13 +15,17 @@ documentation = "https://docs.rs/rust-s2"
 keywords = ["geo", "s2"]
 
 [features]
+default = ["serde", "float_extras"]
 serde = ["dep:serde", "bigdecimal/serde"]
 
 [dependencies]
-float_extras = "0.1.6"
+float_extras = { version = "0.1.6", optional = true }
 lazy_static = "1.4.0"
-rand = "0.8.5"
+rand = { version = "0.8.5", optional = true }
 cgmath = "0.18.0"
 libm = "0.2.6"
 bigdecimal = { version = "0.3.0", default_features = false }
 serde = { version = "1.0.151", features = ["serde_derive"], optional = true }
+
+[dev-dependencies]
+rand = { version = "0.8.5" }
