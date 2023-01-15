@@ -1868,7 +1868,7 @@ mod tests {
         }
         let got = (r.centroid() - child0.centroid() - child1.centroid()).norm();
         assert!(
-            got <= 1e-15,
+            got <= EPSILON,
             "want ~0, got {:?}, r={:?}, child0={:?}, child1={:?}",
             got,
             r,
