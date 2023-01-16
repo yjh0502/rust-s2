@@ -759,7 +759,13 @@ mod tests {
         }
     }
 
-    // TODO: test_rect_string
+    #[test]
+    fn test_rect_fmt() {
+        assert_eq!(
+            format!("{:?}", Rect::full()),
+            "[lo[-90.0000000, -180.0000000], hi[90.0000000, 180.0000000]]"
+        );
+    }
 
     #[test]
     fn test_rect_from_latlng() {
