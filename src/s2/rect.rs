@@ -1,4 +1,5 @@
 use std;
+use std::cmp::PartialEq;
 use std::f64::consts::{FRAC_PI_2, PI};
 
 use crate::consts::*;
@@ -169,6 +170,10 @@ impl Rect {
 
     pub fn intersects(&self, other: &Rect) -> bool {
         self.lat.intersects(&other.lat) && self.lng.intersects(&other.lng)
+    }
+
+    pub fn interior_intersects(&self, other: &Rect) -> bool {
+        self.lat.interior_intersects(&other.lat) && self.lng.interior_intersects(&other.lng)
     }
 
     // extra functions
@@ -382,6 +387,12 @@ impl<'a, 'b> std::ops::Add<&'a LatLng> for &'b Rect {
                 lng: self.lng + ll.lng.rad(),
             }
         }
+    }
+}
+
+impl PartialEq for Rect {
+    fn eq(&self, other: &Self) -> bool {
+        self.lat == other.lat && self.lng == other.lng
     }
 }
 
@@ -782,6 +793,13 @@ mod tests {
     }
 
     #[test]
+    fn test_rect_eq() {
+        let r = Rect::from_degrees(1., 2., 3., 4.);
+        assert!(r == Rect::from_degrees(1., 2., 3., 4.));
+        assert!(r != Rect::from_degrees(5., 6., 7., 8.));
+    }
+
+    #[test]
     fn test_rect_fmt() {
         assert_eq!(
             format!("{:?}", Rect::full()),
@@ -970,6 +988,105 @@ mod tests {
         let r = Rect::from_degrees(0.0, -180.0, 90.0, 0.0);
         assert!(r.interior_contains_point(&Point::from_coords(0.5, -0.3, 0.1)));
         assert!(!r.interior_contains_point(&Point::from_coords(0.5, 0.2, 0.1)));
+    }
+
+    /// Helper for test_interval_ops().
+    fn verify_interval_ops(
+        x: &Rect,
+        y: &Rect,
+        expected_relations: &str,
+        expected_union: &Rect,
+        expected_intersection: &Rect,
+    ) {
+        let mut s = String::with_capacity(4);
+        s.push(if x.contains(y) { 'T' } else { 'F' });
+        s.push(if x.interior_contains(y) { 'T' } else { 'F' });
+        s.push(if x.intersects(y) { 'T' } else { 'F' });
+        s.push(if x.interior_intersects(y) { 'T' } else { 'F' });
+        assert_eq!(s, expected_relations, "x={:?} y={:?}", x, y);
+        assert_eq!(x.union(y), *expected_union, "x={:?} y={:?}", x, y);
+        assert_eq!(
+            x.intersection(y),
+            *expected_intersection,
+            "x={:?} y={:?}",
+            x,
+            y
+        );
+        if y.size() == LatLng::default() {
+            assert_eq!(x.clone().add(&y.lo()), *expected_union);
+        }
+    }
+
+    /// Tests on Rect::contains(&Rect), Rect::interior_contains(&Rect),
+    /// Rect::intersects(&Rect), Rect::interior_intersects(&Rect),
+    /// Rect::union(&Rect), and Rect::intersection(&Rect).
+    #[test]
+    fn test_interval_ops() {
+        // Rectangle "r1" covers one-quarter of the sphere.
+        let r1 = Rect::from_degrees(0., -180., 90., 0.);
+
+        // Test operations where one rectangle consists of a single point.
+        let r1_mid = Rect::from_degrees(45., -90., 45., -90.);
+        verify_interval_ops(&r1, &r1_mid, "TTTT", &r1, &r1_mid);
+
+        let req_m180 = Rect::from_degrees(0., -180., 0., -180.);
+        verify_interval_ops(&r1, &req_m180, "TFTF", &r1, &req_m180);
+
+        let rnorth_pole = Rect::from_degrees(90., 0., 90., 0.);
+        verify_interval_ops(&r1, &rnorth_pole, "TFTF", &r1, &rnorth_pole);
+
+        verify_interval_ops(
+            &r1,
+            &Rect::from_degrees(-10., -1., 1., 20.),
+            "FFTT",
+            &Rect::from_degrees(-10., 180., 90., 20.),
+            &Rect::from_degrees(0., -1., 1., 0.),
+        );
+        verify_interval_ops(
+            &r1,
+            &Rect::from_degrees(-10., -1., 0., 20.),
+            "FFTF",
+            &Rect::from_degrees(-10., 180., 90., 20.),
+            &Rect::from_degrees(0., -1., 0., 0.),
+        );
+        verify_interval_ops(
+            &r1,
+            &Rect::from_degrees(-10., 0., 1., 20.),
+            "FFTF",
+            &Rect::from_degrees(-10., 180., 90., 20.),
+            &Rect::from_degrees(0., 0., 1., 0.),
+        );
+        verify_interval_ops(
+            &Rect::from_degrees(-15., -160., -15., -150.),
+            &Rect::from_degrees(20., 145., 25., 155.),
+            "FFFF",
+            &Rect::from_degrees(-15., 145., 25., -150.),
+            &Rect::empty(),
+        );
+        verify_interval_ops(
+            &Rect::from_degrees(70., -10., 90., -140.),
+            &Rect::from_degrees(60., 175., 80., 5.),
+            "FFTT",
+            &Rect::from_degrees(60., -180., 90., 180.),
+            &Rect::from_degrees(70., 175., 80., 5.),
+        );
+
+        // Check that the intersection of two rectangles that overlap
+        // in latitude but not longitude is valid, and vice versa.
+        verify_interval_ops(
+            &Rect::from_degrees(12., 30., 60., 60.),
+            &Rect::from_degrees(0., 0., 30., 18.),
+            "FFFF",
+            &Rect::from_degrees(0., 0., 60., 60.),
+            &Rect::empty(),
+        );
+        verify_interval_ops(
+            &Rect::from_degrees(0., 0., 18., 42.),
+            &Rect::from_degrees(30., 12., 42., 60.),
+            "FFFF",
+            &Rect::from_degrees(0., 0., 42., 60.),
+            &Rect::empty(),
+        );
     }
 
     #[test]
