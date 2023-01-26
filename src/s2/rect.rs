@@ -172,6 +172,33 @@ impl Rect {
         self.lat.intersects(&other.lat) && self.lng.intersects(&other.lng)
     }
 
+    /// Returns true if the boundary of this rectangle intersects the given
+    /// geodesic edge (v0, v1).
+    pub fn boundary_intersects(&self, v0: &Point, v1: &Point) -> bool {
+        if self.is_empty() {
+            return false;
+        }
+        if !self.lng.is_full() {
+            if intersects_lng_edge(v0, v1, self.lat, Angle::from(Rad(self.lng.lo))) {
+                return true;
+            }
+            if intersects_lng_edge(v0, v1, self.lat, Angle::from(Rad(self.lng.hi))) {
+                return true;
+            }
+        }
+        if self.lat.lo != -FRAC_PI_2
+            && intersects_lat_edge(v0, v1, Angle::from(Rad(self.lat.lo)), self.lng)
+        {
+            return true;
+        }
+        if self.lat.hi != FRAC_PI_2
+            && intersects_lat_edge(v0, v1, Angle::from(Rad(self.lat.hi)), self.lng)
+        {
+            return true;
+        }
+        false
+    }
+
     pub fn interior_intersects(&self, other: &Rect) -> bool {
         self.lat.interior_intersects(&other.lat) && self.lng.interior_intersects(&other.lng)
     }
@@ -1087,6 +1114,90 @@ mod tests {
             &Rect::from_degrees(0., 0., 42., 60.),
             &Rect::empty(),
         );
+    }
+
+    #[test]
+    fn test_boundary_intersects_empty_rectangle() {
+        let rect = Rect::empty();
+        let (lo, hi) = (&Point::from(rect.lo()), &Point::from(rect.hi()));
+        assert_eq!(rect.boundary_intersects(lo, lo), false);
+        assert_eq!(rect.boundary_intersects(lo, hi), false);
+    }
+
+    #[test]
+    fn test_boundary_intersects_full_rectangle() {
+        let rect = Rect::full();
+        let (lo, hi) = (&Point::from(rect.lo()), &Point::from(rect.hi()));
+        assert_eq!(rect.boundary_intersects(lo, lo), false);
+        assert_eq!(rect.boundary_intersects(lo, hi), false);
+    }
+
+    fn pt(lat: i32, lng: i32) -> Point {
+        Point::from(LatLng::new(
+            Angle::from(Deg(lat as f64)),
+            Angle::from(Deg(lng as f64)),
+        ))
+    }
+
+    #[test]
+    fn test_boundary_intersects_spherical_lune() {
+        // This rectangle only has two non-degenerate sides.
+        let rect = Rect::from_degrees(-90., 100., 90., 120.);
+        assert_eq!(rect.boundary_intersects(&pt(60, 60), &pt(90, 60)), false);
+        assert_eq!(rect.boundary_intersects(&pt(-60, 110), &pt(60, 110)), false);
+        assert_eq!(rect.boundary_intersects(&pt(60, 95), &pt(60, 110)), true);
+        assert_eq!(rect.boundary_intersects(&pt(60, 115), &pt(80, 125)), true);
+    }
+
+    #[test]
+    fn test_boundary_intersects_north_hemisphere() {
+        // This rectangle only has one non-degenerate side.
+        let rect = Rect::from_degrees(0., -180., 90., 180.);
+        assert_eq!(
+            rect.boundary_intersects(&pt(60, -180), &pt(90, -180)),
+            false
+        );
+        assert_eq!(rect.boundary_intersects(&pt(60, -170), &pt(60, 170)), false);
+        assert_eq!(
+            rect.boundary_intersects(&pt(-10, -180), &pt(10, -180)),
+            true
+        );
+    }
+
+    #[test]
+    fn test_boundary_intersects_south_hemisphere() {
+        // This rectangle only has one non-degenerate side.
+        let rect = Rect::from_degrees(-90., -180., 0., 180.);
+        assert_eq!(
+            rect.boundary_intersects(&pt(-90, -180), &pt(-60, -180)),
+            false
+        );
+        assert_eq!(
+            rect.boundary_intersects(&pt(-60, -170), &pt(-60, 170)),
+            false
+        );
+        assert_eq!(
+            rect.boundary_intersects(&pt(-10, -180), &pt(10, -180)),
+            true
+        );
+    }
+
+    #[test]
+    fn test_boundary_intersects_rect_crossing_anti_meridian() {
+        let rect = Rect::from_degrees(20., 170., 40., -170.);
+
+        // Check that crossings of all four sides are detected.
+        assert_eq!(rect.boundary_intersects(&pt(25, 160), &pt(25, 180)), true);
+        assert_eq!(rect.boundary_intersects(&pt(25, -160), &pt(25, -180)), true);
+        assert_eq!(rect.boundary_intersects(&pt(15, 175), &pt(30, 175)), true);
+        assert_eq!(rect.boundary_intersects(&pt(45, 175), &pt(30, 175)), true);
+
+        // Check that the edges on the opposite side of the sphere but
+        // at the same latitude do not intersect the rectangle boundary.
+        assert_eq!(rect.boundary_intersects(&pt(25, -20), &pt(25, 0)), false);
+        assert_eq!(rect.boundary_intersects(&pt(25, 20), &pt(25, 0)), false);
+        assert_eq!(rect.boundary_intersects(&pt(15, -5), &pt(30, -5)), false);
+        assert_eq!(rect.boundary_intersects(&pt(45, -5), &pt(30, -5)), false);
     }
 
     #[test]
