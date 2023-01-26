@@ -83,8 +83,12 @@ impl Rect {
         self.lat.lo == self.lat.hi && self.lng.lo == self.lng.hi
     }
 
+    /// Returns the k-th vertex of the rectangle (k = 0,1,2,3) in
+    /// counter-clockwise order (lower left, lower right, upper right,
+    /// upper left).  For convenience, the argument is reduced modulo 4
+    /// to the range [0..3].
     pub fn vertex(&self, i: u8) -> LatLng {
-        let (lat, lng) = match i {
+        let (lat, lng) = match i % 4 {
             0 => (self.lat.lo, self.lng.lo),
             1 => (self.lat.lo, self.lng.hi),
             2 => (self.lat.hi, self.lng.hi),
@@ -943,6 +947,7 @@ mod tests {
 
         for &(r, i, want) in &tests {
             assert_eq!(r.vertex(i), *want);
+            assert_eq!(r.vertex(i + 4), *want);
         }
     }
 
