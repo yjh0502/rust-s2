@@ -29,6 +29,22 @@ const VALID_RECT_LAT_RANGE: r1::interval::Interval = r1::interval::Interval {
 const VALID_RECT_LNG_RANGE: Interval = interval::FULL;
 
 impl Rect {
+    pub fn lat_lo(&self) -> Angle {
+        Angle::from(Rad(self.lat.lo))
+    }
+
+    pub fn lat_hi(&self) -> Angle {
+        Angle::from(Rad(self.lat.hi))
+    }
+
+    pub fn lng_lo(&self) -> Angle {
+        Angle::from(Rad(self.lng.lo))
+    }
+
+    pub fn lng_hi(&self) -> Angle {
+        Angle::from(Rad(self.lng.hi))
+    }
+
     pub fn empty() -> Rect {
         Rect {
             lat: r1::interval::EMPTY,
@@ -89,8 +105,12 @@ impl Rect {
         self.lng.is_inverted()
     }
 
+    /// Returns the k-th vertex of the rectangle (k = 0,1,2,3) in
+    /// counter-clockwise order (lower left, lower right, upper right,
+    /// upper left).  For convenience, the argument is reduced modulo 4
+    /// to the range [0..3].
     pub fn vertex(&self, i: u8) -> LatLng {
-        let (lat, lng) = match i {
+        let (lat, lng) = match i % 4 {
             0 => (self.lat.lo, self.lng.lo),
             1 => (self.lat.lo, self.lng.hi),
             2 => (self.lat.hi, self.lng.hi),
@@ -106,15 +126,18 @@ impl Rect {
     pub fn lo(&self) -> LatLng {
         self.vertex(0)
     }
+
     pub fn hi(&self) -> LatLng {
         self.vertex(2)
     }
+
     pub fn center(&self) -> LatLng {
         LatLng {
             lat: Rad(self.lat.center()).into(),
             lng: Rad(self.lng.center()).into(),
         }
     }
+
     pub fn size(&self) -> LatLng {
         LatLng {
             lat: Rad(self.lat.len()).into(),
@@ -769,8 +792,12 @@ impl Rect {
 }
 
 /*
-// BUG: The major differences from the C++ version are:
-//   - GetCentroid, Get*Distance, Vertex
+// TODO: Implement the following, which are present in the C++ version:
+//   - AddPoint(const S2LatLng&)
+//   - ExpandedByDistance(S1Angle)
+//   - GetDistance(const S2LatLngRect&)
+//   - MayIntersect(const S2Cell&)
+//   - Encode, Decode
 */
 
 #[cfg(test)]
@@ -786,6 +813,15 @@ mod tests {
     use crate::s2::random;
     use rand::Rng;
     use std::ops::Add;
+
+    #[test]
+    fn test_rect_angle_accessors() {
+        let r = Rect::from_degrees(1.1, 2.2, 3.3, 4.4);
+        assert_f64_eq!(r.lat_lo().deg(), 1.1);
+        assert_f64_eq!(r.lng_lo().deg(), 2.2);
+        assert_f64_eq!(r.lat_hi().deg(), 3.3);
+        assert_f64_eq!(r.lng_hi().deg(), 4.4);
+    }
 
     #[test]
     fn test_rect_empty_and_full() {
@@ -949,6 +985,7 @@ mod tests {
 
         for &(r, i, want) in &tests {
             assert_eq!(r.vertex(i), *want);
+            assert_eq!(r.vertex(i + 4), *want);
         }
     }
 
