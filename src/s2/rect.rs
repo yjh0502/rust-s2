@@ -782,8 +782,12 @@ impl Rect {
 }
 
 /*
-// BUG: The major differences from the C++ version are:
-//   - GetCentroid, Get*Distance, Vertex
+// TODO: Implement the following, which are present in the C++ version:
+//   - AddPoint(const S2LatLng&)
+//   - ExpandedByDistance(S1Angle)
+//   - GetDistance(const S2LatLngRect&)
+//   - MayIntersect(const S2Cell&)
+//   - Encode, Decode
 */
 
 #[cfg(test)]
