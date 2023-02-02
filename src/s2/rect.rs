@@ -99,6 +99,12 @@ impl Rect {
         self.lat.lo == self.lat.hi && self.lng.lo == self.lng.hi
     }
 
+    /// Returns true if `lng.lo()` > `lng.hi()`, i.e. the rectangle crosses
+    /// the 180 degree longitude line.
+    pub fn is_inverted(&self) -> bool {
+        self.lng.is_inverted()
+    }
+
     /// Returns the k-th vertex of the rectangle (k = 0,1,2,3) in
     /// counter-clockwise order (lower left, lower right, upper right,
     /// upper left).  For convenience, the argument is reduced modulo 4
@@ -1004,6 +1010,12 @@ mod tests {
                 ));
             }
         }
+    }
+
+    #[test]
+    fn test_rect_is_inverted() {
+        assert_eq!(Rect::from_degrees(0., 22., 7., 88.).is_inverted(), false);
+        assert_eq!(Rect::from_degrees(0., 88., 7., 22.).is_inverted(), true);
     }
 
     #[test]
