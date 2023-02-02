@@ -29,6 +29,22 @@ const VALID_RECT_LAT_RANGE: r1::interval::Interval = r1::interval::Interval {
 const VALID_RECT_LNG_RANGE: Interval = interval::FULL;
 
 impl Rect {
+    pub fn lat_lo(&self) -> Angle {
+        Angle::from(Rad(self.lat.lo))
+    }
+
+    pub fn lat_hi(&self) -> Angle {
+        Angle::from(Rad(self.lat.hi))
+    }
+
+    pub fn lng_lo(&self) -> Angle {
+        Angle::from(Rad(self.lng.lo))
+    }
+
+    pub fn lng_hi(&self) -> Angle {
+        Angle::from(Rad(self.lng.hi))
+    }
+
     pub fn empty() -> Rect {
         Rect {
             lat: r1::interval::EMPTY,
@@ -100,15 +116,18 @@ impl Rect {
     pub fn lo(&self) -> LatLng {
         self.vertex(0)
     }
+
     pub fn hi(&self) -> LatLng {
         self.vertex(2)
     }
+
     pub fn center(&self) -> LatLng {
         LatLng {
             lat: Rad(self.lat.center()).into(),
             lng: Rad(self.lng.center()).into(),
         }
     }
+
     pub fn size(&self) -> LatLng {
         LatLng {
             lat: Rad(self.lat.len()).into(),
@@ -780,6 +799,15 @@ mod tests {
     use crate::s2::random;
     use rand::Rng;
     use std::ops::Add;
+
+    #[test]
+    fn test_rect_angle_accessors() {
+        let r = Rect::from_degrees(1.1, 2.2, 3.3, 4.4);
+        assert_f64_eq!(r.lat_lo().deg(), 1.1);
+        assert_f64_eq!(r.lng_lo().deg(), 2.2);
+        assert_f64_eq!(r.lat_hi().deg(), 3.3);
+        assert_f64_eq!(r.lng_hi().deg(), 4.4);
+    }
 
     #[test]
     fn test_rect_empty_and_full() {
