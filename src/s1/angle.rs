@@ -127,16 +127,134 @@ impl Angle {
     }
 }
 
+impl std::ops::Mul<Angle> for Angle {
+    type Output = Self;
+    fn mul(self, other: Self) -> Self {
+        Angle(self.0 * other.0)
+    }
+}
+
 impl std::ops::Mul<f64> for Angle {
     type Output = Self;
     fn mul(self, other: f64) -> Self {
         Angle(self.0 * other)
     }
 }
+
+impl std::ops::Mul<Angle> for f64 {
+    type Output = Angle;
+    fn mul(self, other: Angle) -> Angle {
+        Angle(self * other.0)
+    }
+}
+
+impl std::ops::MulAssign<Angle> for Angle {
+    fn mul_assign(self: &mut Self, other: Self) {
+        self.0 *= other.0
+    }
+}
+
+impl std::ops::MulAssign<Angle> for f64 {
+    fn mul_assign(self: &mut f64, other: Angle) {
+        *self *= other.0
+    }
+}
+
+impl std::ops::MulAssign<f64> for Angle {
+    fn mul_assign(self: &mut Self, other: f64) {
+        self.0 *= other
+    }
+}
+
+impl std::ops::Div<Angle> for Angle {
+    type Output = Self;
+    fn div(self, other: Self) -> Self {
+        Angle(self.0 / other.0)
+    }
+}
+
+impl std::ops::Div<f64> for Angle {
+    type Output = Self;
+    fn div(self, other: f64) -> Self {
+        Angle(self.0 / other)
+    }
+}
+
+impl std::ops::Div<Angle> for f64 {
+    type Output = Angle;
+    fn div(self, other: Angle) -> Angle {
+        Angle(self / other.0)
+    }
+}
+
+impl std::ops::DivAssign<Angle> for Angle {
+    fn div_assign(self: &mut Self, other: Self) {
+        self.0 /= other.0
+    }
+}
+
+impl std::ops::DivAssign<Angle> for f64 {
+    fn div_assign(self: &mut f64, other: Angle) {
+        *self /= other.0
+    }
+}
+
+impl std::ops::DivAssign<f64> for Angle {
+    fn div_assign(self: &mut Self, other: f64) {
+        self.0 /= other
+    }
+}
+
+impl std::ops::Neg for Angle {
+    type Output = Self;
+    fn neg(self: Self) -> Self {
+        Angle(-self.0)
+    }
+}
+
+impl std::ops::Add<Angle> for Angle {
+    type Output = Self;
+    fn add(self, other: Self) -> Self {
+        Angle(self.0 + other.0)
+    }
+}
+
+impl std::ops::Add<Angle> for f64 {
+    type Output = Angle;
+    fn add(self, other: Angle) -> Angle {
+        Angle(self + other.0)
+    }
+}
+
 impl std::ops::Add<f64> for Angle {
     type Output = Self;
     fn add(self, other: f64) -> Self {
         Angle(self.0 + other)
+    }
+}
+
+impl std::ops::AddAssign<Angle> for Angle {
+    fn add_assign(self: &mut Self, other: Self) {
+        self.0 += other.0
+    }
+}
+
+impl std::ops::AddAssign<Angle> for f64 {
+    fn add_assign(self: &mut f64, other: Angle) {
+        *self += other.0
+    }
+}
+
+impl std::ops::AddAssign<f64> for Angle {
+    fn add_assign(self: &mut Self, other: f64) {
+        self.0 += other
+    }
+}
+
+impl std::ops::Sub<Angle> for Angle {
+    type Output = Self;
+    fn sub(self, other: Self) -> Self {
+        Angle(self.0 - other.0)
     }
 }
 
@@ -151,6 +269,24 @@ impl std::ops::Sub<Angle> for f64 {
     type Output = Angle;
     fn sub(self, other: Angle) -> Angle {
         Angle(self - other.0)
+    }
+}
+
+impl std::ops::SubAssign<Angle> for Angle {
+    fn sub_assign(self: &mut Self, other: Self) {
+        self.0 -= other.0
+    }
+}
+
+impl std::ops::SubAssign<Angle> for f64 {
+    fn sub_assign(self: &mut f64, other: Angle) {
+        *self -= other.0
+    }
+}
+
+impl std::ops::SubAssign<f64> for Angle {
+    fn sub_assign(self: &mut Self, other: f64) {
+        self.0 -= other
     }
 }
 
@@ -294,6 +430,97 @@ mod tests {
     }
 
     #[test]
+    fn test_abs() {
+        assert_f64_eq!(Angle::from(Rad(-0.3)).abs().rad(), 0.3);
+        assert_f64_eq!(Angle::from(Rad(-0.3)).rad().abs(), 0.3);
+    }
+
+    #[test]
+    fn test_neg() {
+        assert_f64_eq!((-Angle::from(Rad(0.1))).rad(), -0.1);
+    }
+
+    #[test]
+    fn test_add() {
+        assert_f64_eq!((Angle::from(Rad(0.1)) + Angle::from(Rad(0.3))).rad(), 0.4);
+        assert_f64_eq!((0.1 + Angle::from(Rad(0.3))).rad(), 0.4);
+        assert_f64_eq!((Angle::from(Rad(0.1)) + 0.3).rad(), 0.4);
+    }
+
+    #[test]
+    fn test_add_assign() {
+        let mut a = Angle::from(Rad(1.0));
+        a += Angle::from(Rad(0.5));
+        assert_f64_eq!(a.rad(), 1.5);
+        a += 0.2;
+        assert_f64_eq!(a.rad(), 1.7);
+
+        let mut b = 0.3;
+        b += Angle::from(Rad(0.4));
+        assert_f64_eq!(b, 0.7);
+    }
+
+    #[test]
+    fn test_sub() {
+        assert_f64_eq!((Angle::from(Rad(0.1)) - Angle::from(Rad(0.3))).rad(), -0.2);
+        assert_f64_eq!((0.1 - Angle::from(Rad(0.3))).rad(), -0.2);
+        assert_f64_eq!((Angle::from(Rad(0.1)) - 0.3).rad(), -0.2);
+    }
+
+    #[test]
+    fn test_sub_assign() {
+        let mut a = Angle::from(Rad(1.5));
+        a -= Angle::from(Rad(0.5));
+        assert_f64_eq!(a.rad(), 1.0);
+        a -= 0.2;
+        assert_f64_eq!(a.rad(), 0.8);
+
+        let mut b = 0.7;
+        b -= Angle::from(Rad(0.4));
+        assert_f64_eq!(b, 0.3);
+    }
+
+    #[test]
+    fn test_mul() {
+        assert_f64_eq!((Angle::from(Rad(0.3)) * Angle::from(Rad(2.0))).rad(), 0.6);
+        assert_f64_eq!((Angle::from(Rad(0.3)) * 2.0).rad(), 0.6);
+        assert_f64_eq!((0.3 * Angle::from(Rad(2.0))).rad(), 0.6);
+    }
+
+    #[test]
+    fn test_mul_assign() {
+        let mut a = Angle::from(Rad(0.5));
+        a *= Angle::from(Rad(5.0));
+        assert_f64_eq!(a.rad(), 2.5);
+        a *= 0.1;
+        assert_f64_eq!(a.rad(), 0.25);
+
+        let mut b = 0.5;
+        b *= Angle::from(Rad(5.0));
+        assert_f64_eq!(b, 2.5);
+    }
+
+    #[test]
+    fn test_div() {
+        assert_f64_eq!((Angle::from(Rad(0.3)) / Angle::from(Rad(2.0))).rad(), 0.15);
+        assert_f64_eq!((Angle::from(Rad(0.3)) / 2.0).rad(), 0.15);
+        assert_f64_eq!((0.3 / Angle::from(Rad(2.0))).rad(), 0.15);
+    }
+
+    #[test]
+    fn test_div_assign() {
+        let mut a = Angle::from(Rad(2.5));
+        a /= Angle::from(Rad(2.0));
+        assert_f64_eq!(a.rad(), 1.25);
+        a /= 2.0;
+        assert_f64_eq!(a.rad(), 0.625);
+
+        let mut b = 0.4;
+        b /= Angle::from(Rad(2.0));
+        assert_f64_eq!(b, 0.2);
+    }
+
+    #[test]
     fn test_degrees_vs_radians() {
         // This test tests the exactness of specific values between degrees and radians.
         let mut k = -8.;
@@ -320,4 +547,3 @@ mod tests {
 // BUG(dsymonds): The major differences from the C++ version are:
 //   - no unsigned E5/E6/E7 methods
 //   - no S2Point or S2LatLng constructors
-//   - no comparison or arithmetic operators
