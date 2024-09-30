@@ -8,6 +8,7 @@ pub mod cap;
 pub mod latlng;
 pub mod point;
 pub mod rect;
+pub mod rect_bounder;
 
 pub mod region;
 

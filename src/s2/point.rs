@@ -444,6 +444,12 @@ impl Point {
     }
 }
 
+impl std::fmt::Display for Point {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", LatLng::from(self))
+    }
+}
+
 // TODO: Differences from C++
 // Rotate
 // Angle

@@ -415,21 +415,27 @@ impl Interval {
     // so any interval with (length <= 2*ε) matches the empty interval, and
     // any interval with (length >= 2*π - 2*ε) matches the full interval.
     pub fn approx_eq(&self, other: &Self) -> bool {
+        self.approx_eq_by(other, EPSILON)
+    }
+
+    // Return true if this interval can be transformed into the given interval by
+    // moving each endpoint by at most "max_error".
+    pub fn approx_eq_by(&self, other: &Self, max_error: f64) -> bool {
         if self.is_empty() {
-            other.len() < 2. * EPSILON
+            other.len() < 2. * max_error
         } else if other.is_empty() {
-            self.len() < 2. * EPSILON
+            self.len() < 2. * max_error
         } else if self.is_full() {
-            other.len() >= 2. * (PI - EPSILON)
+            other.len() >= 2. * (PI - max_error)
         } else if other.is_full() {
-            self.len() >= 2. * (PI - EPSILON)
+            self.len() >= 2. * (PI - max_error)
         }
         // The purpose of the last test below is to verify that moving the endpoints
         // does not invert the interval, e.g. [-1e20, 1e20] vs. [1e20, -1e20].
         else {
-            ((other.lo - self.lo) % (2. * PI)).abs() <= EPSILON
-                && ((other.hi - self.hi) % (2. * PI)).abs() <= EPSILON
-                && (self.len() - other.len()).abs() <= 2. * EPSILON
+            ((other.lo - self.lo) % (2. * PI)).abs() <= max_error
+                && ((other.hi - self.hi) % (2. * PI)).abs() <= max_error
+                && (self.len() - other.len()).abs() <= 2. * max_error
         }
     }
 }

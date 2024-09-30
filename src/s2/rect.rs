@@ -22,11 +22,11 @@ impl std::fmt::Debug for Rect {
     }
 }
 
-const VALID_RECT_LAT_RANGE: r1::interval::Interval = r1::interval::Interval {
+pub const VALID_RECT_LAT_RANGE: r1::interval::Interval = r1::interval::Interval {
     lo: -PI / 2.,
     hi: PI / 2.,
 };
-const VALID_RECT_LNG_RANGE: Interval = interval::FULL;
+pub const VALID_RECT_LNG_RANGE: Interval = interval::FULL;
 
 impl Rect {
     pub fn lat_lo(&self) -> Angle {
@@ -69,14 +69,24 @@ impl Rect {
 
     pub fn from_degrees(lat_lo: f64, lng_lo: f64, lat_hi: f64, lng_hi: f64) -> Self {
         Rect {
-            lat: r1::interval::Interval {
-                lo: Angle::from(Deg(lat_lo)).rad(),
-                hi: Angle::from(Deg(lat_hi)).rad(),
-            },
+            lat: r1::interval::Interval::new(
+                Angle::from(Deg(lat_lo)).rad(),
+                Angle::from(Deg(lat_hi)).rad(),
+            ),
             lng: Interval::new(
                 Angle::from(Deg(lng_lo)).rad(),
                 Angle::from(Deg(lng_hi)).rad(),
             ),
+        }
+    }
+
+    // Construct the minimal bounding rectangle containing the two given
+    // normalized points.  This is equivalent to starting with an empty
+    // rectangle and calling add_point() twice.
+    pub fn from_point_pair(p1: &LatLng, p2: &LatLng) -> Self {
+        Self {
+            lat: r1::interval::Interval::from_point_pair(p1.lat.rad(), p2.lat.rad()),
+            lng: Interval::from_point_pair(p1.lng.rad(), p2.lng.rad()),
         }
     }
 
@@ -235,6 +245,11 @@ impl Rect {
     // extra functions
     pub fn approx_eq(&self, other: &Self) -> bool {
         self.lat.approx_eq(&other.lat) && self.lng.approx_eq(&other.lng)
+    }
+
+    pub fn approx_eq_by(&self, other: &Self, max_error: &LatLng) -> bool {
+        self.lat.approx_eq_by(&other.lat, max_error.lat.rad())
+            && self.lng.approx_eq_by(&other.lng, max_error.lng.rad())
     }
 
     // distance_to_latlng returns the minimum distance (measured along the surface of the sphere)
@@ -574,8 +589,7 @@ impl Region for Rect {
         // latitude-longitude rectangle does not have straight edges: two edges
         // are curved, and at least one of them is concave.
         for i in 0..4 {
-            let edge_lng =
-                interval::Interval::new(latlngs[i].lng.rad(), latlngs[(i + 1) & 3].lng.rad());
+            let edge_lng = Interval::new(latlngs[i].lng.rad(), latlngs[(i + 1) & 3].lng.rad());
             if !self.lng.intersects(&edge_lng) {
                 continue;
             }
@@ -606,7 +620,7 @@ impl Region for Rect {
 
 // intersectsLatEdge reports whether the edge AB intersects the given edge of constant
 // latitude. Requires the points to have unit length.
-fn intersects_lat_edge(a: &Point, b: &Point, lat: Angle, lng: interval::Interval) -> bool {
+fn intersects_lat_edge(a: &Point, b: &Point, lat: Angle, lng: Interval) -> bool {
     // Unfortunately, lines of constant latitude are curves on
     // the sphere. They can intersect a straight edge in 0, 1, or 2 points.
 
@@ -639,7 +653,7 @@ fn intersects_lat_edge(a: &Point, b: &Point, lat: Angle, lng: interval::Interval
     // also that it is contained within the given longitude interval "lng".
 
     // Compute the range of theta values spanned by the edge AB.
-    let ab_theta = interval::Interval::from_point_pair(
+    let ab_theta = Interval::from_point_pair(
         a.0.dot(&y.0).atan2(a.0.dot(&x.0)),
         b.0.dot(&y.0).atan2(b.0.dot(&x.0)),
     );
@@ -788,6 +802,12 @@ impl Rect {
             y: r * lng.sin(),
             z: z,
         })
+    }
+}
+
+impl std::fmt::Display for Rect {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}, {}", self.lo(), self.hi())
     }
 }
 
@@ -940,12 +960,17 @@ mod tests {
     }
 
     #[test]
+    fn test_rect_from_point_pair() {
+        let p1 = LatLng::from_degrees(0.1, 0.2);
+        let p2 = LatLng::from_degrees(30.1, 45.5);
+        let expected = Rect::empty().add(&p1).add(&p2);
+        assert_eq!(Rect::from_point_pair(&p1, &p2), expected);
+    }
+
+    #[test]
     fn test_rect_vertex() {
         let r1 = &Rect {
-            lat: r1::interval::Interval {
-                lo: 0.0,
-                hi: PI / 2.0,
-            },
+            lat: r1::interval::Interval::new(0.0, PI / 2.0),
             lng: Interval::new(-PI, 0.0),
         };
         let tests = [

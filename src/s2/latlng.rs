@@ -3,11 +3,10 @@ use crate::r3::vector::Vector;
 use crate::s1::*;
 use crate::s2::point::Point;
 use std;
-use std::f64::consts::PI;
+use std::f64::consts::{PI, FRAC_PI_2};
 
-//TODO: typed const?
-const NORTH_POLE_LAT: f64 = PI / 2.;
-const SOUTH_POLE_LAT: f64 = PI / -2.;
+const NORTH_POLE_LAT: f64 = FRAC_PI_2;
+const SOUTH_POLE_LAT: f64 = -FRAC_PI_2;
 
 #[derive(Clone, Copy, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -31,6 +30,13 @@ impl LatLng {
         LatLng {
             lat: Angle::from(Deg(lat)),
             lng: Angle::from(Deg(lng)),
+        }
+    }
+
+    pub fn from_radians(lat: f64, lng: f64) -> Self {
+        LatLng {
+            lat: Angle::from(Rad(lat)),
+            lng: Angle::from(Rad(lng)),
         }
     }
 
@@ -107,12 +113,22 @@ impl From<Point> for LatLng {
     }
 }
 
+impl std::fmt::Display for LatLng {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{:.15}:{:.15}", self.lat.deg(), self.lng.deg()
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::r3::vector::Vector;
     use crate::s1;
     use crate::s2::point::Point;
+    use std::f64::consts::FRAC_PI_4;
 
     macro_rules! ll {
         ($lat:expr, $lng:expr) => {
@@ -136,6 +152,19 @@ mod tests {
     fn test_latlng_default() {
         // Same as geo.s2.LatLng{} in Go.
         assert_eq!(LatLng::default(), ll!(0.0, 0.0));
+    }
+
+    #[test]
+    fn test_latlng_basic() {
+        let ll_rad = LatLng::from_radians(FRAC_PI_4, FRAC_PI_2);
+        assert_eq!(FRAC_PI_4, ll_rad.lat.rad());
+        assert_eq!(FRAC_PI_2, ll_rad.lng.rad());
+        assert!(ll_rad.is_valid());
+        let ll_deg = LatLng::from_degrees(45., 90.);
+        assert_eq!(ll_rad, ll_deg);
+        assert!(ll_deg.is_valid());
+        assert!(!LatLng::from_degrees(-91., 0.).is_valid());
+        assert!(!LatLng::from_degrees(0., 181.).is_valid());
     }
 
     fn test_latlng_normalized_case(descr: &str, pos: LatLng, want: LatLng) {
