@@ -3,7 +3,7 @@ use crate::r3::vector::Vector;
 use crate::s1::*;
 use crate::s2::point::Point;
 use std;
-use std::f64::consts::{PI, FRAC_PI_2};
+use std::f64::consts::{FRAC_PI_2, PI};
 
 const NORTH_POLE_LAT: f64 = FRAC_PI_2;
 const SOUTH_POLE_LAT: f64 = -FRAC_PI_2;
@@ -115,10 +115,7 @@ impl From<Point> for LatLng {
 
 impl std::fmt::Display for LatLng {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
-            f,
-            "{:.15}:{:.15}", self.lat.deg(), self.lng.deg()
-        )
+        write!(f, "{:.15}:{:.15}", self.lat.deg(), self.lng.deg())
     }
 }
 
