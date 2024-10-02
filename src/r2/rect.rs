@@ -200,10 +200,16 @@ impl Rect {
         }
     }
 
-    /// approx_equals returns true if the x- and y-intervals of the two rectangles are
-    /// the same up to the given tolerance.
+    /// Returns true if the x- and y-intervals of the two rectangles are
+    /// the same up to some tolerance.
     pub fn approx_eq(&self, other: &Self) -> bool {
         self.x.approx_eq(&other.x) && self.y.approx_eq(&other.y)
+    }
+
+    // Return true if the x- and y-intervals of the two rectangles are the same
+    // up to the given tolerance.
+    pub fn approx_eq_by(&self, other: &Self, max_error: f64) -> bool {
+        self.x.approx_eq_by(&other.x, max_error) && self.y.approx_eq_by(&other.y, max_error)
     }
 }
 

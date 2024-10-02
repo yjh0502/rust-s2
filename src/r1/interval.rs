@@ -49,6 +49,17 @@ impl Interval {
         Self { lo: p, hi: p }
     }
 
+    // Convenience method to construct the minimal interval containing
+    // the two given points.  This is equivalent to starting with an empty
+    // interval and calling AddPoint() twice, but it is more efficient.
+    pub fn from_point_pair(p1: f64, p2: f64) -> Self {
+        if p1 <= p2 {
+            Self { lo: p1, hi: p2 }
+        } else {
+            Self { lo: p2, hi: p1 }
+        }
+    }
+
     /// is_empty reports whether the interval is empty.
     pub fn is_empty(&self) -> bool {
         self.lo > self.hi
@@ -161,12 +172,16 @@ impl Interval {
     /// real line, so any interval with a small enough length will match
     /// the empty interval.
     pub fn approx_eq(&self, other: &Self) -> bool {
+        self.approx_eq_by(other, EPSILON)
+    }
+
+    pub fn approx_eq_by(&self, other: &Self, max_error: f64) -> bool {
         if self.is_empty() {
-            other.len() < 2. * EPSILON
+            other.len() < 2. * max_error
         } else if other.is_empty() {
-            self.len() < 2. * EPSILON
+            self.len() < 2. * max_error
         } else {
-            (self.lo - other.lo).abs() <= EPSILON && (self.hi - other.hi).abs() <= EPSILON
+            (self.lo - other.lo).abs() <= max_error && (self.hi - other.hi).abs() <= max_error
         }
     }
 
@@ -248,6 +263,13 @@ mod tests {
         assert_eq!(UNIT.len(), 1.);
         assert_eq!(NEG_UNIT.len(), 1.);
         assert_eq!(HALF.len(), 0.);
+    }
+
+    #[test]
+    fn test_from_point_pair() {
+        assert_eq!(Interval::from_point_pair(4., 4.), I!(4., 4.));
+        assert_eq!(Interval::from_point_pair(-1., -2.), I!(-2., -1.));
+        assert_eq!(Interval::from_point_pair(-5., 3.), I!(-5., 3.));
     }
 
     #[test]
