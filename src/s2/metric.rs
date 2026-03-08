@@ -55,7 +55,7 @@ macro_rules! metric {
 // corresponding to two different s-values or two different t-values.
 metric!(MIN_ANGLE_SPANMETRIC, 1, 4.0 / 3.);
 metric!(AVG_ANGLE_SPANMETRIC, 1, PI / 2.);
-metric!(MAX_ANGLE_SPANMETRIC, 1, 1.704897179199218452);
+metric!(MAX_ANGLE_SPANMETRIC, 1, 1.704_897_179_199_218_5);
 
 // The width of geometric figure is defined as the distance between two
 // parallel bounding lines in a given direction. For cells, the minimum
@@ -74,7 +74,7 @@ metric!(MAX_ANGLE_SPANMETRIC, 1, 1.704897179199218452);
 // point on one edge of a cell to the closest point on the opposite edge.
 // For example, this is useful when growing regions by a fixed distance.
 metric!(MIN_WIDTHMETRIC, 1, 2. * SQRT_2 / 3.);
-metric!(AVG_WIDTHMETRIC, 1, 1.434523672886099389);
+metric!(AVG_WIDTHMETRIC, 1, 1.434_523_672_886_099_5);
 metric!(MAX_WIDTHMETRIC, 1, MAX_ANGLE_SPANMETRIC.deriv);
 
 // The edge length metrics can be used to bound the minimum, maximum,
@@ -83,25 +83,25 @@ metric!(MAX_WIDTHMETRIC, 1, MAX_ANGLE_SPANMETRIC.deriv);
 // between adjacent cell centers along the space-filling Hilbert curve for
 // cells at any given level.
 metric!(MIN_EDGEMETRIC, 1, 2. * SQRT_2 / 3.);
-metric!(AVG_EDGEMETRIC, 1, 1.459213746386106062);
+metric!(AVG_EDGEMETRIC, 1, 1.459_213_746_386_106_1);
 metric!(MAX_EDGEMETRIC, 1, MAX_ANGLE_SPANMETRIC.deriv);
 
 /// MAX_EDGE_ASPECT is the maximum edge aspect ratio over all cells at any level,
 /// where the edge aspect ratio of a cell is defined as the ratio of its longest
 /// edge length to its shortest edge length.
-pub const MAX_EDGE_ASPECT: f64 = 1.442615274452682920;
+pub const MAX_EDGE_ASPECT: f64 = 1.442_615_274_452_683;
 
 metric!(MIN_AREAMETRIC, 2, 8. * SQRT_2 / 9.);
 metric!(AVG_AREAMETRIC, 2, 4. * PI / 6.);
-metric!(MAX_AREAMETRIC, 2, 2.635799256963161491);
+metric!(MAX_AREAMETRIC, 2, 2.635_799_256_963_161_4);
 
 // The maximum diagonal is also the maximum diameter of any cell,
 // and also the maximum geometric width (see the comment for widths). For
 // example, the distance from an arbitrary point to the closest cell center
 // at a given level is at most half the maximum diagonal length.
 metric!(MIN_DIAGMETRIC, 1, 8. * SQRT_2 / 9.);
-metric!(AVG_DIAGMETRIC, 1, 2.060422738998471683);
-metric!(MAX_DIAGMETRIC, 1, 2.438654594434021032);
+metric!(AVG_DIAGMETRIC, 1, 2.060_422_738_998_471_7);
+metric!(MAX_DIAGMETRIC, 1, 2.438_654_594_434_021);
 
 /// MAX_DIAG_ASPECT is the maximum diagonal aspect ratio over all cells at any
 /// level, where the diagonal aspect ratio of a cell is defined as the ratio
@@ -113,7 +113,7 @@ impl Metric {
     /// value returns the value of the metric at the given level.
     pub fn value(&self, level: u8) -> f64 {
         // return math.Ldexp(m.Deriv, -m.Dim*level)
-        ldexp(self.deriv, -1 * (self.dim as i32) * (level as i32))
+        ldexp(self.deriv, -(self.dim as i32) * (level as i32))
     }
 
     /// min_level returns the minimum level such that the metric is at most
