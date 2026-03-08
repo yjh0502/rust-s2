@@ -24,7 +24,7 @@ lazy_static = "1.4.0"
 rand = { version = "0.8.5", optional = true }
 cgmath = "0.18.0"
 libm = "0.2.6"
-bigdecimal = { version = "0.3.0", default_features = false }
+bigdecimal = { version = "0.4.10", default-features = false }
 serde = { version = "1.0.151", features = ["serde_derive"], optional = true }
 
 [dev-dependencies]
