@@ -17,7 +17,6 @@ limitations under the License.
 
 use std;
 use std::iter::*;
-use std::u64;
 
 use crate::consts::clamp;
 use crate::r1::interval::Interval;
@@ -107,7 +106,7 @@ impl CellID {
         j = clamp(j, -1i32, MAX_SIZE_I32);
 
         const SCALE: f64 = 1.0 / (MAX_SIZE as f64);
-        const LIMIT: f64 = 1f64 + std::f64::EPSILON;
+        const LIMIT: f64 = 1f64 + f64::EPSILON;
 
         let u = clamp(
             SCALE * (2. * f64::from(i) + 1. - MAX_SIZE_F64),
