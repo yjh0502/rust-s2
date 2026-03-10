@@ -156,7 +156,7 @@ pub fn stable_sign(a: &Point, b: &Point, c: &Point) -> Direction {
         (bc, ab, &b.0)
     };
 
-    let det = -1. * e1.cross(&e2).dot(&op);
+    let det = -e1.cross(&e2).dot(op);
     let max_err = DET_ERROR_MULTIPLIER * (e1.norm2() * e2.norm2()).sqrt();
 
     // If the determinant isn't zero, within maxErr, we know definitively the point ordering.

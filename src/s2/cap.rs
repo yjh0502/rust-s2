@@ -184,7 +184,7 @@ impl Cap {
         if self.is_full() || other.is_empty() {
             true
         } else {
-            self.radius >= (&self.center.chordangle(&other.center) + &other.radius)
+            self.radius >= (self.center.chordangle(&other.center) + other.radius)
         }
     }
 
@@ -194,7 +194,7 @@ impl Cap {
         if self.is_full() || other.is_empty() {
             false
         } else {
-            (&self.radius + &other.radius) >= self.center.chordangle(&other.center)
+            (self.radius + other.radius) >= self.center.chordangle(&other.center)
         }
     }
 
@@ -204,7 +204,7 @@ impl Cap {
         if self.radius.0 <= 0. || other.is_empty() {
             false
         } else {
-            (&self.radius + &other.radius) > self.center.chordangle(&other.center)
+            (self.radius + other.radius) > self.center.chordangle(&other.center)
         }
     }
 
@@ -251,10 +251,7 @@ impl Cap {
         if self.is_empty() {
             Self::empty()
         } else {
-            Self::from_center_chordangle(
-                &self.center,
-                &(&self.radius + &ChordAngle::from(distance)),
-            )
+            Self::from_center_chordangle(&self.center, &(self.radius + ChordAngle::from(distance)))
         }
     }
 }
@@ -493,7 +490,7 @@ impl<'a> std::ops::Add<&'a Point> for Cap {
             // After calling cap.add(p), cap.contains(p) must be true. However
             // we don't need to do anything special to achieve this because Contains()
             // does exactly the same distance calculation that we do here.
-            let new_rad = self.center.chordangle(&p).0.max(self.radius.0);
+            let new_rad = self.center.chordangle(p).0.max(self.radius.0);
             Self::from_center_chordangle(&self.center, &ChordAngle(new_rad))
         }
     }
@@ -517,7 +514,7 @@ impl<'a> std::ops::Add<&'a Cap> for Cap {
         } else {
             // We round up the distance to ensure that the cap is actually contained.
             // TODO(roberts): Do some error analysis in order to guarantee this.
-            let dist = &self.center.chordangle(&other.center) + &other.radius;
+            let dist = self.center.chordangle(&other.center) + other.radius;
             let new_rad = dist.expanded(DBL_EPSILON * dist.0).0.max(self.radius.0);
             Self::from_center_chordangle(&self.center, &ChordAngle(new_rad))
         }

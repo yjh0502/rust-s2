@@ -53,9 +53,9 @@ impl<'a> From<&'a CellID> for Cell {
         assert!(f < 6);
         let level = id.level();
         Cell {
-            face: f as u8,
+            face: f,
             level: level as u8,
-            orientation: o as u8,
+            orientation: o,
             id: *id,
             uv: ij_level_to_bound_uv(i, j, level),
         }
@@ -230,9 +230,9 @@ impl Cell {
         // the normal, and the length of the normal is twice the projected area.
         let verts = self.vertices();
         let flat_area = 0.5
-            * (&verts[2] - &verts[0])
+            * (verts[2] - verts[0])
                 .0
-                .cross(&(&verts[3] - &verts[1]).0)
+                .cross(&(verts[3] - verts[1]).0)
                 .norm();
 
         // Now, compensate for the curvature of the cell surface by pretending
@@ -297,12 +297,10 @@ impl Cell {
                 } else {
                     0
                 }
+            } else if u > 0. {
+                1
             } else {
-                if u > 0. {
-                    1
-                } else {
-                    0
-                }
+                0
             };
             let j = if v_axis(self.face).0.z == 0. {
                 if v < 0. {
@@ -310,12 +308,10 @@ impl Cell {
                 } else {
                     0
                 }
+            } else if v > 0. {
+                1
             } else {
-                if v > 0. {
-                    1
-                } else {
-                    0
-                }
+                0
             };
 
             let lat = r1::interval::Interval::from_point(self.latitude(i, j).rad())
