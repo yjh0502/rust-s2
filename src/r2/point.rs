@@ -85,7 +85,7 @@ impl std::ops::Sub<Point> for Point {
     }
 }
 
-impl<'a, 'b> std::ops::Mul<&'b Point> for &'a Point {
+impl<'b> std::ops::Mul<&'b Point> for &Point {
     type Output = Point;
     /// returns the product between p and other.
     fn mul(self, other: &'b Point) -> Self::Output {
@@ -110,7 +110,7 @@ impl std::ops::Mul<Point> for Point {
     }
 }
 
-impl<'a> std::ops::Mul<f64> for &'a Point {
+impl std::ops::Mul<f64> for &Point {
     type Output = Point;
     /// returns the scalar product of p and other.
     fn mul(self, other: f64) -> Self::Output {

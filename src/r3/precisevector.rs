@@ -50,12 +50,12 @@ impl From<r3::vector::Vector> for PreciseVector {
     }
 }
 
-impl Into<r3::vector::Vector> for PreciseVector {
-    fn into(self) -> r3::vector::Vector {
+impl From<PreciseVector> for r3::vector::Vector {
+    fn from(val: PreciseVector) -> Self {
         // The accuracy flag is ignored on these conversions back to float64.
-        let x = self.x.to_f64().unwrap();
-        let y = self.y.to_f64().unwrap();
-        let z = self.z.to_f64().unwrap();
+        let x = val.x.to_f64().unwrap();
+        let y = val.y.to_f64().unwrap();
+        let z = val.z.to_f64().unwrap();
         r3::vector::Vector { x, y, z }.normalize()
     }
 }
@@ -139,16 +139,16 @@ impl PreciseVector {
     pub fn dot(&self, ov: PreciseVector) -> bigdecimal::BigDecimal {
         let a = self.clone();
         let b = ov.clone();
-        return (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
+        (a.x * b.x) + (a.y * b.y) + (a.z * b.z)
     }
 
     /// cross returns the standard cross product of v and ov.
     pub fn cross(&self, ov: PreciseVector) -> PreciseVector {
-        return PreciseVector {
+        PreciseVector {
             x: (&self.y * &ov.z) - (&self.z * &ov.y),
             y: (&self.z * &ov.x) - (&self.x * &ov.z),
             z: (&self.x * &ov.y) - (&self.y * &ov.x),
-        };
+        }
     }
 
     /// largest_component returns the axis that represents the largest component in this vector.
@@ -160,12 +160,10 @@ impl PreciseVector {
             } else {
                 r3::vector::Axis::Z
             }
+        } else if a.y > a.z {
+            r3::vector::Axis::Y
         } else {
-            if a.y > a.z {
-                r3::vector::Axis::Y
-            } else {
-                r3::vector::Axis::Z
-            }
+            r3::vector::Axis::Z
         }
     }
 
@@ -178,12 +176,10 @@ impl PreciseVector {
             } else {
                 r3::vector::Axis::Z
             }
+        } else if t.y < t.z {
+            r3::vector::Axis::Y
         } else {
-            if t.y < t.z {
-                r3::vector::Axis::Y
-            } else {
-                r3::vector::Axis::Z
-            }
+            r3::vector::Axis::Z
         }
     }
 }

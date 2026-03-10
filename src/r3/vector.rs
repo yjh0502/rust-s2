@@ -41,7 +41,7 @@ impl std::ops::Add<Vector> for Vector {
         &self + &other
     }
 }
-impl<'a, 'b> std::ops::Add<&'b Vector> for &'a Vector {
+impl<'b> std::ops::Add<&'b Vector> for &Vector {
     type Output = Vector;
     /// add returns the standard vector sum of v and ov.
     fn add(self, other: &'b Vector) -> Self::Output {
@@ -60,7 +60,7 @@ impl std::ops::Sub<Vector> for Vector {
         &self - &other
     }
 }
-impl<'a, 'b> std::ops::Sub<&'b Vector> for &'a Vector {
+impl<'b> std::ops::Sub<&'b Vector> for &Vector {
     type Output = Vector;
     fn sub(self, other: &'b Vector) -> Self::Output {
         Vector {
@@ -77,7 +77,7 @@ impl std::ops::Mul<Vector> for Vector {
         &self * &other
     }
 }
-impl<'a, 'b> std::ops::Mul<&'a Vector> for &'b Vector {
+impl<'a> std::ops::Mul<&'a Vector> for &Vector {
     type Output = Vector;
     fn mul(self, other: &'a Vector) -> Self::Output {
         Vector {
@@ -88,7 +88,7 @@ impl<'a, 'b> std::ops::Mul<&'a Vector> for &'b Vector {
     }
 }
 
-impl<'a> std::ops::Mul<f64> for &'a Vector {
+impl std::ops::Mul<f64> for &Vector {
     type Output = Vector;
     /// mul returns the standard scalar product of v and m.
     fn mul(self, m: f64) -> Self::Output {
@@ -241,12 +241,10 @@ impl Vector {
             } else {
                 Axis::Z
             }
+        } else if a.y > a.z {
+            Axis::Y
         } else {
-            if a.y > a.z {
-                Axis::Y
-            } else {
-                Axis::Z
-            }
+            Axis::Z
         }
     }
 
@@ -259,12 +257,10 @@ impl Vector {
             } else {
                 Axis::Z
             }
+        } else if t.y < t.z {
+            Axis::Y
         } else {
-            if t.y < t.z {
-                Axis::Y
-            } else {
-                Axis::Z
-            }
+            Axis::Z
         }
     }
 }
