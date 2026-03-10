@@ -29,6 +29,14 @@ pub struct Vector {
     pub z: f64,
 }
 
+impl Hash for Vector {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.x.to_bits().hash(state);
+        self.y.to_bits().hash(state);
+        self.z.to_bits().hash(state);
+    }
+}
+
 impl std::fmt::Debug for Vector {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "({:0.24}, {:0.24}, {:0.24})", self.x, self.y, self.z)
@@ -106,7 +114,27 @@ impl std::ops::Mul<f64> for Vector {
     }
 }
 
+impl<'a> std::ops::Mul<i64> for &'a Vector {
+    type Output = Vector;
+
+    fn mul(self, rhs: i64) -> Self::Output {
+        Vector {
+            x: self.x * rhs as f64,
+            y: self.y * rhs as f64,
+            z: self.z * rhs as f64,
+        }
+    }
+}
+
+impl std::ops::Mul<i64> for Vector {
+    type Output = Vector;
+    fn mul(self, m: i64) -> Self::Output {
+        &self * m
+    }
+}
+
 use std::cmp::*;
+use std::hash::{Hash, Hasher};
 
 impl Eq for Vector {}
 
@@ -198,7 +226,7 @@ impl Vector {
     }
 
     /// cross returns the standard cross product of v and ov.
-    pub fn cross(&self, other: &Self) -> Self {
+    pub fn cross(&self, other: &Vector) -> Self {
         Vector {
             x: self.y * other.z - self.z * other.y,
             y: self.z * other.x - self.x * other.z,
@@ -241,12 +269,10 @@ impl Vector {
             } else {
                 Axis::Z
             }
+        } else if a.y > a.z {
+            Axis::Y
         } else {
-            if a.y > a.z {
-                Axis::Y
-            } else {
-                Axis::Z
-            }
+            Axis::Z
         }
     }
 
@@ -259,12 +285,10 @@ impl Vector {
             } else {
                 Axis::Z
             }
+        } else if t.y < t.z {
+            Axis::Y
         } else {
-            if t.y < t.z {
-                Axis::Y
-            } else {
-                Axis::Z
-            }
+            Axis::Z
         }
     }
 }

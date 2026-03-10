@@ -9,11 +9,11 @@ use crate::s1::*;
 use crate::s2::edgeutil;
 use crate::s2::latlng::LatLng;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Rect {
-    pub lat: r1::interval::Interval,
-    pub lng: Interval,
+    pub lat: r1::interval::Interval, // THIS IS R1 INTERVAL
+    pub lng: Interval,               // THIS IS S1 INTERVAL
 }
 
 impl std::fmt::Debug for Rect {
@@ -800,7 +800,7 @@ impl Rect {
         Point(Vector {
             x: r * lng.cos(),
             y: r * lng.sin(),
-            z: z,
+            z,
         })
     }
 }
@@ -2058,11 +2058,11 @@ mod tests {
 
         return x
             .distance(&LatLng {
-                lat: lat,
+                lat,
                 lng: Rad(iv.lo).into(),
             })
             .min(x.distance(&LatLng {
-                lat: lat,
+                lat,
                 lng: Rad(iv.hi).into(),
             }));
     }

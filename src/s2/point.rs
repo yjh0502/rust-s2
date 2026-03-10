@@ -17,9 +17,15 @@ use std::f64::consts::PI;
 
 /// Point represents a point on the unit sphere as a normalized 3D vector.
 /// Fields should be treated as read-only. Use one of the factory methods for creation.
-#[derive(Clone, Copy, Default, PartialEq, Debug)]
+#[derive(Clone, Copy, Default, PartialEq, Debug, Hash, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Point(pub Vector);
+
+impl PartialEq<&Point> for Point {
+    fn eq(&self, other: &&Point) -> bool {
+        self.0 == other.0
+    }
+}
 
 impl std::ops::Add<Point> for Point {
     type Output = Point;
@@ -90,6 +96,17 @@ impl From<Vector3<f64>> for Point {
 }
 impl<'a> From<&'a Vector3<f64>> for Point {
     fn from(p: &'a Vector3<f64>) -> Self {
+        Point(Vector::new(p.x, p.y, p.z))
+    }
+}
+
+impl From<Vector> for Point {
+    fn from(p: Vector) -> Self {
+        (&p).into()
+    }
+}
+impl<'a> From<&'a Vector> for Point {
+    fn from(p: &'a Vector) -> Self {
         Point(Vector::new(p.x, p.y, p.z))
     }
 }
@@ -189,6 +206,37 @@ impl Point {
 
         Matrix3::from_cols(c0.into(), c1.into(), c2.into())
     }
+    // TODO: Why is this wrapper needed?
+    // referenceDir returns a unit-length vector to use as the reference direction for
+    // deciding whether a polygon with semi-open boundaries contains the given vertex "a"
+    // (see ContainsVertexQuery). The result is unit length and is guaranteed
+    // to be different from the given point "a".
+    pub fn reference_dir(&self) -> Point {
+        self.ortho()
+    }
+}
+
+fn set_col(m: &mut Matrix3<f64>, col: usize, p: &Point) {
+    m[0][col] = p.0.x;
+    m[1][col] = p.0.y;
+    m[2][col] = p.0.z;
+}
+
+// getFrame returns the orthonormal frame for the given point on the unit sphere.
+pub fn get_frame(p: &Point) -> Matrix3<f64> {
+    // Given the point p on the unit sphere, extend this into a right-handed
+    // coordinate frame of unit-length column vectors m = (x,y,z).  Note that
+    // the vectors (x,y) are an orthonormal frame for the tangent space at point p,
+    // while p itself is an orthonormal frame for the normal space at p.
+    let mut m = Matrix3::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    set_col(&mut m, 2, p);
+    set_col(&mut m, 1, &p.ortho());
+
+    let m_y = m.y.clone();
+    let m_z = m.z.clone();
+
+    set_col(&mut m, 0, &Point::from(m_y.cross(m_z)));
+    m
 }
 
 // from_frame returns the coordinates of the given point in standard axis-aligned basis
@@ -392,7 +440,7 @@ pub fn regular_points(center: &Point, radius: Angle, num_vertices: usize) -> Vec
 /// with numVertices vertices, all on a circle of the specified angular radius around
 /// the center. The radius is the actual distance from the center to each vertex.
 /// TODO: private?
-fn regular_points_for_frame(
+pub fn regular_points_for_frame(
     frame: &Matrix3<f64>,
     radius: Angle,
     num_vertices: usize,

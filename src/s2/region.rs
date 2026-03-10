@@ -65,9 +65,9 @@ pub trait Region {
 ///
 /// Typical usage:
 ///
-///	rc := &s2.RegionCoverer{MaxLevel: 30, MaxCells: 5}
-///	r := s2.Region(CapFromCenterArea(center, area))
-///	covering := rc.Covering(r)
+///    rc := &s2.RegionCoverer{MaxLevel: 30, MaxCells: 5}
+///    r := s2.Region(CapFromCenterArea(center, area))
+///    covering := rc.Covering(r)
 ///
 /// This yields a CellUnion of at most 5 cells that is guaranteed to cover the
 /// given region (a disc-shaped region on the sphere).
@@ -693,6 +693,57 @@ mod tests {
             // children of the same parent.
             covering.denormalize(min_level as u64, level_mod as u64);
             check_covering(&rc, &r, &covering, false);
+        }
+    }
+
+    #[test]
+    fn test_coverer_rect_tiles() {
+        for grid in 0..6 {
+            let lat_step = 180.0 / 2.0_f64.powf(grid as f64);
+            let lng_step = 360.0 / 2.0_f64.powf(grid as f64);
+
+            for x in 0..2_u32.pow(grid as u32) {
+                for y in 0..2_u32.pow(grid as u32) {
+                    let rect = Rect::from_degrees(
+                        (y as f64) * lat_step - 90.0,
+                        (x as f64) * lng_step - 180.0,
+                        (y as f64 + 1.0) * lat_step - 90.0,
+                        (x as f64 + 1.0) * lng_step - 180.0,
+                    );
+
+                    let mut min_level = 0;
+                    let mut max_level = MAX_LEVEL as u8;
+                    let level_mod = 1;
+                    let max_cells = 10;
+
+                    let rc = RegionCoverer {
+                        min_level,
+                        max_level,
+                        level_mod,
+                        max_cells,
+                    };
+
+                    let max_area = (4. * PI)
+                        .min((3. * (max_cells as f64) + 1.) * AVG_AREAMETRIC.value(min_level));
+
+                    let mut covering = rc.covering(&rect);
+                    check_covering(&rc, &rect, &covering, false);
+
+                    let interior = rc.interior_covering(&rect);
+                    check_covering(&rc, &rect, &interior, true);
+
+                    // Check that Covering is deterministic.
+                    let covering2 = rc.covering(&rect);
+                    assert_eq!(covering, covering2);
+
+                    // Also check Denormalize. The denormalized covering
+                    // may still be different and smaller than "covering" because
+                    // s2.RegionCoverer does not guarantee that it will not output all four
+                    // children of the same parent.
+                    covering.denormalize(min_level as u64, level_mod as u64);
+                    check_covering(&rc, &rect, &covering, false);
+                }
+            }
         }
     }
 }

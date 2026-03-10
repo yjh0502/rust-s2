@@ -34,6 +34,13 @@ use crate::s2::region::Region;
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct CellUnion(pub Vec<CellID>);
+//
+// impl<'a> Iterator for CellUnion {
+//     type Item = CellID;
+//     fn next(&mut self) -> Option<CellID> {
+//         self.0.iter().next()
+//     }
+// }
 
 impl CellUnion {
     /// from_range creates a CellUnion that covers the half-open range
@@ -241,6 +248,12 @@ impl Region for CellUnion {
     // intersects_cell reports whether this cell union intersects the given cell.
     fn intersects_cell(&self, c: &Cell) -> bool {
         self.intersects_cellid(&c.id)
+    }
+}
+
+impl From<Vec<CellID>> for CellUnion {
+    fn from(v: Vec<CellID>) -> Self {
+        CellUnion(v)
     }
 }
 

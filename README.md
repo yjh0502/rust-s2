@@ -35,8 +35,6 @@ Full parity with Go.
 
 **in progress**
 
- - CellUnion, edgeutil, predicates, Rect
+ - **Compiles, tests but not parity:** CellUnion, edgeutil, predicates, Rect
+ - **Compiles but Not passing tests:** loop, paddedcell, polygon, polyline, shapeindex
 
-**pending**
-
- - loop, paddedcell, polygon, polyline, shapeindex

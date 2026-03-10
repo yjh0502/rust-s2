@@ -102,8 +102,8 @@ pub fn face_xyz_to_uv(face: u8, p: &Point) -> Option<(f64, f64)> {
     }
 }
 
-#[cfg(test)]
-fn face_xyz_to_uvw(face: u8, p: &Point) -> Point {
+// #[cfg(test)]
+pub(crate) fn face_xyz_to_uvw(face: u8, p: &Point) -> Point {
     let v = &p.0;
     match face {
         0 => Point(Vector::new(v.y, v.z, v.x)),
@@ -116,8 +116,7 @@ fn face_xyz_to_uvw(face: u8, p: &Point) -> Point {
     }
 }
 
-#[cfg(test)]
-fn face_siti_to_xyz(face: u8, si: u64, ti: u64) -> Point {
+pub fn face_siti_to_xyz(face: u8, si: u64, ti: u64) -> Point {
     Point(face_uv_to_xyz(
         face,
         st_to_uv(siti_to_st(si)),
@@ -207,7 +206,6 @@ const FACE_UVW_AXES: [[Point; 3]; 6] = [
     [P!(0, 1, 0), P!(1, 0, 0), P!(0, 0, -1)],
 ];
 
-#[cfg(test)]
 const FACE_UVW_FACES: [[[u8; 2]; 3]; 6] = [
     [[4, 1], [5, 2], [3, 0]],
     [[0, 3], [5, 2], [4, 1]],
@@ -221,8 +219,7 @@ fn uvw_axis(face: u8, axis: u8) -> Point {
     FACE_UVW_AXES[face as usize][axis as usize]
 }
 
-#[cfg(test)]
-fn uvw_face(face: u8, axis: u8, direction: u8) -> u8 {
+pub(crate) fn uvw_face(face: u8, axis: u8, direction: u8) -> u8 {
     FACE_UVW_FACES[face as usize][axis as usize][direction as usize]
 }
 
@@ -249,7 +246,6 @@ mod tests {
     use super::*;
     use crate::r3::vector::Axis;
     use crate::s2::random;
-    use std;
 
     #[test]
     fn st_uv() {
@@ -434,7 +430,7 @@ mod tests {
 
                 assert_eq!(
                     ci,
-                    CellID::from_face_ij(f, (si / 2) as i32, (ti / 2) as i32).parent(level)
+                    CellID::from_face_ij(f, (si / 2) as i64, (ti / 2) as i64).parent(level)
                 );
 
                 //TODO: add by ref
@@ -469,7 +465,7 @@ mod tests {
                     assert_eq!(ti, ti_random);
                     if gotlevel >= 0 {
                         assert!(p_random.approx_eq(
-                            &CellID::from_face_ij(f, si as i32 / 2, ti as i32 / 2)
+                            &CellID::from_face_ij(f, si as i64 / 2, ti as i64 / 2)
                                 .parent(gotlevel as u64)
                                 .into()
                         ));

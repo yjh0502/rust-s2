@@ -297,12 +297,10 @@ impl Cell {
                 } else {
                     0
                 }
+            } else if u > 0. {
+                1
             } else {
-                if u > 0. {
-                    1
-                } else {
-                    0
-                }
+                0
             };
             let j = if v_axis(self.face).0.z == 0. {
                 if v < 0. {
@@ -310,12 +308,10 @@ impl Cell {
                 } else {
                     0
                 }
+            } else if v > 0. {
+                1
             } else {
-                if v > 0. {
-                    1
-                } else {
-                    0
-                }
+                0
             };
 
             let lat = r1::interval::Interval::from_point(self.latitude(i, j).rad())

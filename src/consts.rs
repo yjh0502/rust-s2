@@ -19,8 +19,44 @@ macro_rules! f64_eq {
 
 #[macro_export]
 macro_rules! assert_f64_eq {
+    // Basic version with default epsilon
     ($x:expr, $y:expr) => {
-        assert!(($x - $y).abs() < EPSILON)
+        assert_f64_eq!($x, $y, EPSILON, "assertion failed");
+    };
+
+    // With custom epsilon
+    ($x:expr, $y:expr, $epsilon:expr) => {
+        assert_f64_eq!($x, $y, $epsilon, "assertion failed");
+    };
+
+    // With custom epsilon and error message
+    ($x:expr, $y:expr, $epsilon:expr, $msg:expr) => {
+        let x_val = $x;
+        let y_val = $y;
+        let diff = (x_val - y_val).abs();
+        if diff >= $epsilon {
+            panic!(
+                concat!(
+                    "{}\n",
+                    "Expected: {}\n",
+                    "Actual:   {}\n",
+                    "Diff:     {}\n",
+                    "Epsilon:  {}\n",
+                    "Ratio:    {:.2}x larger than epsilon"
+                ),
+                $msg,
+                x_val,
+                y_val,
+                diff,
+                $epsilon,
+                diff / $epsilon
+            );
+        }
+    };
+
+    // With custom error message (uses default epsilon)
+    ($x:expr, $y:expr, $msg:expr) => {
+        assert_f64_eq!($x, $y, EPSILON, $msg);
     };
 }
 

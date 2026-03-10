@@ -37,6 +37,7 @@ pub struct Interval {
     pub lo: f64,
     pub hi: f64,
 }
+
 impl std::fmt::Debug for Interval {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "[{:.7}, {:.7}]", self.lo, self.hi)
@@ -87,6 +88,11 @@ impl Interval {
         } else {
             Interval { lo: b, hi: a }
         }
+    }
+
+    /// full_interval returns the full interval, [-π,π].
+    pub fn full_interval() -> Self {
+        FULL
     }
 
     /// is_valid reports whether the interval is valid.

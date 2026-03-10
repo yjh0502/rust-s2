@@ -39,9 +39,9 @@ pub fn prec_float(f: f64) -> bigdecimal::BigDecimal {
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PreciseVector {
-    x: bigdecimal::BigDecimal,
-    y: bigdecimal::BigDecimal,
-    z: bigdecimal::BigDecimal,
+    pub x: bigdecimal::BigDecimal,
+    pub y: bigdecimal::BigDecimal,
+    pub z: bigdecimal::BigDecimal,
 }
 
 impl From<r3::vector::Vector> for PreciseVector {
@@ -143,7 +143,7 @@ impl PreciseVector {
     }
 
     /// cross returns the standard cross product of v and ov.
-    pub fn cross(&self, ov: PreciseVector) -> PreciseVector {
+    pub fn cross(&self, ov: &PreciseVector) -> PreciseVector {
         return PreciseVector {
             x: (&self.y * &ov.z) - (&self.z * &ov.y),
             y: (&self.z * &ov.x) - (&self.x * &ov.z),
@@ -160,12 +160,10 @@ impl PreciseVector {
             } else {
                 r3::vector::Axis::Z
             }
+        } else if a.y > a.z {
+            r3::vector::Axis::Y
         } else {
-            if a.y > a.z {
-                r3::vector::Axis::Y
-            } else {
-                r3::vector::Axis::Z
-            }
+            r3::vector::Axis::Z
         }
     }
 
@@ -178,12 +176,10 @@ impl PreciseVector {
             } else {
                 r3::vector::Axis::Z
             }
+        } else if t.y < t.z {
+            r3::vector::Axis::Y
         } else {
-            if t.y < t.z {
-                r3::vector::Axis::Y
-            } else {
-                r3::vector::Axis::Z
-            }
+            r3::vector::Axis::Z
         }
     }
 }
@@ -325,34 +321,34 @@ mod tests {
     #[test]
     pub fn test_precise_cross() {
         assert_eq!(
-            pv(1.0, 0.0, 0.0).cross(pv(1.0, 0.0, 0.0)),
+            pv(1.0, 0.0, 0.0).cross(&pv(1.0, 0.0, 0.0)),
             pv(0.0, 0.0, 0.0)
         );
         assert_eq!(
-            pv(1.0, 0.0, 0.0).cross(pv(0.0, 1.0, 0.0)),
+            pv(1.0, 0.0, 0.0).cross(&pv(0.0, 1.0, 0.0)),
             pv(0.0, 0.0, 1.0)
         );
         assert_eq!(
-            pv(0.0, 1.0, 0.0).cross(pv(0.0, 0.0, 1.0)),
+            pv(0.0, 1.0, 0.0).cross(&pv(0.0, 0.0, 1.0)),
             pv(1.0, 0.0, 0.0)
         );
         assert_eq!(
-            pv(0.0, 0.0, 1.0).cross(pv(1.0, 0.0, 0.0)),
+            pv(0.0, 0.0, 1.0).cross(&pv(1.0, 0.0, 0.0)),
             pv(0.0, 1.0, 0.0)
         );
         assert_eq!(
-            pv(0.0, 1.0, 0.0).cross(pv(1.0, 0.0, 0.0)),
+            pv(0.0, 1.0, 0.0).cross(&pv(1.0, 0.0, 0.0)),
             pv(0.0, 0.0, -1.0)
         );
         assert_eq!(
-            pv(1.0, 2.0, 3.0).cross(pv(-4.0, 5.0, -6.0)),
+            pv(1.0, 2.0, 3.0).cross(&pv(-4.0, 5.0, -6.0)),
             pv(-27.0, -6.0, 13.0)
         );
     }
 
     fn test_precise_identities_case(v1: PreciseVector, v2: PreciseVector) {
-        let c1 = v1.cross(v2.clone());
-        let c2 = v2.cross(v1.clone());
+        let c1 = v1.cross(&v2.clone());
+        let c2 = v2.cross(&v1.clone());
         let d1 = v1.dot(v2.clone());
         let d2 = v2.dot(v1.clone());
         assert_eq!(d1, d2);

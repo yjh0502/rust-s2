@@ -26,6 +26,7 @@ limitations under the License.
 
 use crate::consts::*;
 use crate::s2::point::Point;
+use std::ops::Neg;
 
 /// MAX_DETERMINANT_ERROR is the maximum error in computing (AxB).C where all vectors
 /// are unit length. Using standard inequalities, it can be shown that
@@ -55,12 +56,24 @@ const MAX_DETERMINANT_ERROR: f64 = 1.8274 * DBL_EPSILON;
 /// its sign with certainty.
 const DET_ERROR_MULTIPLIER: f64 = 3.2321 * DBL_EPSILON;
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Direction {
     Clockwise,
     Indeterminate,
     CounterClockwise,
+}
+
+// TODO: Not sure if the correct interpretation
+impl Neg for Direction {
+    type Output = Direction;
+    fn neg(self) -> Direction {
+        match self {
+            Direction::Clockwise => Direction::CounterClockwise,
+            Direction::CounterClockwise => Direction::Clockwise,
+            Direction::Indeterminate => Direction::Indeterminate,
+        }
+    }
 }
 
 /// sign returns true if the points A, B, C are strictly counterclockwise,
@@ -189,7 +202,7 @@ pub fn triage_sign(a: &Point, b: &Point, c: &Point) -> Direction {
 /// expensive_sign reports the direction sign of the points. It returns Indeterminate
 /// if two of the input points are the same. It uses multiple-precision arithmetic
 /// to ensure that its results are always self-consistent.
-fn expensive_sign(a: &Point, b: &Point, c: &Point) -> Direction {
+pub fn expensive_sign(a: &Point, b: &Point, c: &Point) -> Direction {
     // Return Indeterminate if and only if two points are the same.
     // This ensures RobustSign(a,b,c) == Indeterminate if and only if a == b, b == c, or c == a.
     // ie. Property 1 of RobustSign.
@@ -213,7 +226,7 @@ fn expensive_sign(a: &Point, b: &Point, c: &Point) -> Direction {
 }
 
 /// exact-sign reports the direction sign of the points using exact precision arithmetic.
-fn exact_sign(_: &Point, _: &Point, _: &Point, _: bool) -> Direction {
+pub fn exact_sign(_: &Point, _: &Point, _: &Point, _: bool) -> Direction {
     // In the C++ version, the final computation is performed using OpenSSL's
     // Bignum exact precision math library. The existence of an equivalent
     // library in Go is indeterminate. In C++, using the exact precision library

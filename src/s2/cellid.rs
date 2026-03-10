@@ -62,7 +62,8 @@ pub const POS_BITS: u64 = (2 * MAX_LEVEL) + 1;
 pub const MAX_SIZE: u64 = 1 << MAX_LEVEL;
 const WRAP_OFFSET: u64 = (NUM_FACES as u64) << POS_BITS;
 
-const MAX_SIZE_I32: i32 = MAX_SIZE as i32;
+const MAX_SIZE_I32: i64 = MAX_SIZE as i64;
+const MAX_SIZE_I64: i64 = MAX_SIZE as i64;
 const MAX_SIZE_F64: f64 = MAX_SIZE as f64;
 
 const LOOKUP_BITS: u64 = 4;
@@ -84,6 +85,18 @@ impl std::fmt::Display for CellID {
 }
 
 impl CellID {
+    // SentinelCellID is an invalid cell ID guaranteed to be larger than any
+    // valid cell ID. It is used primarily by ShapeIndex. The value is also used
+    // by some S2 types when encoding data.
+    // Note that the sentinel's RangeMin == RangeMax == itself.
+    pub fn sentinel() -> Self {
+        CellID(u64::MAX)
+    }
+
+    pub fn center_point(&self) -> Point {
+        self.raw_point().normalize().into()
+    }
+
     /// from_pos_level returns a cell given its face in the range
     /// [0,5], the 61-bit Hilbert curve position pos within that face, and
     /// the level in the range [0,maxLevel]. The position in the cell ID
@@ -99,26 +112,18 @@ impl CellID {
     }
 
     /// from_ij returns a leaf cell given its cube face (range 0..5) and IJ coordinates.
-    fn from_face_ij_wrap(face: u8, mut i: i32, mut j: i32) -> Self {
+    fn from_face_ij_wrap(face: u8, mut i: i64, mut j: i64) -> Self {
         // Convert i and j to the coordinates of a leaf cell just beyond the
         // boundary of this face.  This prevents 32-bit overflow in the case
         // of finding the neighbors of a face cell.
-        i = clamp(i, -1i32, MAX_SIZE_I32);
-        j = clamp(j, -1i32, MAX_SIZE_I32);
+        i = clamp(i, -1i64, MAX_SIZE_I64);
+        j = clamp(j, -1i64, MAX_SIZE_I64);
 
         const SCALE: f64 = 1.0 / (MAX_SIZE as f64);
-        const LIMIT: f64 = 1f64 + std::f64::EPSILON;
+        const LIMIT: f64 = 1f64 + f64::EPSILON;
 
-        let u = clamp(
-            SCALE * (2. * f64::from(i) + 1. - MAX_SIZE_F64),
-            -LIMIT,
-            LIMIT,
-        );
-        let v = clamp(
-            SCALE * (2. * f64::from(j) + 1. - MAX_SIZE_F64),
-            -LIMIT,
-            LIMIT,
-        );
+        let u = clamp(SCALE * (2. * (i as f64) + 1. - MAX_SIZE_F64), -LIMIT, LIMIT);
+        let v = clamp(SCALE * (2. * (j as f64) + 1. - MAX_SIZE_F64), -LIMIT, LIMIT);
 
         // Find the leaf cell coordinates on the adjacent face, and convert
         // them to a cell id at the appropriate level.
@@ -127,18 +132,18 @@ impl CellID {
     }
 
     //TODO private
-    pub fn from_face_ij(f: u8, i: i32, j: i32) -> Self {
+    pub fn from_face_ij(f: u8, i: i64, j: i64) -> Self {
         let mut n = u64::from(f) << (POS_BITS - 1);
-        let mut bits = i32::from(f & SWAP_MASK);
+        let mut bits = i64::from(f & SWAP_MASK);
 
         let mut k = 7;
         let mask = (1 << LOOKUP_BITS) - 1;
         loop {
             bits += ((i >> (k * LOOKUP_BITS)) & mask) << (LOOKUP_BITS + 2);
             bits += ((j >> (k * LOOKUP_BITS)) & mask) << 2;
-            bits = LOOKUP_POS[bits as usize] as i32;
+            bits = LOOKUP_POS[bits as usize] as i64;
             n |= ((bits >> 2) as u64) << ((k * 2 * LOOKUP_BITS) as u64);
-            bits &= i32::from(SWAP_MASK | INVERT_MASK);
+            bits &= i64::from(SWAP_MASK | INVERT_MASK);
 
             if k == 0 {
                 break;
@@ -148,12 +153,54 @@ impl CellID {
         CellID(n * 2 + 1)
     }
 
-    fn from_face_ij_same(f: u8, i: i32, j: i32, same_face: bool) -> Self {
+    fn from_face_ij_same(f: u8, i: i64, j: i64, same_face: bool) -> Self {
         if same_face {
             Self::from_face_ij(f, i, j)
         } else {
             Self::from_face_ij_wrap(f, i, j)
         }
+    }
+
+    // CellIDFromString returns a CellID from a string in the form "1/3210".
+    // func CellIDFromString(s string) CellID {
+    // level := len(s) - 2
+    // if level < 0 || level > MaxLevel {
+    // return CellID(0)
+    // }
+    // face := int(s[0] - '0')
+    // if face < 0 || face > 5 || s[1] != '/' {
+    // return CellID(0)
+    // }
+    // id := CellIDFromFace(face)
+    // for i := 2; i < len(s); i++ {
+    // childPos := s[i] - '0'
+    // if childPos < 0 || childPos > 3 {
+    // return CellID(0)
+    // }
+    // id = id.Children()[childPos]
+    // }
+    // return id
+    // }
+
+    // from_string returns a CellID from a string in the form "1/3210".
+    pub fn from_string(s: &str) -> CellID {
+        let level = s.len() - 2;
+        if level < 0 || level > MAX_LEVEL as usize {
+            return CellID(0);
+        }
+        let face = s.as_bytes()[0] - b'0';
+        if face < 0 || face > 5 || s.as_bytes()[1] != b'/' {
+            return CellID(0);
+        }
+        let mut id = CellID::from_face(face as u64);
+        for i in 2..s.len() {
+            let child_pos = s.as_bytes()[i] - b'0';
+            if child_pos < 0 || child_pos > 3 {
+                return CellID(0);
+            }
+            id = id.children()[child_pos as usize];
+        }
+        id
     }
 
     /// from_token returns a cell given a hex-encoded string of its uint64 ID.
@@ -253,10 +300,10 @@ impl CellID {
 
     //TODO private
     /// face_ij_orientation uses the global lookupIJ table to unfiddle the bits of ci.
-    pub fn face_ij_orientation(&self) -> (u8, i32, i32, u8) {
+    pub fn face_ij_orientation(&self) -> (u8, i64, i64, u8) {
         let f = self.face();
-        let mut i = 0i32;
-        let mut j = 0i32;
+        let mut i = 0i64;
+        let mut j = 0i64;
         let mut orientation = u64::from(f & SWAP_MASK);
         let mut nbits = MAX_LEVEL - 7 * LOOKUP_BITS;
 
@@ -266,8 +313,8 @@ impl CellID {
                 (((self.0 >> (k * 2 * LOOKUP_BITS + 1)) & ((1 << (2 * nbits)) - 1)) as u64) << 2;
 
             orientation = LOOKUP_IJ[orientation as usize] as u64;
-            i += ((orientation as i32) >> (LOOKUP_BITS + 2)) << (k * LOOKUP_BITS);
-            j += (((orientation as i32) >> 2) & ((1 << LOOKUP_BITS) - 1)) << (k * LOOKUP_BITS);
+            i += ((orientation as i64) >> (LOOKUP_BITS + 2)) << (k * LOOKUP_BITS);
+            j += (((orientation as i64) >> 2) & ((1 << LOOKUP_BITS) - 1)) << (k * LOOKUP_BITS);
             orientation &= u64::from(SWAP_MASK | INVERT_MASK);
             nbits = LOOKUP_BITS; // following iterations
 
@@ -288,7 +335,7 @@ impl CellID {
     /// All neighbors are guaranteed to be distinct.
     pub fn edge_neighbors(&self) -> [CellID; 4] {
         let level = self.level();
-        let size = size_ij(level) as i32;
+        let size = size_ij(level) as i64;
         let (f, i, j, _) = self.face_ij_orientation();
 
         [
@@ -303,7 +350,7 @@ impl CellID {
     /// (Normally there are four neighbors, but the closest vertex may only have three neighbors if it is one of
     /// the 8 cube vertices.)
     pub fn vertex_neighbors(&self, level: u64) -> Vec<CellID> {
-        let half_size = size_ij(level + 1) as i32;
+        let half_size = size_ij(level + 1) as i64;
         let size = half_size << 1;
         let (f, i, j, _) = self.face_ij_orientation();
 
@@ -344,11 +391,11 @@ impl CellID {
 
         let (face, mut i, mut j, _) = self.face_ij_orientation();
 
-        let size = size_ij(self.level()) as i32;
+        let size = size_ij(self.level()) as i64;
         i &= -size;
         j &= -size;
 
-        let nbr_size = size_ij(level) as i32;
+        let nbr_size = size_ij(level) as i64;
 
         let mut k = -nbr_size;
         loop {
@@ -412,11 +459,11 @@ impl CellID {
     }
 
     /// face_siti returns the Face/Si/Ti coordinates of the center of the cell.
-    fn face_siti(&self) -> (u8, i32, i32) {
+    fn face_siti(&self) -> (u8, i64, i64) {
         let (face, i, j, _) = self.face_ij_orientation();
         let delta = if self.is_leaf() {
             1
-        } else if (i ^ (self.0 as i32 >> 2)) & 1 != 0 {
+        } else if (i ^ (self.0 as i64 >> 2)) & 1 != 0 {
             2
         } else {
             0
@@ -595,7 +642,7 @@ impl CellID {
 
     /// size_st returns the edge length of this CellID in (s,t)-space at the given level.
     fn size_st(&self, level: u64) -> f64 {
-        ij_to_stmin(size_ij(level) as i32)
+        ij_to_stmin(size_ij(level) as i64)
     }
 
     //TODO private
@@ -672,7 +719,7 @@ impl CellID {
     /// Note that although (si,ti) coordinates span the range [0,2**31] in general,
     /// the cell center coordinates are always in the range [1,2**31-1] and
     /// therefore can be represented using a signed 32-bit integer.
-    pub fn center_face_siti(&self) -> (u8, i32, i32) {
+    pub fn center_face_siti(&self) -> (u8, i64, i64) {
         let (face, i, j, _) = self.face_ij_orientation();
         let delta = if self.is_leaf() {
             1
@@ -745,13 +792,13 @@ pub fn expanded_by_distance_uv(uv: &r2::rect::Rect, distance: &Angle) -> r2::rec
 /// s- or t-value contained by that cell. The argument must be in the range
 /// [0..2**30], i.e. up to one position beyond the normal range of valid leaf
 /// cell indices.
-fn ij_to_stmin(i: i32) -> f64 {
-    f64::from(i) / (MAX_SIZE as f64)
+fn ij_to_stmin(i: i64) -> f64 {
+    (i as f64) / (MAX_SIZE as f64)
 }
 
 /// st_to_ij converts value in ST coordinates to a value in IJ coordinates.
-fn st_to_ij(s: f64) -> i32 {
-    clamp((MAX_SIZE as f64 * s).floor() as i32, 0, MAX_SIZE_I32 - 1)
+pub fn st_to_ij(s: f64) -> i64 {
+    clamp((MAX_SIZE as f64 * s).floor() as i64, 0, MAX_SIZE_I32 - 1)
 }
 
 impl std::fmt::Debug for CellID {
@@ -914,8 +961,8 @@ lazy_static! {
 /// init_lookup_cell initializes the lookupIJ table at init time.
 fn init_lookup_cell(
     level: u64,
-    i: i32,
-    j: i32,
+    i: i64,
+    j: i64,
     orig_orientation: u8,
     pos: usize,
     orientation: u8,
@@ -935,8 +982,8 @@ fn init_lookup_cell(
     for idx in 0..4 {
         init_lookup_cell(
             level + 1,
-            (i << 1) + i32::from(r[idx] >> 1),
-            (j << 1) + i32::from(r[idx] & 1),
+            (i << 1) + i64::from(r[idx] >> 1),
+            (j << 1) + i64::from(r[idx] & 1),
             orig_orientation,
             (pos << 2) + idx,
             orientation ^ POS_TO_ORIENTATION[idx],
@@ -948,8 +995,8 @@ fn init_lookup_cell(
 
 /// ij_level_to_bound_uv returns the bounds in (u,v)-space for the cell at the given
 /// level containing the leaf cell with the given (i,j)-coordinates.
-pub fn ij_level_to_bound_uv(i: i32, j: i32, level: u64) -> r2::rect::Rect {
-    let cell_size = size_ij(level) as i32;
+pub fn ij_level_to_bound_uv(i: i64, j: i64, level: u64) -> r2::rect::Rect {
+    let cell_size = size_ij(level) as i64;
     let x_lo = i & -cell_size;
     let y_lo = j & -cell_size;
 
@@ -1103,7 +1150,7 @@ pub mod tests {
         let max_ij = MAX_SIZE_I32 - 1;
         for level in 1..(MAX_LEVEL + 1) {
             let id = CellID::from_face_ij(1, 0, 0).parent(level);
-            let level_size_ij = size_ij(level) as i32;
+            let level_size_ij = size_ij(level) as i64;
             let want = [
                 CellID::from_face_ij(5, max_ij, max_ij).parent(level),
                 CellID::from_face_ij(1, level_size_ij, 0).parent(level),
@@ -1249,7 +1296,7 @@ pub mod tests {
         };
     }
 
-    fn test_ij_level_to_bound_uv_case(i: i32, j: i32, level: u64, points: &[r2::point::Point]) {
+    fn test_ij_level_to_bound_uv_case(i: i64, j: i64, level: u64, points: &[r2::point::Point]) {
         let uv = ij_level_to_bound_uv(i, j, level);
         let want = r2::rect::Rect::from_points(points);
 
@@ -1260,7 +1307,7 @@ pub mod tests {
         test_approx_eq(uv.y.hi, want.y.hi);
     }
 
-    const MAX_IJ: i32 = MAX_SIZE_I32 - 1;
+    const MAX_IJ: i64 = MAX_SIZE_I32 - 1;
 
     #[test]
     fn test_ij_level_to_bound_uv() {
@@ -1837,7 +1884,7 @@ pub mod tests {
     fn test_cellid_center_face_siti_case(id: CellID, level_offset: u64) {
         let (_, si, ti) = id.center_face_siti();
         let want = 1 << level_offset;
-        let mask = ((1 << (level_offset + 1)) as u32 - 1) as i32;
+        let mask = ((1 << (level_offset + 1)) as u32 - 1) as i64;
 
         assert_eq!(want, si & mask);
         assert_eq!(want, ti & mask);

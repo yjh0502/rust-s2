@@ -264,7 +264,7 @@ impl RectBounder {
 // is a loop such that L.Contains(S), then
 //
 //   ExpandForSubregions(RectBounder(L)).Contains(RectBounder(S)).
-fn expand_for_subregions(bound: &Rect) -> Rect {
+pub fn expand_for_subregions(bound: &Rect) -> Rect {
     // Empty bounds don't need expansion.
     if bound.is_empty() {
         return bound.clone();
@@ -405,7 +405,7 @@ mod tests {
     use crate::s2::rect::VALID_RECT_LAT_RANGE;
     use rand::Rng;
 
-    fn max_error_for_tests() -> LatLng {
+    pub fn max_error_for_tests() -> LatLng {
         // The maximum error in the latitude calculation is
         //    3.84 * DBL_EPSILON   for the cross product calculation (see above)
         //    0.96 * DBL_EPSILON   for the Latitude() calculation

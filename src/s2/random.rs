@@ -1,4 +1,3 @@
-use cgmath;
 use std::f64::consts::PI;
 
 use crate::s2::cap::Cap;
@@ -6,7 +5,6 @@ use crate::s2::cellid::*;
 use crate::s2::latlng::LatLng;
 use crate::s2::point::{self, Point};
 use crate::s2::rect::Rect;
-use rand;
 use rand::Rng;
 
 pub fn rng() -> rand::rngs::ThreadRng {

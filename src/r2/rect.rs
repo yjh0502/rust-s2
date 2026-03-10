@@ -30,6 +30,12 @@ pub struct Rect {
     pub y: Interval,
 }
 
+impl Rect {
+    pub(crate) fn empty() -> Rect {
+        todo!()
+    }
+}
+
 /// Canonical empty rectangle. Use IsEmpty() to test
 /// for empty rectangles, since they have more than one representation. A Rect::default()
 /// is not the same as the EmptyRect.
@@ -39,6 +45,10 @@ pub const EMPTY: Rect = Rect {
 };
 
 impl Rect {
+    pub fn from_intervals(x: Interval, y: Interval) -> Rect {
+        Rect { x, y }
+    }
+
     /// from_points constructs a rect that contains the given points.
     pub fn from_points(points: &[Point]) -> Self {
         // Because the default value on interval is 0,0, we need to manually

@@ -10,27 +10,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::r2::point::Point;
+use crate::lax_loop::LaxLoop;
+use crate::polygon::Polygon;
+use crate::r#loop::Loop;
 use crate::s2::point::Point as s2Point;
 use std::cmp::*;
-
+use std::convert::TryInto;
 // Edge represents a geodesic edge consisting of two vertices. Zero-length edges are
 // allowed, and can be used to represent points.
 
+#[derive(Clone, Debug, Default)]
 pub struct Edge {
-    v0: Point,
-    v1: Point,
+    pub v0: s2Point,
+    pub v1: s2Point,
 }
 
 impl Eq for Edge {}
 
 impl Ord for Edge {
     fn cmp(&self, other: &Edge) -> Ordering {
-        let v0cmp = self.v0.cmp(&other.v0);
+        let v0cmp = self.v0.0.cmp(&other.v0.0);
         if v0cmp != Ordering::Equal {
             v0cmp
         } else {
-            self.v0.cmp(&other.v1)
+            self.v0.0.cmp(&other.v1.0)
         }
     }
 }
@@ -85,9 +88,9 @@ pub struct ShapeEdge {
 /// edge IDs {start, start + 1, ..., start + length - 1}.
 pub struct Chain {
     #[allow(unused)]
-    start: i64,
+    pub(crate) start: i64,
     #[allow(unused)]
-    length: i64,
+    pub(crate) length: i64,
 }
 
 /// ChainPosition represents the position of an edge within a given edge chain,
@@ -95,18 +98,18 @@ pub struct Chain {
 /// starting from zero, and offsets are measured from the start of each chain.
 pub struct ChainPosition {
     #[allow(unused)]
-    chain_id: i64,
+    pub(crate) chain_id: i64,
     #[allow(unused)]
-    offset: i64,
+    pub(crate) offset: i64,
 }
 
 /// A ReferencePoint consists of a point and a boolean indicating whether the point
 /// is contained by a particular shape.
 pub struct ReferencePoint {
     #[allow(unused)]
-    point: s2Point,
+    pub point: s2Point,
     #[allow(unused)]
-    contained: bool,
+    pub contained: bool,
 }
 
 impl ReferencePoint {
@@ -116,7 +119,7 @@ impl ReferencePoint {
     pub fn origin(contained: bool) -> Self {
         ReferencePoint {
             point: s2Point::origin(),
-            contained: contained,
+            contained,
         }
     }
 }
@@ -148,6 +151,7 @@ impl ReferencePoint {
 /// numbering (edge ID) or within a particular chain. The global numbering is
 /// sufficient for most purposes, but the chain representation is useful for
 /// certain algorithms such as intersection (see BooleanOperation).
+#[enum_delegate::register]
 pub trait Shape {
     /// num_edges returns the number of edges in this shape.
     fn num_edges(&self) -> i64;
@@ -230,4 +234,33 @@ pub trait Shape {
     fn is_full(&self) -> bool {
         self.num_edges() == 0 && self.dimension() == 2 && self.num_chains() > 0
     }
+}
+
+impl PartialEq for ShapeType {
+    fn eq(&self, _other: &Self) -> bool {
+        todo!()
+    }
+}
+
+impl Eq for ShapeType {}
+
+impl PartialOrd for ShapeType {
+    fn partial_cmp(&self, _other: &Self) -> Option<Ordering> {
+        todo!()
+    }
+}
+
+impl Ord for ShapeType {
+    fn cmp(&self, _other: &Self) -> Ordering {
+        todo!()
+    }
+}
+
+#[enum_delegate::implement(Shape)]
+#[derive(Debug, Clone, Hash)]
+pub enum ShapeType {
+    Loop(Loop),
+    LaxLoop(LaxLoop),
+    // Polyline(()),
+    Polygon(Polygon),
 }

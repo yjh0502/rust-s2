@@ -56,7 +56,7 @@ use std::f64::consts::PI;
 /// or convert to discrete E5/E6/E7 values first.
 #[derive(Clone, Copy, Default, PartialEq, PartialOrd)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Angle(f64);
+pub struct Angle(pub f64);
 #[derive(Clone, Copy, Default, PartialEq, PartialOrd, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Rad(pub f64);
@@ -149,7 +149,7 @@ impl std::ops::Mul<Angle> for f64 {
 }
 
 impl std::ops::MulAssign<Angle> for Angle {
-    fn mul_assign(self: &mut Self, other: Self) {
+    fn mul_assign(&mut self, other: Self) {
         self.0 *= other.0
     }
 }
@@ -161,7 +161,7 @@ impl std::ops::MulAssign<Angle> for f64 {
 }
 
 impl std::ops::MulAssign<f64> for Angle {
-    fn mul_assign(self: &mut Self, other: f64) {
+    fn mul_assign(&mut self, other: f64) {
         self.0 *= other
     }
 }
@@ -188,7 +188,7 @@ impl std::ops::Div<Angle> for f64 {
 }
 
 impl std::ops::DivAssign<Angle> for Angle {
-    fn div_assign(self: &mut Self, other: Self) {
+    fn div_assign(&mut self, other: Self) {
         self.0 /= other.0
     }
 }
@@ -200,14 +200,14 @@ impl std::ops::DivAssign<Angle> for f64 {
 }
 
 impl std::ops::DivAssign<f64> for Angle {
-    fn div_assign(self: &mut Self, other: f64) {
+    fn div_assign(&mut self, other: f64) {
         self.0 /= other
     }
 }
 
 impl std::ops::Neg for Angle {
     type Output = Self;
-    fn neg(self: Self) -> Self {
+    fn neg(self) -> Self {
         Angle(-self.0)
     }
 }
@@ -234,7 +234,7 @@ impl std::ops::Add<f64> for Angle {
 }
 
 impl std::ops::AddAssign<Angle> for Angle {
-    fn add_assign(self: &mut Self, other: Self) {
+    fn add_assign(&mut self, other: Self) {
         self.0 += other.0
     }
 }
@@ -246,7 +246,7 @@ impl std::ops::AddAssign<Angle> for f64 {
 }
 
 impl std::ops::AddAssign<f64> for Angle {
-    fn add_assign(self: &mut Self, other: f64) {
+    fn add_assign(&mut self, other: f64) {
         self.0 += other
     }
 }
@@ -273,7 +273,7 @@ impl std::ops::Sub<Angle> for f64 {
 }
 
 impl std::ops::SubAssign<Angle> for Angle {
-    fn sub_assign(self: &mut Self, other: Self) {
+    fn sub_assign(&mut self, other: Self) {
         self.0 -= other.0
     }
 }
@@ -285,7 +285,7 @@ impl std::ops::SubAssign<Angle> for f64 {
 }
 
 impl std::ops::SubAssign<f64> for Angle {
-    fn sub_assign(self: &mut Self, other: f64) {
+    fn sub_assign(&mut self, other: f64) {
         self.0 -= other
     }
 }

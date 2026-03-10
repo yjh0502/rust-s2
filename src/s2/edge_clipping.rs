@@ -1,66 +1,41 @@
-#[allow(dead_code)]
-/*
-Copyright 2014 Google Inc. All rights reserved.
-Copyright 2017 Jihyun Yu. All rights reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-// This file contains a collection of methods for:
-//
-//   (1) Robustly clipping geodesic edges to the faces of the S2 biunit cube
-//       (see s2stuv), and
-//
-//   (2) Robustly clipping 2D edges against 2D rectangles.
-//
-// These functions can be used to efficiently find the set of CellIDs that
-// are intersected by a geodesic edge (e.g., see crossing_edge_query).
-use consts::*;
-use point::Point;
-use r1;
-use r2;
-use r3;
-use s2::stuv;
+use crate::consts::DBL_EPSILON;
+use crate::point::Point;
+use crate::r1;
+use crate::r2;
+use crate::r3;
+use crate::s2::stuv;
+use crate::s2::stuv::face_xyz_to_uvw;
 
 /// EDGE_CLIP_ERROR_UV_COORD is the maximum error in a u- or v-coordinate compared to the exact
 /// result, assuming that the points A and B are in the rectangle [-1,1]x[1,1] or slightly outside
 /// it (by 1e-10 or less).
 #[allow(dead_code)]
-const EDGE_CLIP_ERROR_UV_COORD: f64 = 2.25 * DBL_EPSILON;
+pub const EDGE_CLIP_ERROR_UV_COORD: f64 = 2.25 * DBL_EPSILON;
 
 /// EDGE_CLIP_ERORR_UV_DIST is the maximum distance from a clipped point to
 /// the corresponding exact result. It is equal to the error in a single
 /// coordinate because at most one coordinate is subject to error.
 #[allow(dead_code)]
-const EDGE_CLIP_ERROR_UV_DIST: f64 = 2.25 * DBL_EPSILON;
+pub const EDGE_CLIP_ERROR_UV_DIST: f64 = 2.25 * DBL_EPSILON;
 
 /// FACE_CLIP_ERROR_RADIANS is the maximum angle between a returned vertex
 /// and the nearest point on the exact edge AB. It is equal to the
 /// maximum directional error in PointCross, plus the error when
 /// projecting points onto a cube face
-const FACE_CLIP_ERROR_RADIANS: f64 = 3.0 * DBL_EPSILON;
+pub const FACE_CLIP_ERROR_RADIANS: f64 = 3.0 * DBL_EPSILON;
 
 /// faceClipErrorDist is the same angle expressed as a maximum distance
 /// in (u,v)-space. In other words, a returned vertex is at most this far
 /// from the exact edge AB projected into (u,v)-space.
 #[allow(dead_code)]
-const FACE_CLIP_ERROR_UV_DIST: f64 = 9.0 * DBL_EPSILON;
+pub const FACE_CLIP_ERROR_UV_DIST: f64 = 9.0 * DBL_EPSILON;
 
 /// FACE_CLIP_ERROR_UV_COORD is the maximum angle between a returned vertex
 /// and the nearest point on the exact edge AB expressed as the maximum error
 /// in an individual u- or v-coordinate. In other words, for each
 /// returned vertex there is a point on the exact edge AB whose u- and
 /// v-coordinates differ from the vertex by at most this amount
-const FACE_CLIP_ERROR_UV_COORD: f64 = 9.0 * (1.0 / std::f64::consts::SQRT_2) * DBL_EPSILON;
+pub const FACE_CLIP_ERROR_UV_COORD: f64 = 9.0 * (1.0 / std::f64::consts::SQRT_2) * DBL_EPSILON;
 
 /// INTERSECT_RECT_ERROR_UV_DIST is the maximum error when computing if a point
 /// intersects with a given Rect. If some point of AB is inside the
@@ -70,14 +45,18 @@ const FACE_CLIP_ERROR_UV_COORD: f64 = 9.0 * (1.0 / std::f64::consts::SQRT_2) * D
 /// a subset of the rectangle [-1,1]x[-1,1] or extends slightly outside it
 /// (e.g., by 1e-10 or less)
 #[allow(dead_code)]
-const INTERSECT_RECT_ERROR_UV_DIST: f64 = 3.0 * std::f64::consts::SQRT_2 * DBL_EPSILON;
+pub const INTERSECT_RECT_ERROR_UV_DIST: f64 = 3.0 * std::f64::consts::SQRT_2 * DBL_EPSILON;
 
 /// clip_to_face returns the (u,v) coordinates for the portion of the edge AB that
 /// intersects the given face, or false if the edge AB does not intersect.
 /// This method guarantees that the clipped vertices lie within the [-1,1]x[-1,1]
 /// cube face rectangle and are within faceClipErrorUVDist of the line AB, but
 /// the results may differ from those produced by FaceSegments.
-pub fn clip_to_face(a: Point, b: Point, face: u8) -> (r2::point::Point, r2::point::Point, bool) {
+pub fn clip_to_face(
+    a: &Point,
+    b: &Point,
+    face: u8,
+) -> Option<(r2::point::Point, r2::point::Point)> {
     clip_to_padded_face(a, b, face, 0.0)
 }
 
@@ -86,20 +65,19 @@ pub fn clip_to_face(a: Point, b: Point, face: u8) -> (r2::point::Point, r2::poin
 /// in (u,v) space, this method clips to [-R,R]x[-R,R] where R=(1+padding).
 /// Padding must be non-negative.
 pub fn clip_to_padded_face(
-    a: Point,
-    b: Point,
+    a: &Point,
+    b: &Point,
     f: u8,
     padding: f64,
-) -> (r2::point::Point, r2::point::Point, bool) {
+) -> Option<(r2::point::Point, r2::point::Point)> {
     // Fast path: both endpoints are on the given face
     if stuv::face(&a.0) == f && stuv::face(&b.0) == f {
         let (au, av) = stuv::valid_face_xyz_to_uv(f, &a.0);
         let (bu, bv) = stuv::valid_face_xyz_to_uv(f, &a.0);
-        return (
+        return Some((
             r2::point::Point { x: au, y: av },
             r2::point::Point { x: bu, y: bv },
-            true,
-        );
+        ));
     }
 
     // Convert everything into the (u,v,w) coordinates of the given face. Note
@@ -125,11 +103,10 @@ pub fn clip_to_padded_face(
         z: norm_uvw.0.z,
     });
     if !scaled_n.intersects_face() {
-        return (
+        return Some((
             r2::point::Point { x: 0.0, y: 0.0 },
             r2::point::Point { x: 0.0, y: 0.0 },
-            false,
-        );
+        ));
     }
     let ldexp = |x: f64, exp: f64| -> f64 { x * (exp.exp2() as f64) };
 
@@ -151,10 +128,12 @@ pub fn clip_to_padded_face(
 
     // As described in clipDestination, if the sum of the scores from clipping the two
     // endpoints is 3 or more, then the segment does not intersect this face
-    let (a_uv, a_score) = clip_destination(b_uvw, a_uvw, scaled_n * -1_f64, b_tan, a_tan, scale_uv);
-    let (b_uv, b_score) = clip_destination(a_uvw, b_uvw, scaled_n * -1_f64, a_tan, b_tan, scale_uv);
+    let (a_uv, _a_score) =
+        clip_destination(b_uvw, a_uvw, scaled_n * -1_f64, b_tan, a_tan, scale_uv);
+    let (b_uv, _b_score) =
+        clip_destination(a_uvw, b_uvw, scaled_n * -1_f64, a_tan, b_tan, scale_uv);
 
-    (a_uv, b_uv, a_score + b_score < 3)
+    Some((a_uv, b_uv))
 }
 
 /// clip_edge returns the portion of the edge defined by AB that is contained by the
@@ -468,7 +447,7 @@ fn clip_bound_axis(
         // narrow the intervals lower bound to the clip bound
         bound0.lo = clip.lo;
         let (bound1, updated) =
-            update_endpoint(bound1, neg_slope, interpolate(clip.lo, a0, b0, a1, b1));
+            update_endpoint(bound1, neg_slope, interpolate_f64(clip.lo, a0, b0, a1, b1));
         if !updated {
             return (bound0, bound1, false);
         }
@@ -482,7 +461,7 @@ fn clip_bound_axis(
         // narrow the intervals upper bound to the clip bound.
         bound0.hi = clip.hi;
         let (bound1, updated) =
-            update_endpoint(bound1, !neg_slope, interpolate(clip.hi, a0, b0, a1, b1));
+            update_endpoint(bound1, !neg_slope, interpolate_f64(clip.hi, a0, b0, a1, b1));
         if !updated {
             return (bound0, bound1, false);
         }
@@ -493,7 +472,7 @@ fn clip_bound_axis(
 /// edge_intersects_rect reports whether the edge defined by AB intersects the
 /// given closed rectangle to within the error bound.
 #[allow(dead_code)]
-fn edge_intersects_rec(a: r2::point::Point, b: r2::point::Point, r: &r2::rect::Rect) -> bool {
+pub fn edge_intersects_rect(a: r2::point::Point, b: r2::point::Point, r: &r2::rect::Rect) -> bool {
     // First check whether the bounds of a Rect around AB intersects the given rect.
     if !r.intersects(&(r2::rect::Rect::from_points(&[a, b]))) {
         return false;
@@ -572,7 +551,7 @@ fn clip_edge_bound(
 ///  - If x == b, then x1 = b1 (exactly).
 ///  - If a <= x <= b, then a1 <= x1 <= b1 (even if a1 == b1).
 /// This requires a != b.
-fn interpolate(x: f64, a: f64, b: f64, a1: f64, b1: f64) -> f64 {
+pub fn interpolate_f64(x: f64, a: f64, b: f64, a1: f64, b1: f64) -> f64 {
     if (a - x).abs() <= (b - x).abs() {
         return a1 + (b1 - a1) * (x - a) / (b - a);
     }
@@ -647,7 +626,7 @@ pub fn face_segments(a: Point, b: Point) -> Vec<FaceSegment> {
         // Complete the current segment by finding the point where AB
         // exits the current face
 
-        let n: PointUVW = stuv::face_xyz_to_uvw(face, &ab);
+        let n: PointUVW = face_xyz_to_uvw(face, &ab);
         let exit_axis = n.exit_axis();
         segment.b = n.exit_point(exit_axis);
         segments.push(segment.clone());
@@ -694,7 +673,7 @@ fn move_origin_to_valid_face(
     }
 
     // Otherwise check whether the normal AB even intersects this face
-    let n: PointUVW = stuv::face_xyz_to_uvw(face, &ab);
+    let n: PointUVW = face_xyz_to_uvw(face, &ab);
     if n.intersects_face() {
         // Check whether the point where the line AB exits this face is on the
         // wrong side of A (by more than the acceptable error tolerance).
@@ -776,7 +755,6 @@ fn next_face(face: u8, exit: r2::point::Point, axis: Axis, n: PointUVW, target_f
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use point::Point;
     use r3;
 
     #[test]
