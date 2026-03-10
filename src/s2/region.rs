@@ -296,7 +296,7 @@ where
                 if last.contains(&cur) {
                     continue;
                 }
-                if cur.contains(&last) {
+                if cur.contains(last) {
                     pop_last = true;
                 }
             }
@@ -320,8 +320,8 @@ where
         };
 
         let mut cells = temp.fast_covering(self.region);
-        let mut v = &mut cells.0;
-        self.adjust_cell_levels(&mut v);
+        let v = &mut cells.0;
+        self.adjust_cell_levels(v);
         for ci in v.iter() {
             if let Some(cand) = self.new_candidate(Cell::from(ci)) {
                 self.add_candidate(cand);
@@ -429,7 +429,7 @@ impl RegionCoverer {
     /// automatically normalized by replacing four child cells with their parent
     /// whenever possible. (Note that the list of cell ids passed to the CellUnion
     /// constructor does in fact satisfy all the given restrictions.)
-    fn cellunion<'a, R>(&self, region: &'a R) -> CellUnion
+    fn cellunion<R>(&self, region: &R) -> CellUnion
     where
         R: Region + 'static,
     {
@@ -446,7 +446,7 @@ impl RegionCoverer {
     /// automatically normalized by replacing four child cells with their parent
     /// whenever possible. (Note that the list of cell ids passed to the CellUnion
     /// constructor does in fact satisfy all the given restrictions.)
-    pub fn interior_cellunion<'a, R>(&self, region: &'a R) -> CellUnion
+    pub fn interior_cellunion<R>(&self, region: &R) -> CellUnion
     where
         R: Region + 'static,
     {
@@ -466,7 +466,7 @@ impl RegionCoverer {
     ///
     /// This function is useful as a starting point for algorithms that
     /// recursively subdivide cells.
-    pub fn fast_covering<'a, R>(&self, region: &'a R) -> CellUnion
+    pub fn fast_covering<R>(&self, region: &R) -> CellUnion
     where
         R: Region,
     {

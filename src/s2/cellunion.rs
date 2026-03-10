@@ -56,7 +56,7 @@ impl CellUnion {
         v.sort();
 
         let mut output: Vec<CellID> = Vec::with_capacity(v.len());
-        for ci in v.into_iter() {
+        for ci in v.iter_mut() {
             // The first two passes here either ignore this new candidate,
             // or remove previously accepted cells that are covered by this candidate.
 
@@ -65,7 +65,7 @@ impl CellUnion {
             // cells implies containment (but not the converse), and output has no redundancy,
             // so if this candidate is not contained by the last accepted cell
             // then it cannot be contained by any previously accepted cell.
-            if let Some(true) = output.last().map(|last| last.contains(&ci)) {
+            if let Some(true) = output.last().map(|last| last.contains(ci)) {
                 continue;
             }
 
@@ -181,7 +181,7 @@ impl CellUnion {
     pub fn leaf_cell_covered(&self) -> u64 {
         let mut num_leaves = 0u64;
         for c in self.0.iter() {
-            num_leaves += 1 << ((MAX_LEVEL - (c.level() as u64)) << 1);
+            num_leaves += 1 << ((MAX_LEVEL - c.level()) << 1);
         }
         num_leaves
     }

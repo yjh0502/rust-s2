@@ -116,7 +116,7 @@ impl ReferencePoint {
     pub fn origin(contained: bool) -> Self {
         ReferencePoint {
             point: s2Point::origin(),
-            contained: contained,
+            contained,
         }
     }
 }

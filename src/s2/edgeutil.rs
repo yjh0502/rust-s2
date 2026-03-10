@@ -125,7 +125,7 @@ pub fn interpolate(t: f64, a: &Point, b: &Point) -> Point {
         return *b;
     }
     let ab = a.0.angle(&b.0).rad();
-    interpolate_at_distance(&Angle::from(Rad(t * ab)), &a, &b)
+    interpolate_at_distance(&Angle::from(Rad(t * ab)), a, b)
 }
 
 /// interpolate_at_distance returns the point X along the line segment AB whose
@@ -136,7 +136,7 @@ pub fn interpolate_at_distance(ax: &Angle, a: &Point, b: &Point) -> Point {
     // Use cross to compute the tangent vector at A towards B. The
     // result is always perpendicular to A, even if A=B or A=-B, but it is not
     // necessarily unit length. (We effectively normalize it below.)
-    let normal = a.cross(&b);
+    let normal = a.cross(b);
     let tangent = normal.0.cross(&a.0);
 
     // Now compute the appropriate linear combination of A and "tangent". With
@@ -328,7 +328,7 @@ fn interior_dist(
     if !always_update && dist >= min_dist {
         return (min_dist, false);
     }
-    return (dist, true);
+    (dist, true)
 }
 
 #[cfg(test)]

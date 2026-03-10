@@ -27,10 +27,10 @@ impl std::ops::Add<Point> for Point {
         &self + &other
     }
 }
-impl<'a, 'b> std::ops::Add<&'b Point> for &'a Point {
+impl<'b> std::ops::Add<&'b Point> for &Point {
     type Output = Point;
     fn add(self, other: &'b Point) -> Self::Output {
-        Point(&self.0 + &other.0)
+        Point(self.0 + other.0)
     }
 }
 
@@ -40,10 +40,10 @@ impl std::ops::Sub<Point> for Point {
         &self - &other
     }
 }
-impl<'a, 'b> std::ops::Sub<&'b Point> for &'a Point {
+impl<'b> std::ops::Sub<&'b Point> for &Point {
     type Output = Point;
     fn sub(self, other: &'b Point) -> Self::Output {
-        Point(&self.0 - &other.0)
+        Point(self.0 - other.0)
     }
 }
 
@@ -53,10 +53,10 @@ impl std::ops::Mul<Point> for Point {
         &self * &other
     }
 }
-impl<'a, 'b> std::ops::Mul<&'b Point> for &'a Point {
+impl<'b> std::ops::Mul<&'b Point> for &Point {
     type Output = Point;
     fn mul(self, other: &'b Point) -> Self::Output {
-        Point(&self.0 * &other.0)
+        Point(self.0 * other.0)
     }
 }
 
@@ -66,10 +66,10 @@ impl std::ops::Mul<f64> for Point {
         Point(self.0 * m)
     }
 }
-impl<'a> std::ops::Mul<f64> for &'a Point {
+impl std::ops::Mul<f64> for &Point {
     type Output = Point;
     fn mul(self, m: f64) -> Self::Output {
-        Point(&self.0 * m)
+        Point(self.0 * m)
     }
 }
 
@@ -95,9 +95,9 @@ impl<'a> From<&'a Vector3<f64>> for Point {
 }
 
 pub const ORIGIN: Point = Point(Vector {
-    x: -0.0099994664350250197,
-    y: 0.0025924542609324121,
-    z: 0.99994664350250195,
+    x: -0.009_999_466_435_025_02,
+    y: 0.002_592_454_260_932_412,
+    z: 0.999_946_643_502_502,
 });
 
 impl Point {
@@ -320,11 +320,11 @@ pub fn point_area(a: &Point, b: &Point, c: &Point) -> f64 {
 /// area), the result equals the centroid of the original triangle. This is
 /// not true of the other centroids.
 pub fn true_centroid(a: &Point, b: &Point, c: &Point) -> Point {
-    let sa = b.distance(&c).rad();
+    let sa = b.distance(c).rad();
     let ra = if sa == 0. { 1. } else { sa / sa.sin() };
     let sb = c.distance(a).rad();
     let rb = if sb == 0. { 1. } else { sb / sb.sin() };
-    let sc = a.distance(&b).rad();
+    let sc = a.distance(b).rad();
     let rc = if sc == 0. { 1. } else { sc / sc.sin() };
 
     // Now compute a point M such that:
@@ -369,7 +369,7 @@ pub fn true_centroid(a: &Point, b: &Point, c: &Point) -> Point {
 /// the surface is a much more reasonable interpretation of the "center" of
 /// this triangle.
 pub fn planar_centroid(a: &Point, b: &Point, c: &Point) -> Point {
-    Point((&(a.0 + b.0) + &c.0) * (1. / 3.))
+    Point(((a.0 + b.0) + c.0) * (1. / 3.))
 }
 
 impl Point {

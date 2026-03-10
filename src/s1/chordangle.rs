@@ -109,7 +109,7 @@ impl From<ChordAngle> for Angle {
     }
 }
 
-impl<'a, 'b> std::ops::Add<&'a ChordAngle> for &'b ChordAngle {
+impl<'a> std::ops::Add<&'a ChordAngle> for &ChordAngle {
     type Output = ChordAngle;
     /// add adds the other ChordAngle to this one and returns the resulting value.
     /// This method assumes the ChordAngles are not special.
@@ -211,9 +211,9 @@ impl ChordAngle {
 
     pub fn max(self, other: Self) -> Self {
         if self.0 < other.0 {
-            return other;
+            other
         } else {
-            return self;
+            self
         }
     }
 
@@ -266,11 +266,11 @@ impl ChordAngle {
     #[cfg(feature = "float_extras")]
     pub fn successor(&self) -> Self {
         if self.0 >= MAXLENGTH2 {
-            return ChordAngle::inf();
+            ChordAngle::inf()
         } else if self.0 < 0. {
-            return ChordAngle(0.);
+            ChordAngle(0.)
         } else {
-            return ChordAngle(nextafter(self.0, 10.));
+            ChordAngle(nextafter(self.0, 10.))
         }
     }
 }

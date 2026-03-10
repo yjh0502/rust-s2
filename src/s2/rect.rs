@@ -300,7 +300,7 @@ impl Rect {
             return Angle::from(Rad(PI));
         }
         let lng_distance = self.lng.directed_hausdorff_distance(&other.lng);
-        return Self::hausdorff_distance_helper(lng_distance, &self.lat, &other.lat);
+        Self::hausdorff_distance_helper(lng_distance, &self.lat, &other.lat)
     }
 
     /// Return the directed Hausdorff distance from one longitudinal edge
@@ -349,7 +349,7 @@ impl Rect {
         //     where D (resp. U) is the portion of edge a below (resp. above)
         //     the intersection point from B2.
         let lng_diff_rad = lng_diff.rad();
-        assert!(lng_diff_rad >= 0.0 && lng_diff_rad <= PI);
+        assert!((0.0..=PI).contains(&lng_diff_rad));
         if lng_diff_rad == 0.0 {
             return Angle::from(Rad(a.directed_hausdorff_distance(b)));
         }
@@ -440,14 +440,14 @@ impl Rect {
         let intersection_point = Point::from_coords(-b.0.x, 0.0, -b.0.z);
         let intersection_lat = LatLng::from(intersection_point).lat;
         if a_lat.interior_contains(intersection_lat.rad()) {
-            return Some(b.distance(&intersection_point));
+            Some(b.distance(&intersection_point))
         } else {
-            return None;
+            None
         }
     }
 }
 
-impl<'a, 'b> std::ops::Add<&'a LatLng> for &'b Rect {
+impl<'a> std::ops::Add<&'a LatLng> for &Rect {
     type Output = Rect;
     fn add(self, ll: &'a LatLng) -> Self::Output {
         if !ll.is_valid() {
@@ -614,7 +614,7 @@ impl Region for Rect {
             }
         }
 
-        return false;
+        false
     }
 }
 
@@ -674,7 +674,7 @@ fn intersects_lat_edge(a: &Point, b: &Point, lat: Angle, lng: Interval) -> bool 
         }
     }
 
-    return false;
+    false
 }
 
 fn intersects_lng_edge(a: &Point, b: &Point, lat: r1::interval::Interval, lng: Angle) -> bool {
@@ -800,7 +800,7 @@ impl Rect {
         Point(Vector {
             x: r * lng.cos(),
             y: r * lng.sin(),
-            z: z,
+            z,
         })
     }
 }

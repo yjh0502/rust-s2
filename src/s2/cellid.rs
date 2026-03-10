@@ -137,7 +137,7 @@ impl CellID {
             bits += ((i >> (k * LOOKUP_BITS)) & mask) << (LOOKUP_BITS + 2);
             bits += ((j >> (k * LOOKUP_BITS)) & mask) << 2;
             bits = LOOKUP_POS[bits as usize] as i32;
-            n |= ((bits >> 2) as u64) << ((k * 2 * LOOKUP_BITS) as u64);
+            n |= ((bits >> 2) as u64) << (k * 2 * LOOKUP_BITS);
             bits &= i32::from(SWAP_MASK | INVERT_MASK);
 
             if k == 0 {
@@ -262,10 +262,9 @@ impl CellID {
 
         let mut k = 7;
         loop {
-            orientation +=
-                (((self.0 >> (k * 2 * LOOKUP_BITS + 1)) & ((1 << (2 * nbits)) - 1)) as u64) << 2;
+            orientation += ((self.0 >> (k * 2 * LOOKUP_BITS + 1)) & ((1 << (2 * nbits)) - 1)) << 2;
 
-            orientation = LOOKUP_IJ[orientation as usize] as u64;
+            orientation = LOOKUP_IJ[orientation as usize];
             i += ((orientation as i32) >> (LOOKUP_BITS + 2)) << (k * LOOKUP_BITS);
             j += (((orientation as i32) >> 2) & ((1 << LOOKUP_BITS) - 1)) << (k * LOOKUP_BITS);
             orientation &= u64::from(SWAP_MASK | INVERT_MASK);
@@ -569,7 +568,7 @@ impl CellID {
             return *self;
         }
 
-        let step_shift = (2 * (MAX_LEVEL - self.level()) + 1) as u64;
+        let step_shift = 2 * (MAX_LEVEL - self.level()) + 1;
         if steps < 0 {
             let min_steps = -((self.0 >> step_shift) as i64);
             if steps < min_steps {
@@ -758,7 +757,7 @@ impl std::fmt::Debug for CellID {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}/", self.face())?;
         for level in 1..=self.level() {
-            write!(f, "{}", self.child_position(level).to_string())?;
+            write!(f, "{}", self.child_position(level))?;
         }
         Ok(())
     }
