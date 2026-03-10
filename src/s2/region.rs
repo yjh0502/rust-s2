@@ -659,8 +659,8 @@ mod tests {
     fn test_coverer_random_caps() {
         let mut rng = random::rng();
         for _ in 0..1000 {
-            let mut min_level = rng.gen_range(0..(MAX_LEVEL + 1) as u8);
-            let mut max_level = rng.gen_range(0..(MAX_LEVEL + 1) as u8);
+            let mut min_level = rng.random_range(0..(MAX_LEVEL + 1) as u8);
+            let mut max_level = rng.random_range(0..(MAX_LEVEL + 1) as u8);
             if min_level > max_level {
                 let tmp = max_level;
                 max_level = min_level;
@@ -668,7 +668,7 @@ mod tests {
             }
             assert!(min_level <= max_level);
 
-            let level_mod = rng.gen_range(1..4);
+            let level_mod = rng.random_range(1..4);
             let max_cells = random::skewed_int(&mut rng, 10);
 
             let rc = RegionCoverer {
