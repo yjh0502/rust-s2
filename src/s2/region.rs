@@ -60,45 +60,51 @@ pub trait Region {
     }
 }
 
-/// RegionCoverer allows arbitrary regions to be approximated as unions of cells (CellUnion).
-/// This is useful for implementing various sorts of search and precomputation operations.
+/// RegionCoverer allows arbitrary regions to be approximated as
+/// unions of cells (CellUnion).  This is useful for implementing
+/// various sorts of search and precomputation operations.
 ///
-/// Typical usage:
+/// # Examples
 ///
-///	rc := &s2.RegionCoverer{MaxLevel: 30, MaxCells: 5}
-///	r := s2.Region(CapFromCenterArea(center, area))
-///	covering := rc.Covering(r)
+/// ```
+/// use s2::{cap::Cap, latlng::LatLng, point::Point, region::{Region, RegionCoverer}};
+/// let rc = RegionCoverer{min_level: 7, max_level: 30, level_mod: 1, max_cells: 5};
+/// let pt = Point::from(LatLng::from_degrees(47.3, 8.5));
+/// let region = Cap::from_center_area(&pt, 5.0);
+/// let covering = rc.covering(&region);
+/// ```
 ///
-/// This yields a CellUnion of at most 5 cells that is guaranteed to cover the
-/// given region (a disc-shaped region on the sphere).
+/// This yields a CellUnion of at most 5 cells that is guaranteed to
+/// cover the given region (a disc-shaped region on the sphere).
 ///
-/// For covering, only cells where (level - MinLevel) is a multiple of LevelMod will be used.
-/// This effectively allows the branching factor of the S2 CellID hierarchy to be increased.
-/// Currently the only parameter values allowed are 0/1, 2, or 3, corresponding to
+/// For covering, only cells where (level - min_level) is a multiple
+/// of level_mod will be used.  This effectively allows the branching
+/// factor of the S2 CellID hierarchy to be increased.  Currently the
+/// only parameter values allowed are 0/1, 2, or 3, corresponding to
 /// branching factors of 4, 16, and 64 respectively.
 ///
 /// Note the following:
 ///
-///  - MinLevel takes priority over MaxCells, i.e. cells below the given level will
+///  - min_level takes priority over max_cells, i.e. cells below the given level will
 ///    never be used even if this causes a large number of cells to be returned.
 ///
-///  - For any setting of MaxCells, up to 6 cells may be returned if that
+///  - For any setting of max_cells, up to 6 cells may be returned if that
 ///    is the minimum number of cells required (e.g. if the region intersects
 ///    all six face cells).  Up to 3 cells may be returned even for very tiny
 ///    convex regions if they happen to be located at the intersection of
 ///    three cube faces.
 ///
-///  - For any setting of MaxCells, an arbitrary number of cells may be
-///    returned if MinLevel is too high for the region being approximated.
+///  - For any setting of max_cells, an arbitrary number of cells may be
+///    returned if min_level is too high for the region being approximated.
 ///
-///  - If MaxCells is less than 4, the area of the covering may be
+///  - If max_cells is less than 4, the area of the covering may be
 ///    arbitrarily large compared to the area of the original region even if
 ///    the region is convex (e.g. a Cap or Rect).
 ///
 /// The approximation algorithm is not optimal but does a pretty good job in
 /// practice. The output does not always use the maximum number of cells
 /// allowed, both because this would not always yield a better approximation,
-/// and because MaxCells is a limit on how much work is done exploring the
+/// and because max_cells is a limit on how much work is done exploring the
 /// possible covering as well as a limit on the final output size.
 ///
 /// Because it is an approximation algorithm, one should not rely on the

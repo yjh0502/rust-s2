@@ -30,6 +30,7 @@ use crate::s1::angle::{Angle, Rad};
 /// There are two special intervals that take advantage of that:
 ///   - the full interval, [-π,π], and
 ///   - the empty interval, [π,-π].
+///
 /// Treat the exported fields as read-only.
 #[derive(Clone, Copy, PartialEq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
