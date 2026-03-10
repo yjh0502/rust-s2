@@ -1,7 +1,7 @@
-/// Define the maximum rounding error for arithmetic operations. Depending on the
-/// platform the mantissa precision may be different than others, so we choose to
-/// use specific values to be consistent across all.
-/// The values come from the C++ implementation.
+//! Define the maximum rounding error for arithmetic operations. Depending on the
+//! platform the mantissa precision may be different than others, so we choose to
+//! use specific values to be consistent across all.
+//! The values come from the C++ implementation.
 
 /// EPSILON is a small number that represents a reasonable level of noise between two
 /// values that can be considered to be equal.
