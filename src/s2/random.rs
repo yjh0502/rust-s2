@@ -7,7 +7,7 @@ use crate::s2::latlng::LatLng;
 use crate::s2::point::{self, Point};
 use crate::s2::rect::Rect;
 use rand;
-use rand::Rng;
+use rand::{Rng, RngExt};
 
 pub fn rng() -> rand::rngs::ThreadRng {
     rand::rng()

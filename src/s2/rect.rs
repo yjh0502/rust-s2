@@ -831,7 +831,7 @@ mod tests {
     use crate::r1;
     use crate::r3::vector::Vector;
     use crate::s2::random;
-    use rand::Rng;
+    use rand::RngExt;
     use std::ops::Add;
 
     #[test]

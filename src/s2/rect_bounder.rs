@@ -403,7 +403,7 @@ mod tests {
     use crate::r3::vector::Vector;
     use crate::s2::random;
     use crate::s2::rect::VALID_RECT_LAT_RANGE;
-    use rand::Rng;
+    use rand::RngExt;
 
     fn max_error_for_tests() -> LatLng {
         // The maximum error in the latitude calculation is

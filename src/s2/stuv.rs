@@ -245,7 +245,7 @@ pub const SWAP_MASK: u8 = 0x01;
 mod tests {
     extern crate rand;
 
-    use self::rand::Rng;
+    use self::rand::RngExt;
     use super::*;
     use crate::r3::vector::Axis;
     use crate::s2::random;

@@ -765,7 +765,7 @@ mod tests {
         );
     }
 
-    use rand::Rng;
+    use rand::RngExt;
 
     #[test]
     fn test_point_true_centroid() {

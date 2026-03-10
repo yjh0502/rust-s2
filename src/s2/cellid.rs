@@ -977,7 +977,7 @@ pub mod tests {
     use crate::consts::*;
     use crate::s1;
     use crate::s2::random;
-    use rand::Rng;
+    use rand::{Rng, RngExt};
 
     #[test]
     fn test_cellid_from_face() {
