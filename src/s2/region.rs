@@ -557,7 +557,7 @@ mod tests {
     use crate::s2::cell::*;
     use crate::s2::metric::*;
     use crate::s2::random;
-    use rand::Rng;
+    use rand::RngExt;
     use std::f64::consts::PI;
 
     #[test]

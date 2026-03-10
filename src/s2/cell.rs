@@ -454,7 +454,7 @@ mod tests {
     extern crate rand;
 
     use super::*;
-    use rand::Rng;
+    use rand::RngExt;
     use std;
     use std::collections::BTreeMap;
 
