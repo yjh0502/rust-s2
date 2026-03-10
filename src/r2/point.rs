@@ -210,7 +210,7 @@ mod tests {
         assert_f64_eq!(2., P!(1., 3f64.sqrt()).norm());
         assert_f64_eq!(29. * 2., P!(29., 29. * 3f64.sqrt()).norm());
         assert_f64_eq!(1e15, P!(1., 1e15).norm());
-        assert_f64_eq!(std::f64::MAX, P!(1e14, std::f64::MAX - 1.).norm());
+        assert_f64_eq!(f64::MAX, P!(1e14, f64::MAX - 1.).norm());
     }
 
     fn test_normalize(p1: Point, p2: Point) {
@@ -228,6 +228,6 @@ mod tests {
         test_normalize(P!(7., 7. * 3f64.sqrt()), P!(0.5, 3f64.sqrt() / 2.));
         test_normalize(P!(1e21, 1e21 * 3f64.sqrt()), P!(0.5, 3f64.sqrt() / 2.));
         test_normalize(P!(1., 1e16), P!(0., 1.));
-        test_normalize(P!(1e4, std::f64::MAX - 1.), P!(0., 1.));
+        test_normalize(P!(1e4, f64::MAX - 1.), P!(0., 1.));
     }
 }

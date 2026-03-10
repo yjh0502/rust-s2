@@ -166,7 +166,7 @@ impl ChordAngle {
     /// inf returns a chord angle larger than any finite chord angle.
     /// The only valid operations on an InfChordAngle are comparisons and Angle conversions.
     pub fn inf() -> Self {
-        ChordAngle(std::f64::INFINITY)
+        ChordAngle(f64::INFINITY)
     }
 
     /// is_infinite reports whether this ChordAngle is infinite.

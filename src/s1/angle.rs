@@ -87,7 +87,7 @@ impl Angle {
 
     /// inf returns an angle larger than any finite angle.
     pub fn inf() -> Self {
-        Angle(std::f64::INFINITY)
+        Angle(f64::INFINITY)
     }
 
     /// is_infinite reports whether this Angle is infinite.

@@ -249,7 +249,6 @@ mod tests {
     use super::*;
     use crate::r3::vector::Axis;
     use crate::s2::random;
-    use std;
 
     #[test]
     fn st_uv() {
@@ -266,7 +265,7 @@ mod tests {
                 let angle = face_uv_to_xyz(face, x, -1.)
                     .cross(&face_uv_to_xyz(face, x, 1.))
                     .angle(&unorm(face, x));
-                assert!(angle.rad() < std::f64::EPSILON);
+                assert!(angle.rad() < f64::EPSILON);
 
                 x += step;
                 if x > 1. {
@@ -318,8 +317,8 @@ mod tests {
 
     fn test_face_xyz_to_uv_case(face: u8, point: &Point, expected: (f64, f64, bool)) {
         if let Some((u, v)) = face_xyz_to_uv(face, point) {
-            assert!((u - expected.0) <= std::f64::EPSILON);
-            assert!((v - expected.1) <= std::f64::EPSILON);
+            assert!((u - expected.0) <= f64::EPSILON);
+            assert!((v - expected.1) <= f64::EPSILON);
             assert_eq!(true, expected.2);
         } else {
             assert_eq!(false, expected.2);
@@ -450,7 +449,7 @@ mod tests {
 
             {
                 let face_random = rng.gen_range(0..NUM_FACES);
-                let mask = (std::u64::MAX << (MAX_LEVEL - level)) & (MAX_SITI - 1);
+                let mask = (u64::MAX << (MAX_LEVEL - level)) & (MAX_SITI - 1);
                 let si_random = rng.gen_range(0..MAX_SITI) & mask;
                 let ti_random = rng.gen_range(0..MAX_SITI) & mask;
 
