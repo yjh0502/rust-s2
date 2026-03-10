@@ -606,7 +606,7 @@ mod tests {
             // slightly above the equator, V points at the equator, and W is slightly
             // offset from the north pole.
             let mut u = random::point(&mut rng);
-            u.0.z = DBL_EPSILON * 1e-6 * 1e12f64.powf(rng.gen::<f64>());
+            u.0.z = DBL_EPSILON * 1e-6 * 1e12f64.powf(rng.random::<f64>());
             u = u.normalize();
 
             let v = Z_AXIS_POINT.cross(&u).normalize();
@@ -614,8 +614,8 @@ mod tests {
 
             // Construct a line segment AB that passes through U, and check that the
             // maximum latitude of this segment matches the latitude of U.
-            let a = u - (v * rng.gen::<f64>()).normalize();
-            let b = u + (v * rng.gen::<f64>()).normalize();
+            let a = u - (v * rng.random::<f64>()).normalize();
+            let b = u + (v * rng.random::<f64>()).normalize();
             let ab_bound = rect_bound_for_points(&a, &b);
             assert!(
                 f64_near(
@@ -631,8 +631,8 @@ mod tests {
 
             // Construct a line segment CD that passes through W, and check that the
             // maximum latitude of this segment matches the latitude of W.
-            let c = w - (v * rng.gen::<f64>()).normalize();
-            let d = w + (v * rng.gen::<f64>()).normalize();
+            let c = w - (v * rng.random::<f64>()).normalize();
+            let d = w + (v * rng.random::<f64>()).normalize();
             let cd_bound = rect_bound_for_points(&c, &d);
             assert!(
                 f64_near(
