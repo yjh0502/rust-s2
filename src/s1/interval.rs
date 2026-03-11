@@ -52,11 +52,7 @@ pub const FULL: Interval = Interval { lo: -PI, hi: PI };
 /// Compute distance from a to b in [0,2π], in a numerically stable way.
 fn positive_distance(a: f64, b: f64) -> f64 {
     let d = b - a;
-    if d >= 0. {
-        d
-    } else {
-        (b + PI) - (a - PI)
-    }
+    if d >= 0. { d } else { (b + PI) - (a - PI) }
 }
 
 impl Interval {

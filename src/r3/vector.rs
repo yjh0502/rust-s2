@@ -236,11 +236,7 @@ impl Vector {
     pub fn largest_component(&self) -> Axis {
         let a = self.abs();
         if a.x > a.y {
-            if a.x > a.z {
-                Axis::X
-            } else {
-                Axis::Z
-            }
+            if a.x > a.z { Axis::X } else { Axis::Z }
         } else if a.y > a.z {
             Axis::Y
         } else {
@@ -252,11 +248,7 @@ impl Vector {
     pub fn smallest_component(&self) -> Axis {
         let t = self.abs();
         if t.x < t.y {
-            if t.x < t.z {
-                Axis::X
-            } else {
-                Axis::Z
-            }
+            if t.x < t.z { Axis::X } else { Axis::Z }
         } else if t.y < t.z {
             Axis::Y
         } else {
@@ -357,18 +349,26 @@ mod tests {
 
     #[test]
     fn test_vector_cross() {
-        assert!(V!(1., 0., 0.)
-            .cross(&V!(1., 0., 0.))
-            .approx_eq(&V!(0., 0., 0.)));
-        assert!(V!(1., 0., 0.)
-            .cross(&V!(0., 1., 0.))
-            .approx_eq(&V!(0., 0., 1.)));
-        assert!(V!(0., 1., 0.)
-            .cross(&V!(1., 0., 0.))
-            .approx_eq(&V!(0., 0., -1.)));
-        assert!(V!(1., 2., 3.)
-            .cross(&V!(-4., 5., -6.))
-            .approx_eq(&V!(-27., -6., 13.)));
+        assert!(
+            V!(1., 0., 0.)
+                .cross(&V!(1., 0., 0.))
+                .approx_eq(&V!(0., 0., 0.))
+        );
+        assert!(
+            V!(1., 0., 0.)
+                .cross(&V!(0., 1., 0.))
+                .approx_eq(&V!(0., 0., 1.))
+        );
+        assert!(
+            V!(0., 1., 0.)
+                .cross(&V!(1., 0., 0.))
+                .approx_eq(&V!(0., 0., -1.))
+        );
+        assert!(
+            V!(1., 2., 3.)
+                .cross(&V!(-4., 5., -6.))
+                .approx_eq(&V!(-27., -6., 13.))
+        );
     }
 
     #[test]

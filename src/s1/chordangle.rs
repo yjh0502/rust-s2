@@ -210,11 +210,7 @@ impl ChordAngle {
     }
 
     pub fn max(self, other: Self) -> Self {
-        if self.0 < other.0 {
-            other
-        } else {
-            self
-        }
+        if self.0 < other.0 { other } else { self }
     }
 
     /// max_point_error returns the maximum error size for a ChordAngle constructed

@@ -292,22 +292,14 @@ impl Cell {
             let u = self.uv.x.lo + self.uv.x.hi;
             let v = self.uv.y.lo + self.uv.y.hi;
             let i = if u_axis(self.face).0.z == 0. {
-                if u < 0. {
-                    1
-                } else {
-                    0
-                }
+                if u < 0. { 1 } else { 0 }
             } else if u > 0. {
                 1
             } else {
                 0
             };
             let j = if v_axis(self.face).0.z == 0. {
-                if v < 0. {
-                    1
-                } else {
-                    0
-                }
+                if v < 0. { 1 } else { 0 }
             } else if v > 0. {
                 1
             } else {

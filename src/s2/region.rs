@@ -579,7 +579,7 @@ mod tests {
         }
     }
 
-    use std::collections::{hash_map, HashMap};
+    use std::collections::{HashMap, hash_map};
 
     fn check_covering<R>(rc: &RegionCoverer, r: &R, covering: &CellUnion, interior: bool)
     where

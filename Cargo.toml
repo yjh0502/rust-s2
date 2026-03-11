@@ -1,6 +1,6 @@
 [package]
 name = "s2"
-edition = "2018"
+edition = "2024"
 
 version = "0.0.12"
 authors = ["Jihyun Yu <yjh0502@gmail.com>"]

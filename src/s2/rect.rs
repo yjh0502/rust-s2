@@ -1575,9 +1575,10 @@ mod tests {
 
             assert!(test.union.approx_eq(&test.rect.union(test.other)));
 
-            assert!(test
-                .intersection
-                .approx_eq(&test.rect.intersection(test.other)));
+            assert!(
+                test.intersection
+                    .approx_eq(&test.rect.intersection(test.other))
+            );
         }
     }
 
