@@ -2,6 +2,7 @@
 
 Rust port of Google S2 geometry library.
 
+[![test coverage](https://coveralls.io/repos/github/yjh0502/rust-s2/badge.svg?branch=master)](https://coveralls.io/github/yjh0502/rust-s2?branch=master)
 [![crates.io](https://img.shields.io/crates/v/s2)](https://crates.io/crates/s2)
 [![docs](https://docs.rs/s2/badge.svg)](https://docs.rs/s2/latest/s2/)
 
