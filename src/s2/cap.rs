@@ -21,7 +21,7 @@ use std::f64::consts::PI;
 use crate::consts::*;
 use crate::r1;
 use crate::r3::vector::Vector;
-use crate::s1::{self, chordangle, Angle, ChordAngle, Deg, Rad};
+use crate::s1::{self, Angle, ChordAngle, Deg, Rad, chordangle};
 use crate::s2::cell::Cell;
 use crate::s2::cellid::*;
 use crate::s2::edgeutil::*;

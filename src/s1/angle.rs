@@ -111,19 +111,11 @@ impl Angle {
     }
 
     pub fn max(self, other: Angle) -> Self {
-        if self.0 < other.0 {
-            other
-        } else {
-            self
-        }
+        if self.0 < other.0 { other } else { self }
     }
 
     pub fn min(self, other: Angle) -> Self {
-        if self.0 > other.0 {
-            other
-        } else {
-            self
-        }
+        if self.0 > other.0 { other } else { self }
     }
 }
 
