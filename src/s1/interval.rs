@@ -353,12 +353,12 @@ impl Interval {
     pub fn complement(&self) -> Interval {
         if self.lo == self.hi {
             // Singleton. The interval just contains a single point.
-            return FULL;
+            FULL
         } else {
-            return Interval {
+            Interval {
                 lo: self.hi,
                 hi: self.lo,
-            };
+            }
         }
     }
 
@@ -367,12 +367,12 @@ impl Interval {
     // single point), the result is its antipodal point on S1.
     pub fn complement_center(&self) -> f64 {
         if self.lo != self.hi {
-            return self.complement().center();
+            self.complement().center()
+        } else if self.hi <= 0. {
+            self.hi + PI
+        } else {
+            self.hi - PI
         }
-        if self.hi <= 0. {
-            return self.hi + PI;
-        }
-        return self.hi - PI;
     }
 
     // directed_hausdorff_distance returns the Hausdorff distance to the given
@@ -443,7 +443,7 @@ impl std::ops::Add<f64> for Interval {
         &self + p
     }
 }
-impl<'a> std::ops::Add<f64> for &'a Interval {
+impl std::ops::Add<f64> for &Interval {
     type Output = Interval;
     /// add returns the interval expanded by the minimum amount necessary such
     /// that it contains the given point "p" (an angle in the range [-Pi, Pi]).

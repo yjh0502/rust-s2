@@ -205,7 +205,7 @@ impl std::ops::Add<f64> for Interval {
         &self + p
     }
 }
-impl<'a> std::ops::Add<f64> for &'a Interval {
+impl std::ops::Add<f64> for &Interval {
     type Output = Interval;
     /// returns the interval expanded so that it contains the given point.
     fn add(self, p: f64) -> Self::Output {
