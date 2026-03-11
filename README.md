@@ -2,8 +2,8 @@
 
 Rust port of Google S2 geometry library.
 
-[![Build Status](https://travis-ci.org/yjh0502/rust-s2.svg?branch=master)](https://travis-ci.org/yjh0502/rust-s2)
-[![docs](https://docs.rs/s2/badge.svg)](https://docs.rs/s2/0.0.10/s2/)
+[![crates.io](https://img.shields.io/crates/v/s2)](https://crates.io/crates/s2)
+[![docs](https://docs.rs/s2/badge.svg)](https://docs.rs/s2/latest/s2/)
 
 # Status of the Rust Library
 
