@@ -1,0 +1,49 @@
+name: Unit tests
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+permissions: {}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-run-tests:
+    name: Build and run unit tests
+    runs-on: ubuntu-latest
+    permissions: {}
+
+    env:
+      RUSTC_WRAPPER: "sccache"
+      SCCACHE_GHA_ENABLED: "true"
+
+    steps:
+    - name: Set up shared compilation cache
+      uses: mozilla-actions/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad  # v0.0.9
+    - name: Check out repository
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+    - name: Install Rust LLVM tools preview
+      run: rustup component add llvm-tools-preview
+    - name: Install Rust coverage tool
+      uses: taiki-e/install-action@68675c5a5f1a6950c3975d33f3ae0ef155e5bf3d # v2.68.15
+      with:
+        tool: cargo-llvm-cov
+    - name: Fetch Rust dependencies
+      run: cargo fetch
+    - name: Check formatting
+      run: cargo fmt --all --check
+    - name: Build
+      run: cargo build --features serde --locked
+    - name: Run tests
+      run: |
+        cargo llvm-cov test --cobertura --verbose --output-path cobertura.xml --features serde
+    - name: Check for lint warnings with Clippy
+      run: cargo clippy --locked
+    - name: Upload test coverage to Coveralls.io
+      with:
+        fail-on-error: false
+      uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b  # v2.3.6
