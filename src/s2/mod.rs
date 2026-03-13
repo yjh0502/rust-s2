@@ -1,3 +1,4 @@
+mod edge_clipping;
 mod stuv;
 
 pub mod cell;
