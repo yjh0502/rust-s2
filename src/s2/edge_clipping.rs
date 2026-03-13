@@ -24,12 +24,7 @@ limitations under the License.
 //
 // These functions can be used to efficiently find the set of CellIDs that
 // are intersected by a geodesic edge (e.g., see crossing_edge_query).
-use consts::*;
-use point::Point;
-use r1;
-use r2;
-use r3;
-use s2::stuv;
+use crate::{consts::*, point::Point, r1, r2, r3, s2::stuv};
 
 /// EDGE_CLIP_ERROR_UV_COORD is the maximum error in a u- or v-coordinate compared to the exact
 /// result, assuming that the points A and B are in the rectangle [-1,1]x[1,1] or slightly outside
@@ -47,6 +42,7 @@ const EDGE_CLIP_ERROR_UV_DIST: f64 = 2.25 * DBL_EPSILON;
 /// and the nearest point on the exact edge AB. It is equal to the
 /// maximum directional error in PointCross, plus the error when
 /// projecting points onto a cube face
+#[allow(unused)]
 const FACE_CLIP_ERROR_RADIANS: f64 = 3.0 * DBL_EPSILON;
 
 /// faceClipErrorDist is the same angle expressed as a maximum distance
@@ -77,6 +73,7 @@ const INTERSECT_RECT_ERROR_UV_DIST: f64 = 3.0 * std::f64::consts::SQRT_2 * DBL_E
 /// This method guarantees that the clipped vertices lie within the [-1,1]x[-1,1]
 /// cube face rectangle and are within faceClipErrorUVDist of the line AB, but
 /// the results may differ from those produced by FaceSegments.
+#[allow(unused)]
 pub fn clip_to_face(a: Point, b: Point, face: u8) -> (r2::point::Point, r2::point::Point, bool) {
     clip_to_padded_face(a, b, face, 0.0)
 }
@@ -85,6 +82,7 @@ pub fn clip_to_face(a: Point, b: Point, face: u8) -> (r2::point::Point, r2::poin
 /// intersects the given face, but rather than clipping to the square [-1,1]x[-1,1]
 /// in (u,v) space, this method clips to [-R,R]x[-R,R] where R=(1+padding).
 /// Padding must be non-negative.
+#[allow(unused)]
 pub fn clip_to_padded_face(
     a: Point,
     b: Point,
@@ -131,7 +129,7 @@ pub fn clip_to_padded_face(
             false,
         );
     }
-    let ldexp = |x: f64, exp: f64| -> f64 { x * (exp.exp2() as f64) };
+    let ldexp = |x: f64, exp: f64| -> f64 { x * exp.exp2() };
 
     // TODO: This is a workaround for extremely small vectors where some
     // loss of precision can occur in Normalize causing underflow. When PointCross
@@ -160,6 +158,7 @@ pub fn clip_to_padded_face(
 /// clip_edge returns the portion of the edge defined by AB that is contained by the
 /// given rectangle. If there is no intersection, false is returned and aClip and bClip
 /// are undefined.
+#[allow(unused)]
 pub fn clip_edge(
     a: r2::point::Point,
     b: r2::point::Point,
@@ -293,13 +292,7 @@ impl PointUVW {
         // It exits the v=+1 or v=-1 edge if an even number of the components of N
         // are negative. We test this using signbit() rather than multiplication
         // to avoid the possibility of underflow.
-        let signbit = |n: f64| -> u32 {
-            if n.is_sign_negative() {
-                1
-            } else {
-                0
-            }
-        };
+        let signbit = |n: f64| -> u32 { if n.is_sign_negative() { 1 } else { 0 } };
 
         let x = signbit(self.0.x);
         let y = signbit(self.0.y);
@@ -330,10 +323,10 @@ impl PointUVW {
         if self.0.x < 0.0 {
             v = 1.0
         }
-        return r2::point::Point {
+        r2::point::Point {
             x: (-v * self.0.y - self.0.z) / self.0.x,
             y: v,
-        };
+        }
     }
 }
 
@@ -348,6 +341,7 @@ impl PointUVW {
 /// intersects this face at all. The actual condition is fairly complicated, but it
 /// turns out that it can be expressed as a "score" that can be computed independently
 /// when clipping the two endpoints A and B.
+#[allow(unused)]
 fn clip_destination(
     a: PointUVW,
     b: PointUVW,
@@ -450,6 +444,7 @@ fn update_endpoint(
 /// diagonal of the bounding box is spanned by AB; it is false if AB has positive slope,
 /// and true if AB has negative slope. If the clipping interval doesn't overlap the bounds,
 /// false is returned
+#[allow(clippy::too_many_arguments)]
 fn clip_bound_axis(
     a0: f64,
     b0: f64,
@@ -487,13 +482,13 @@ fn clip_bound_axis(
             return (bound0, bound1, false);
         }
     }
-    return (bound0, bound1, true);
+    (bound0, bound1, true)
 }
 
 /// edge_intersects_rect reports whether the edge defined by AB intersects the
 /// given closed rectangle to within the error bound.
 #[allow(dead_code)]
-fn edge_intersects_rec(a: r2::point::Point, b: r2::point::Point, r: &r2::rect::Rect) -> bool {
+fn edge_intersects_rect(a: r2::point::Point, b: r2::point::Point, r: &r2::rect::Rect) -> bool {
     // First check whether the bounds of a Rect around AB intersects the given rect.
     if !r.intersects(&(r2::rect::Rect::from_points(&[a, b]))) {
         return false;
@@ -514,7 +509,7 @@ fn edge_intersects_rec(a: r2::point::Point, b: r2::point::Point, r: &r2::rect::R
     let max = n.dot(&(r.vertex_ij(i, j) - a));
     let min = n.dot(&(r.vertex_ij(1 - i, 1 - j) - a));
 
-    return (max >= 0.0) && (min <= 0.0);
+    (max >= 0.0) && (min <= 0.0)
 }
 
 /// clipped_edge_bound returns the bounding rectangle of the portion of the edge defined
@@ -528,11 +523,7 @@ fn clipped_edge_bound(
 ) -> r2::rect::Rect {
     let bound = r2::rect::Rect::from_points(&[a, b]);
     let (b1, intersects) = clip_edge_bound(a, b, clip, bound);
-    if intersects {
-        b1
-    } else {
-        r2::rect::EMPTY
-    }
+    if intersects { b1 } else { r2::rect::EMPTY }
 }
 
 /// clip_edge_bound clips an edge AB to sequence of rectangles efficiently.
@@ -563,14 +554,16 @@ fn clip_edge_bound(
     if !up2 {
         return (r2::rect::Rect { x: b0_x, y: b0_y }, false);
     }
-    return (r2::rect::Rect { x: b1_x, y: b1_y }, true);
+    (r2::rect::Rect { x: b1_x, y: b1_y }, true)
 }
 
 /// interpolate returns a value with the same combination of a1 and b1 as the
 /// given value x is of a and b. This function makes the following guarantees:
+///
 ///  - If x == a, then x1 = a1 (exactly).
 ///  - If x == b, then x1 = b1 (exactly).
 ///  - If a <= x <= b, then a1 <= x1 <= b1 (even if a1 == b1).
+///
 /// This requires a != b.
 fn interpolate(x: f64, a: f64, b: f64, a1: f64, b1: f64) -> f64 {
     if (a - x).abs() <= (b - x).abs() {
@@ -583,6 +576,7 @@ fn interpolate(x: f64, a: f64, b: f64, a1: f64, b1: f64) -> f64 {
 /// represented by a face index and a pair of (u,v) coordinates.
 #[derive(Clone, Copy, PartialEq, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[allow(unused)]
 pub struct FaceSegment {
     pub face: u8,
     pub a: r2::point::Point,
@@ -600,6 +594,7 @@ pub struct FaceSegment {
 /// The results are consistent with Sign, i.e. the edge is well-defined even its
 /// endpoints are antipodal.
 /// TODO(roberts): Extend the implementation of PointCross so that this is true.
+#[allow(unused)]
 pub fn face_segments(a: Point, b: Point) -> Vec<FaceSegment> {
     // Fast path: both endpoints are on the same face
     let (a_face, a_x, a_y) = stuv::xyz_to_face_uv(&a.0);
@@ -650,7 +645,7 @@ pub fn face_segments(a: Point, b: Point) -> Vec<FaceSegment> {
         let n: PointUVW = stuv::face_xyz_to_uvw(face, &ab);
         let exit_axis = n.exit_axis();
         segment.b = n.exit_point(exit_axis);
-        segments.push(segment.clone());
+        segments.push(segment);
 
         // Compute the next face intersected by AB, and translate the exit
         // point of the current segment into the (u,v) coordinates of the
@@ -726,10 +721,8 @@ fn move_origin_to_valid_face(
     }
 
     let (a_uv_x, a_uv_y) = stuv::valid_face_xyz_to_uv(face, &a.0);
-    a_uv.x = a_uv_x;
-    a_uv.y = a_uv_y;
-    a_uv.x = -1.0f64.max(1.0f64.min(a_uv.x));
-    a_uv.y = -1.0f64.max(1.0f64.min(a_uv.y));
+    a_uv.x = a_uv_x.clamp(-1.0, 1.0);
+    a_uv.y = a_uv_y.clamp(-1.0, 1.0);
     (face, a_uv)
 }
 
@@ -738,6 +731,7 @@ fn move_origin_to_valid_face(
 /// by its normal N in the (u,v,w) coordinates of that face). The other
 /// arguments include the point where AB exits face, the corresponding
 /// exit axis, and the target face containing the destination point B
+#[allow(unused)]
 fn next_face(face: u8, exit: r2::point::Point, axis: Axis, n: PointUVW, target_face: u8) -> u8 {
     // this bit is to work around C++ cleverly casting bools to ints for you.
     let mut exit_a = exit.x;
@@ -776,8 +770,6 @@ fn next_face(face: u8, exit: r2::point::Point, axis: Axis, n: PointUVW, target_f
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use point::Point;
-    use r3;
 
     #[test]
     fn test_edge_clipping_intersects_face() {
@@ -897,62 +889,56 @@ pub mod test {
                 == false
         );
     }
+
+    #[test]
+    fn test_edge_clipping_exit_axis() {
+        let sqrt_2 = 2_f64.sqrt();
+        let sqrt_2_3 = (2_f64 / 3_f64).sqrt();
+        let sqrt_4_3 = (4_f64 / 3_f64).sqrt();
+
+        let exit_axis = |x, y, z| (Point(r3::vector::Vector { x, y, z }) as PointUVW).exit_axis();
+
+        assert_eq!(exit_axis(0.0, -sqrt_2_3, sqrt_2_3), Axis::AxisU);
+        assert_eq!(exit_axis(0.0, sqrt_4_3, -sqrt_4_3), Axis::AxisU);
+        assert_eq!(exit_axis(-sqrt_4_3, sqrt_4_3, 0.0), Axis::AxisV);
+        assert_eq!(exit_axis(sqrt_4_3, sqrt_4_3, 0.0), Axis::AxisV);
+        assert_eq!(exit_axis(sqrt_2_3, -sqrt_2_3, 0.0), Axis::AxisV);
+        assert_eq!(
+            exit_axis(1.67968702783622, 0.0, 0.870988820096491),
+            Axis::AxisV
+        );
+        assert_eq!(exit_axis(0.0, sqrt_2, sqrt_2), Axis::AxisU);
+    }
+
+    #[test]
+    fn test_edge_clipping_exit_point() {
+        let sqrt_2_3 = (2_f64 / 3_f64).sqrt();
+        let sqrt_4_3 = (4_f64 / 3_f64).sqrt();
+        let pt = |x, y, z| Point(r3::vector::Vector { x, y, z }) as PointUVW;
+        assert!(
+            pt(-3.88578058618805e-16, -sqrt_2_3, sqrt_2_3)
+                .exit_point(Axis::AxisU)
+                .approx_eq(&r2::point::Point { x: -1.0, y: 1.0 })
+        );
+        assert!(
+            pt(sqrt_4_3, -sqrt_4_3, 0.0)
+                .exit_point(Axis::AxisV)
+                .approx_eq(&r2::point::Point { x: -1.0, y: -1.0 })
+        );
+        assert!(
+            pt(-sqrt_4_3, -sqrt_4_3, 0.0)
+                .exit_point(Axis::AxisV)
+                .approx_eq(&r2::point::Point { x: -1.0, y: 1.0 })
+        );
+        assert!(
+            pt(-6.66134e-16, sqrt_4_3, -sqrt_4_3)
+                .exit_point(Axis::AxisU)
+                .approx_eq(&r2::point::Point { x: 1.0, y: 1.0 })
+        );
+    }
 }
 
 /*
-package s2
-
-import (
-    "fmt"
-    "math"
-    "testing"
-
-    "github.com/golang/geo/r1"
-    "github.com/golang/geo/r2"
-    "github.com/golang/geo/r3"
-    "github.com/golang/geo/s1"
-)
-
-func TestEdgeClippingExitAxis(t *testing.T) {
-    tests := []struct {
-        a    pointUVW
-        want axis
-    }{
-        {pointUVW{r3.Vector{0, -math.Sqrt(2.0 / 3.0), math.Sqrt(2.0 / 3.0)}}, axisU},
-        {pointUVW{r3.Vector{0, math.Sqrt(4.0 / 3.0), -math.Sqrt(4.0 / 3.0)}}, axisU},
-        {pointUVW{r3.Vector{-math.Sqrt(4.0 / 3.0), -math.Sqrt(4.0 / 3.0), 0}}, axisV},
-        {pointUVW{r3.Vector{math.Sqrt(4.0 / 3.0), math.Sqrt(4.0 / 3.0), 0}}, axisV},
-        {pointUVW{r3.Vector{math.Sqrt(2.0 / 3.0), -math.Sqrt(2.0 / 3.0), 0}}, axisV},
-        {pointUVW{r3.Vector{1.67968702783622, 0, 0.870988820096491}}, axisV},
-        {pointUVW{r3.Vector{0, math.Sqrt2, math.Sqrt2}}, axisU},
-    }
-
-    for _, test := range tests {
-        if got := test.a.exitAxis(); got != test.want {
-            t.Errorf("%v.exitAxis() = %v, want %v", test.a, got, test.want)
-        }
-    }
-}
-
-func TestEdgeClippingExitPoint(t *testing.T) {
-    tests := []struct {
-        a        pointUVW
-        exitAxis axis
-        want     r2.Point
-    }{
-        {pointUVW{r3.Vector{-3.88578058618805e-16, -math.Sqrt(2.0 / 3.0), math.Sqrt(2.0 / 3.0)}}, axisU, r2.Point{-1, 1}},
-        {pointUVW{r3.Vector{math.Sqrt(4.0 / 3.0), -math.Sqrt(4.0 / 3.0), 0}}, axisV, r2.Point{-1, -1}},
-        {pointUVW{r3.Vector{-math.Sqrt(4.0 / 3.0), -math.Sqrt(4.0 / 3.0), 0}}, axisV, r2.Point{-1, 1}},
-        {pointUVW{r3.Vector{-6.66134e-16, math.Sqrt(4.0 / 3.0), -math.Sqrt(4.0 / 3.0)}}, axisU, r2.Point{1, 1}},
-    }
-
-    for _, test := range tests {
-        if got := test.a.exitPoint(test.exitAxis); !r2PointsApproxEqual(got, test.want, epsilon) {
-            t.Errorf("%v.exitPoint() = %v, want %v", test.a, got, test.want)
-        }
-    }
-}
-
 // testClipToPaddedFace performs a comprehensive set of tests across all faces and
 // with random padding for the given points.
 //
