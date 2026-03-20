@@ -775,6 +775,242 @@ fn next_face(face: u8, exit: r2::point::Point, axis: Axis, n: PointUVW, target_f
 #[cfg(test)]
 pub mod test {
     use super::*;
+    use crate::consts::DBL_EPSILON;
+    use crate::s2::random;
+    use float_extras::f64::nextafter;
+    use rand::{Rng, RngExt};
+
+    fn log_uniform<R: Rng>(rng: &mut R, lo: f64, hi: f64) -> f64 {
+        rng.random_range(lo.ln()..hi.ln()).exp()
+    }
+
+    fn face_uv_to_point(face: u8, u: f64, v: f64) -> Point {
+        Point(stuv::face_uv_to_xyz(face, u, v)).normalize()
+    }
+
+    fn perturbed_corner_or_midpoint<R: Rng>(rng: &mut R, p: Point, q: Point) -> Point {
+        let mut a = Point(
+            p.0 * rng.random_range(-1.0..2.0) + q.0 * rng.random_range(-1.0..2.0),
+        );
+        if rng.random_range(0.0..1.0) < 0.1 {
+            a = Point(a.0 + random::point(rng).0 * log_uniform(rng, 1e-300, 1.0));
+        } else if rng.random_range(0.0..1.0) < 0.5 {
+            a = Point(a.0 + random::point(rng).0 * (4.0 * DBL_EPSILON));
+        } else {
+            a = Point(a.0 + random::point(rng).0 * log_uniform(rng, 1e-25, 1e-10));
+        }
+        if a.0.norm2() < f64::MIN_POSITIVE {
+            return perturbed_corner_or_midpoint(rng, p, q);
+        }
+        a.normalize()
+    }
+
+    fn test_face_clipping<R: Rng>(rng: &mut R, a_raw: Point, b_raw: Point) {
+        let a = a_raw.normalize();
+        let b = b_raw.normalize();
+        if a.approx_eq(&(b * -1.0)) {
+            return;
+        }
+
+        let segments = face_segments(a, b);
+        let n = segments.len();
+        assert!(n >= 1);
+
+        let biunit = r2::rect::Rect {
+            x: r1::interval::Interval { lo: -1.0, hi: 1.0 },
+            y: r1::interval::Interval { lo: -1.0, hi: 1.0 },
+        };
+
+        let a_prime = face_uv_to_point(segments[0].face, segments[0].a.x, segments[0].a.y);
+        assert!(a.distance(&a_prime).rad() <= FACE_CLIP_ERROR_RADIANS);
+        let b_prime =
+            face_uv_to_point(segments[n - 1].face, segments[n - 1].b.x, segments[n - 1].b.y);
+        assert!(b.distance(&b_prime).rad() <= FACE_CLIP_ERROR_RADIANS);
+
+        let (au, av) = stuv::valid_face_xyz_to_uv(segments[0].face, &a.0);
+        let a_uv = r2::point::Point { x: au, y: av };
+        assert!(
+            (a_uv - segments[0].a).norm() <= FACE_CLIP_ERROR_UV_DIST,
+            "a UV vs segment[0].a"
+        );
+        let (bu, bv) = stuv::valid_face_xyz_to_uv(segments[n - 1].face, &b.0);
+        let b_uv = r2::point::Point { x: bu, y: bv };
+        assert!(
+            (b_uv - segments[n - 1].b).norm() <= FACE_CLIP_ERROR_UV_DIST,
+            "b UV vs segment[last].b"
+        );
+
+        let norm = a.cross(&b).normalize();
+        let a_tan = norm.cross(&a);
+        let b_tan = b.cross(&norm);
+
+        for i in 0..n {
+            assert!(biunit.contains_point(&segments[i].a));
+            assert!(biunit.contains_point(&segments[i].b));
+            if i == 0 {
+                continue;
+            }
+            assert_ne!(segments[i - 1].face, segments[i].face);
+            let prev = face_uv_to_point(segments[i - 1].face, segments[i - 1].b.x, segments[i - 1].b.y);
+            let cur = face_uv_to_point(segments[i].face, segments[i].a.x, segments[i].a.y);
+            assert!(prev.approx_eq(&cur));
+
+            let p = face_uv_to_point(segments[i].face, segments[i].a.x, segments[i].a.y);
+            assert!(p.0.dot(&norm.0).abs() <= FACE_CLIP_ERROR_RADIANS);
+            assert!(p.0.dot(&a_tan.0) >= -FACE_CLIP_ERROR_RADIANS);
+            assert!(p.0.dot(&b_tan.0) >= -FACE_CLIP_ERROR_RADIANS);
+        }
+
+        let padding = if rng.random_range(0.0..1.0) < 0.1 {
+            0.0
+        } else {
+            log_uniform(rng, 1e-15, 1e-10)
+        };
+
+        // TODO: The C++ test also unions S1Intervals over all 6 faces and checks
+        // that the union covers the original edge. Omitted pending PointCross
+        // alignment with the upstream angle parameterization.
+        for face in 0..6u8 {
+            let (a_uv, b_uv, intersects) = clip_to_padded_face(a, b, face, padding);
+            if !intersects {
+                continue;
+            }
+            let a_clip = face_uv_to_point(face, a_uv.x, a_uv.y);
+            let b_clip = face_uv_to_point(face, b_uv.x, b_uv.y);
+
+            assert!(a_clip.0.dot(&norm.0).abs() <= FACE_CLIP_ERROR_RADIANS);
+            assert!(b_clip.0.dot(&norm.0).abs() <= FACE_CLIP_ERROR_RADIANS);
+
+            if a_clip.distance(&a).rad() > FACE_CLIP_ERROR_RADIANS {
+                let m = a_uv.x.abs().max(a_uv.y.abs());
+                assert_f64_eq!(m, 1.0 + padding);
+            }
+            if b_clip.distance(&b).rad() > FACE_CLIP_ERROR_RADIANS {
+                let m = b_uv.x.abs().max(b_uv.y.abs());
+                assert_f64_eq!(m, 1.0 + padding);
+            }
+        }
+    }
+
+    fn test_face_clipping_edge_pair<R: Rng>(rng: &mut R, a: Point, b: Point) {
+        test_face_clipping(rng, a, b);
+        test_face_clipping(rng, b, a);
+    }
+
+    fn choose_rect_point<R: Rng>(rng: &mut R, a: r2::point::Point, b: r2::point::Point) -> r2::point::Point {
+        if rng.random_range(0.0..1.0) < 0.2 {
+            if rng.random_range(0.0..1.0) < 0.5 {
+                a
+            } else {
+                b
+            }
+        } else if rng.random_range(0.0..1.0) < 1.0 / 3.0 {
+            a + &(b - a) * rng.random_range(0.0..1.0)
+        } else {
+            r2::point::Point {
+                x: a.x + rng.random_range(0.0..1.0) * (b.x - a.x),
+                y: a.y + rng.random_range(0.0..1.0) * (b.y - a.y),
+            }
+        }
+    }
+
+    fn get_fraction(x: r2::point::Point, a: r2::point::Point, b: r2::point::Point) -> f64 {
+        let error_dist = EDGE_CLIP_ERROR_UV_DIST + INTERSECT_RECT_ERROR_UV_DIST;
+        if a == b {
+            return 0.0;
+        }
+        let dir = (b - a).normalize();
+        assert!((x - a).dot(&dir.ortho()).abs() <= error_dist);
+        (x - a).dot(&dir)
+    }
+
+    fn check_point_on_boundary(p: r2::point::Point, a: r2::point::Point, clip: &r2::rect::Rect) {
+        assert!(clip.contains_point(&p));
+        if p != a {
+            let toward_a = r2::point::Point {
+                x: nextafter(p.x, a.x),
+                y: nextafter(p.y, a.y),
+            };
+            assert!(!clip.contains_point(&toward_a));
+        }
+    }
+
+    fn choose_endpoint_r1<R: Rng>(rng: &mut R, clip: r1::interval::Interval) -> f64 {
+        if rng.random_range(0.0..1.0) < 0.2 {
+            if rng.random_range(0.0..1.0) < 0.5 {
+                clip.lo
+            } else {
+                clip.hi
+            }
+        } else {
+            match rng.random_range(0..3) {
+                0 => clip.lo - rng.random_range(0.0..1.0),
+                1 => clip.hi + rng.random_range(0.0..1.0),
+                _ => {
+                    if clip.lo >= clip.hi {
+                        clip.lo
+                    } else {
+                        rng.random_range(clip.lo..clip.hi)
+                    }
+                }
+            }
+        }
+    }
+
+    fn choose_rect_endpoint<R: Rng>(rng: &mut R, clip: &r2::rect::Rect) -> r2::point::Point {
+        if rng.random_range(0.0..1.0) < 0.1 {
+            let diag = rng.random_range(0..2);
+            let t = rng.random_range(-1.0..2.0);
+            let v = clip.vertices();
+            (&v[diag] * (1.0 - t)) + (&v[diag + 2] * t)
+        } else {
+            r2::point::Point {
+                x: choose_endpoint_r1(rng, clip.x),
+                y: choose_endpoint_r1(rng, clip.y),
+            }
+        }
+    }
+
+    fn test_clip_edge<R: Rng>(rng: &mut R, a: r2::point::Point, b: r2::point::Point, clip: &r2::rect::Rect) {
+        let error_dist = EDGE_CLIP_ERROR_UV_DIST + INTERSECT_RECT_ERROR_UV_DIST;
+        let (a_clip, b_clip, intersects) = clip_edge(a, b, clip.clone());
+        if !intersects {
+            assert!(!edge_intersects_rect(a, b, &clip.expanded_by_margin(-error_dist)));
+        } else {
+            assert!(edge_intersects_rect(a, b, &clip.expanded_by_margin(error_dist)));
+            assert!(get_fraction(a_clip, a, b) <= get_fraction(b_clip, a, b));
+            check_point_on_boundary(a_clip, a, clip);
+            check_point_on_boundary(b_clip, b, clip);
+        }
+
+        let initial_clip = r2::rect::Rect::from_points(&[
+            choose_rect_point(rng, a, b),
+            choose_rect_point(rng, a, b),
+        ]);
+        let bound = clipped_edge_bound(a, b, initial_clip);
+        if bound.is_empty() {
+            return;
+        }
+        let max_bound = bound.intersection(clip);
+        let (bound2, intersects2) = clip_edge_bound(a, b, clip.clone(), bound);
+        if !intersects2 {
+            assert!(!edge_intersects_rect(a, b, &max_bound.expanded_by_margin(-error_dist)));
+        } else {
+            assert!(edge_intersects_rect(a, b, &max_bound.expanded_by_margin(error_dist)));
+            let ai = if a.x > b.x { 1 } else { 0 };
+            let aj = if a.y > b.y { 1 } else { 0 };
+            check_point_on_boundary(bound2.vertex_ij(ai, aj), a, &max_bound);
+            check_point_on_boundary(bound2.vertex_ij(1 - ai, 1 - aj), b, &max_bound);
+        }
+    }
+
+    fn test_edge_clipping_rect<R: Rng>(rng: &mut R, clip: &r2::rect::Rect) {
+        for _ in 0..1000 {
+            let a = choose_rect_endpoint(rng, clip);
+            let b = choose_rect_endpoint(rng, clip);
+            test_clip_edge(rng, a, b, clip);
+        }
+    }
 
     #[test]
     fn test_edge_clipping_intersects_face() {
@@ -941,352 +1177,84 @@ pub mod test {
                 .approx_eq(&r2::point::Point { x: 1.0, y: 1.0 })
         );
     }
-}
 
-/*
-// testClipToPaddedFace performs a comprehensive set of tests across all faces and
-// with random padding for the given points.
-//
-// We do this by defining an (x,y) coordinate system for the plane containing AB,
-// and converting points along the great circle AB to angles in the range
-// [-Pi, Pi]. We then accumulate the angle intervals spanned by each
-// clipped edge; the union over all 6 faces should approximately equal the
-// interval covered by the original edge.
-func testClipToPaddedFace(t *testing.T, a, b Point) {
-    a = Point{a.Normalize()}
-    b = Point{b.Normalize()}
-    if a.Vector == b.Mul(-1) {
-        return
-    }
+    #[test]
+    fn test_edge_clipping_face_clipping() {
+        let mut rng = random::rng();
+        test_face_clipping_edge_pair(
+            &mut rng,
+            Point::from_coords(1.0, -0.5, -0.5),
+            Point::from_coords(1.0, 0.5, 0.5),
+        );
+        test_face_clipping_edge_pair(
+            &mut rng,
+            Point::from_coords(1.0, 0.0, 0.0),
+            Point::from_coords(0.0, 1.0, 0.0),
+        );
+        test_face_clipping_edge_pair(
+            &mut rng,
+            Point::from_coords(0.75, 0.0, -1.0),
+            Point::from_coords(0.75, 0.0, 1.0),
+        );
+        test_face_clipping_edge_pair(
+            &mut rng,
+            Point::from_coords(1.0, 0.0, 0.75),
+            Point::from_coords(0.0, 1.0, 0.75),
+        );
+        test_face_clipping_edge_pair(
+            &mut rng,
+            Point::from_coords(1.0, 0.9, 0.95),
+            Point::from_coords(-1.0, 0.95, 0.9),
+        );
 
-    // Test FaceSegements for this pair.
-    segments := FaceSegments(a, b)
-    n := len(segments)
-    if n == 0 {
-        t.Errorf("FaceSegments(%v, %v) should have generated at least one entry", a, b)
-    }
-
-    biunit := r2.Rect{r1.Interval{-1, 1}, r1.Interval{-1, 1}}
-    const errorRadians = faceClipErrorRadians
-
-    // The first and last vertices should approximately equal A and B.
-    if aPrime := faceUVToXYZ(segments[0].face, segments[0].a.X, segments[0].a.Y); a.Angle(aPrime) > errorRadians {
-        t.Errorf("%v.Angle(%v) = %v, want < %v", a, aPrime, a.Angle(aPrime), errorRadians)
-    }
-    if bPrime := faceUVToXYZ(segments[n-1].face, segments[n-1].b.X, segments[n-1].b.Y); b.Angle(bPrime) > errorRadians {
-        t.Errorf("%v.Angle(%v) = %v, want < %v", b, bPrime, b.Angle(bPrime), errorRadians)
-    }
-
-    norm := Point{a.PointCross(b).Normalize()}
-    aTan := Point{norm.Cross(a.Vector)}
-    bTan := Point{b.Cross(norm.Vector)}
-
-    for i := 0; i < n; i++ {
-        // Vertices may not protrude outside the biunit square.
-        if !biunit.ContainsPoint(segments[i].a) {
-            t.Errorf("biunit.ContainsPoint(%v) = false, want true", segments[i].a)
-        }
-        if !biunit.ContainsPoint(segments[i].b) {
-            t.Errorf("biunit.ContainsPoint(%v) = false, want true", segments[i].b)
-        }
-        if i == 0 {
-            continue
-        }
-
-        // The two representations of each interior vertex (on adjacent faces)
-        // must correspond to exactly the same Point.
-        if segments[i-1].face == segments[i].face {
-            t.Errorf("%v.face != %v.face", segments[i-1], segments[i])
-        }
-        if got, want := faceUVToXYZ(segments[i-1].face, segments[i-1].b.X, segments[i-1].b.Y),
-            faceUVToXYZ(segments[i].face, segments[i].a.X, segments[i].a.Y); !got.ApproxEqual(want) {
-            t.Errorf("interior vertices on adjacent faces should be the same point. got %v != %v", got, want)
-        }
-
-        // Interior vertices should be in the plane containing A and B, and should
-        // be contained in the wedge of angles between A and B (i.e., the dot
-        // products with aTan and bTan should be non-negative).
-        p := faceUVToXYZ(segments[i].face, segments[i].a.X, segments[i].a.Y).Normalize()
-        if got := math.Abs(p.Dot(norm.Vector)); got > errorRadians {
-            t.Errorf("%v.Dot(%v) = %v, want <= %v", p, norm, got, errorRadians)
-        }
-        if got := p.Dot(aTan.Vector); got < -errorRadians {
-            t.Errorf("%v.Dot(%v) = %v, want >= %v", p, aTan, got, -errorRadians)
-        }
-        if got := p.Dot(bTan.Vector); got < -errorRadians {
-            t.Errorf("%v.Dot(%v) = %v, want >= %v", p, bTan, got, -errorRadians)
+        let biunit = r2::rect::Rect {
+            x: r1::interval::Interval { lo: -1.0, hi: 1.0 },
+            y: r1::interval::Interval { lo: -1.0, hi: 1.0 },
+        };
+        for _ in 0..1000 {
+            let face = rng.random_range(0..6u8);
+            let i = rng.random_range(0..4usize);
+            let j = (i + 1) & 3;
+            let v = biunit.vertices();
+            let p = face_uv_to_point(face, v[i].x, v[i].y);
+            let q = face_uv_to_point(face, v[j].x, v[j].y);
+            let a = perturbed_corner_or_midpoint(&mut rng, p, q);
+            let b = perturbed_corner_or_midpoint(&mut rng, p, q);
+            test_face_clipping(&mut rng, a, b);
         }
     }
 
-    padding := 0.0
-    if !oneIn(10) {
-        padding = 1e-10 * math.Pow(1e-5, randomFloat64())
-    }
-
-    xAxis := a
-    yAxis := aTan
-
-    // Given the points A and B, we expect all angles generated from the clipping
-    // to fall within this range.
-    expectedAngles := s1.Interval{0, float64(a.Angle(b.Vector))}
-    if expectedAngles.IsInverted() {
-        expectedAngles = s1.Interval{expectedAngles.Hi, expectedAngles.Lo}
-    }
-    maxAngles := expectedAngles.Expanded(faceClipErrorRadians)
-    var actualAngles s1.Interval
-
-    for face := 0; face < 6; face++ {
-        aUV, bUV, intersects := ClipToPaddedFace(a, b, face, padding)
-        if !intersects {
-            continue
+    #[test]
+    fn test_edge_clipping_clip_edge_random() {
+        let mut rng = random::rng();
+        for _ in 0..5 {
+            let p1_x = rng.random_range(-1.0..1.0);
+            let p1_y = rng.random_range(-1.0..1.0);
+            let p2_x = rng.random_range(-1.0..1.0);
+            let p2_y = rng.random_range(-1.0..1.0);
+            let r = r2::rect::Rect::from_points(&[
+                r2::point::Point { x: p1_x, y: p1_y },
+                r2::point::Point { x: p2_x, y: p2_y },
+            ]);
+            test_edge_clipping_rect(&mut rng, &r);
         }
-
-        aClip := Point{faceUVToXYZ(face, aUV.X, aUV.Y).Normalize()}
-        bClip := Point{faceUVToXYZ(face, bUV.X, bUV.Y).Normalize()}
-
-        desc := fmt.Sprintf("on face %d, a=%v, b=%v, aClip=%v, bClip=%v,", face, a, b, aClip, bClip)
-
-        if got := math.Abs(aClip.Dot(norm.Vector)); got > faceClipErrorRadians {
-            t.Errorf("%s abs(%v.Dot(%v)) = %v, want <= %v", desc, aClip, norm, got, faceClipErrorRadians)
-        }
-        if got := math.Abs(bClip.Dot(norm.Vector)); got > faceClipErrorRadians {
-            t.Errorf("%s abs(%v.Dot(%v)) = %v, want <= %v", desc, bClip, norm, got, faceClipErrorRadians)
-        }
-
-        if float64(aClip.Angle(a.Vector)) > faceClipErrorRadians {
-            if got := math.Max(math.Abs(aUV.X), math.Abs(aUV.Y)); !float64Eq(got, 1+padding) {
-                t.Errorf("%s the largest component of %v = %v, want %v", desc, aUV, got, 1+padding)
-            }
-        }
-        if float64(bClip.Angle(b.Vector)) > faceClipErrorRadians {
-            if got := math.Max(math.Abs(bUV.X), math.Abs(bUV.Y)); !float64Eq(got, 1+padding) {
-                t.Errorf("%s the largest component of %v = %v, want %v", desc, bUV, got, 1+padding)
-            }
-        }
-
-        aAngle := math.Atan2(aClip.Dot(yAxis.Vector), aClip.Dot(xAxis.Vector))
-        bAngle := math.Atan2(bClip.Dot(yAxis.Vector), bClip.Dot(xAxis.Vector))
-
-        // Rounding errors may cause bAngle to be slightly less than aAngle.
-        // We handle this by constructing the interval with FromPointPair,
-        // which is okay since the interval length is much less than math.Pi.
-        faceAngles := s1.IntervalFromEndpoints(aAngle, bAngle)
-        if faceAngles.IsInverted() {
-            faceAngles = s1.Interval{faceAngles.Hi, faceAngles.Lo}
-        }
-        if !maxAngles.ContainsInterval(faceAngles) {
-            t.Errorf("%s %v.ContainsInterval(%v) = false, but should have contained this interval", desc, maxAngles, faceAngles)
-        }
-        actualAngles = actualAngles.Union(faceAngles)
-    }
-    if !actualAngles.Expanded(faceClipErrorRadians).ContainsInterval(expectedAngles) {
-        t.Errorf("the union of all angle segments should be larger than the expected angle")
+        let r1 = r2::rect::Rect {
+            x: r1::interval::Interval { lo: -0.7, hi: -0.7 },
+            y: r1::interval::Interval { lo: 0.3, hi: 0.35 },
+        };
+        test_edge_clipping_rect(&mut rng, &r1);
+        let r2v = r2::rect::Rect {
+            x: r1::interval::Interval { lo: 0.2, hi: 0.5 },
+            y: r1::interval::Interval { lo: 0.3, hi: 0.3 },
+        };
+        test_edge_clipping_rect(&mut rng, &r2v);
+        let r3 = r2::rect::Rect {
+            x: r1::interval::Interval { lo: -0.7, hi: 0.3 },
+            y: r1::interval::Interval { lo: 0.0, hi: 0.0 },
+        };
+        test_edge_clipping_rect(&mut rng, &r3);
+        let r4 = r2::rect::Rect::from_points(&[r2::point::Point { x: 0.3, y: 0.8 }]);
+        test_edge_clipping_rect(&mut rng, &r4);
+        test_edge_clipping_rect(&mut rng, &r2::rect::EMPTY);
     }
 }
-
-func TestEdgeClippingClipToPaddedFace(t *testing.T) {
-    // Start with a few simple cases.
-    // An edge that is entirely contained within one cube face:
-    testClipToPaddedFace(t, Point{r3.Vector{1, -0.5, -0.5}}, Point{r3.Vector{1, 0.5, 0.5}})
-    testClipToPaddedFace(t, Point{r3.Vector{1, 0.5, 0.5}}, Point{r3.Vector{1, -0.5, -0.5}})
-    // An edge that crosses one cube edge:
-    testClipToPaddedFace(t, Point{r3.Vector{1, 0, 0}}, Point{r3.Vector{0, 1, 0}})
-    testClipToPaddedFace(t, Point{r3.Vector{0, 1, 0}}, Point{r3.Vector{1, 0, 0}})
-    // An edge that crosses two opposite edges of face 0:
-    testClipToPaddedFace(t, Point{r3.Vector{0.75, 0, -1}}, Point{r3.Vector{0.75, 0, 1}})
-    testClipToPaddedFace(t, Point{r3.Vector{0.75, 0, 1}}, Point{r3.Vector{0.75, 0, -1}})
-    // An edge that crosses two adjacent edges of face 2:
-    testClipToPaddedFace(t, Point{r3.Vector{1, 0, 0.75}}, Point{r3.Vector{0, 1, 0.75}})
-    testClipToPaddedFace(t, Point{r3.Vector{0, 1, 0.75}}, Point{r3.Vector{1, 0, 0.75}})
-    // An edges that crosses three cube edges (four faces):
-    testClipToPaddedFace(t, Point{r3.Vector{1, 0.9, 0.95}}, Point{r3.Vector{-1, 0.95, 0.9}})
-    testClipToPaddedFace(t, Point{r3.Vector{-1, 0.95, 0.9}}, Point{r3.Vector{1, 0.9, 0.95}})
-
-    // Comprehensively test edges that are difficult to handle, especially those
-    // that nearly follow one of the 12 cube edges.
-    biunit := r2.Rect{r1.Interval{-1, 1}, r1.Interval{-1, 1}}
-
-    for i := 0; i < 1000; i++ {
-        // Choose two adjacent cube corners P and Q.
-        face := randomUniformInt(6)
-        i := randomUniformInt(4)
-        j := (i + 1) & 3
-        p := Point{faceUVToXYZ(face, biunit.Vertices()[i].X, biunit.Vertices()[i].Y)}
-        q := Point{faceUVToXYZ(face, biunit.Vertices()[j].X, biunit.Vertices()[j].Y)}
-
-        // Now choose two points that are nearly in the plane of PQ, preferring
-        // points that are near cube corners, face midpoints, or edge midpoints.
-        a := perturbedCornerOrMidpoint(p, q)
-        b := perturbedCornerOrMidpoint(p, q)
-        testClipToPaddedFace(t, a, b)
-    }
-}
-
-// getFraction returns the fraction t of the given point X on the line AB such that
-// x = (1-t)*a + t*b. Returns 0 if A = B.
-func getFraction(t *testing.T, x, a, b r2.Point) float64 {
-    // A bound for the error in edge clipping plus the error in the calculation
-    // (which is similar to EdgeIntersectsRect).
-    errorDist := (edgeClipErrorUVDist + intersectsRectErrorUVDist)
-    if a == b {
-        return 0.0
-    }
-    dir := b.Sub(a).Normalize()
-    if got := math.Abs(x.Sub(a).Dot(dir.Ortho())); got > errorDist {
-        t.Errorf("getFraction(%v, %v, %v) = %v, which exceeds errorDist %v", x, a, b, got, errorDist)
-    }
-    return x.Sub(a).Dot(dir)
-}
-
-// randomPointFromInterval returns a randomly selected point from the given interval
-// with one of three possible choices. All cases have reasonable probability for any
-// interval. The choices are: randomly choose a value inside the interval, choose a
-// value outside the interval, or select one of the two endpoints.
-func randomPointFromInterval(clip r1.Interval) float64 {
-    if oneIn(5) {
-        if oneIn(2) {
-            return clip.Lo
-        }
-        return clip.Hi
-    }
-
-    switch randomUniformInt(3) {
-    case 0:
-        return clip.Lo - randomFloat64()
-    case 1:
-        return clip.Hi + randomFloat64()
-    default:
-        return clip.Lo + randomFloat64()*clip.Length()
-    }
-}
-
-// Given a rectangle "clip", choose a point that may lie in the rectangle interior, along an extended edge, exactly at a vertex, or in one of the eight regions exterior to "clip" that are separated by its extended edges.  Also sometimes return points that are exactly on one of the extended diagonals of "clip". All cases are reasonably likely to occur for any given rectangle "clip".
-func chooseRectEndpoint(clip r2.Rect) r2.Point {
-    if oneIn(10) {
-        // Return a point on one of the two extended diagonals.
-        diag := randomUniformInt(2)
-        t := randomUniformFloat64(-1, 2)
-        return clip.Vertices()[diag].Mul(1 - t).Add(clip.Vertices()[diag+2].Mul(t))
-    }
-    return r2.Point{randomPointFromInterval(clip.X), randomPointFromInterval(clip.Y)}
-}
-
-// Choose a random point in the rectangle defined by points A and B, sometimes
-// returning a point on the edge AB or the points A and B themselves.
-func choosePointInRect(a, b r2.Point) r2.Point {
-    if oneIn(5) {
-        if oneIn(2) {
-            return a
-        }
-        return b
-    }
-
-    if oneIn(3) {
-        return a.Add(b.Sub(a).Mul(randomFloat64()))
-    }
-    return r2.Point{randomUniformFloat64(a.X, b.X), randomUniformFloat64(a.Y, b.Y)}
-}
-
-// Given a point P representing a possibly clipped endpoint A of an edge AB,
-// verify that clip contains P, and that if clipping occurred (i.e., P != A)
-// then P is on the boundary of clip.
-func checkPointOnBoundary(t *testing.T, p, a r2.Point, clip r2.Rect) {
-    if got := clip.ContainsPoint(p); !got {
-        t.Errorf("%v.ContainsPoint(%v) = %v, want true", clip, p, got)
-    }
-    if p != a {
-        p1 := r2.Point{math.Nextafter(p.X, a.X), math.Nextafter(p.Y, a.Y)}
-        if got := clip.ContainsPoint(p1); got {
-            t.Errorf("%v.ContainsPoint(%v) = %v, want false", clip, p1, got)
-        }
-    }
-}
-
-func TestEdgeClippingClipEdge(t *testing.T) {
-    // A bound for the error in edge clipping plus the error in the
-    // EdgeIntersectsRect calculation below.
-    errorDist := (edgeClipErrorUVDist + intersectsRectErrorUVDist)
-    testRects := []r2.Rect{
-        // Test clipping against random rectangles.
-        r2.RectFromPoints(
-            r2.Point{randomUniformFloat64(-1, 1), randomUniformFloat64(-1, 1)},
-            r2.Point{randomUniformFloat64(-1, 1), randomUniformFloat64(-1, 1)}),
-        r2.RectFromPoints(
-            r2.Point{randomUniformFloat64(-1, 1), randomUniformFloat64(-1, 1)},
-            r2.Point{randomUniformFloat64(-1, 1), randomUniformFloat64(-1, 1)}),
-        r2.RectFromPoints(
-            r2.Point{randomUniformFloat64(-1, 1), randomUniformFloat64(-1, 1)},
-            r2.Point{randomUniformFloat64(-1, 1), randomUniformFloat64(-1, 1)}),
-        r2.RectFromPoints(
-            r2.Point{randomUniformFloat64(-1, 1), randomUniformFloat64(-1, 1)},
-            r2.Point{randomUniformFloat64(-1, 1), randomUniformFloat64(-1, 1)}),
-        r2.RectFromPoints(
-            r2.Point{randomUniformFloat64(-1, 1), randomUniformFloat64(-1, 1)},
-            r2.Point{randomUniformFloat64(-1, 1), randomUniformFloat64(-1, 1)}),
-
-        // Also clip against one-dimensional, singleton, and empty rectangles.
-        r2.Rect{r1.Interval{-0.7, -0.7}, r1.Interval{0.3, 0.35}},
-        r2.Rect{r1.Interval{0.2, 0.5}, r1.Interval{0.3, 0.3}},
-        r2.Rect{r1.Interval{-0.7, 0.3}, r1.Interval{0, 0}},
-        r2.RectFromPoints(r2.Point{0.3, 0.8}),
-        r2.EmptyRect(),
-    }
-
-    for _, r := range testRects {
-        for i := 0; i < 1000; i++ {
-            a := chooseRectEndpoint(r)
-            b := chooseRectEndpoint(r)
-
-            aClip, bClip, intersects := ClipEdge(a, b, r)
-            if !intersects {
-                if edgeIntersectsRect(a, b, r.ExpandedByMargin(-errorDist)) {
-                    t.Errorf("edgeIntersectsRect(%v, %v, %v.ExpandedByMargin(%v) = true, want false", a, b, r, -errorDist)
-                }
-            } else {
-                if !edgeIntersectsRect(a, b, r.ExpandedByMargin(errorDist)) {
-                    t.Errorf("edgeIntersectsRect(%v, %v, %v.ExpandedByMargin(%v) = false, want true", a, b, r, errorDist)
-                }
-
-                // Check that the clipped points lie on the edge AB, and
-                // that the points have the expected order along the segment AB.
-                if gotA, gotB := getFraction(t, aClip, a, b), getFraction(t, bClip, a, b); gotA > gotB {
-                    t.Errorf("getFraction(%v,%v,%v) = %v, getFraction(%v, %v, %v) = %v; %v < %v = false, want true", aClip, a, b, gotA, bClip, a, b, gotB, gotA, gotB)
-                }
-
-                // Check that the clipped portion of AB is as large as possible.
-                checkPointOnBoundary(t, aClip, a, r)
-                checkPointOnBoundary(t, bClip, b, r)
-            }
-
-            // Choose an random initial bound to pass to clipEdgeBound.
-            initialClip := r2.RectFromPoints(choosePointInRect(a, b), choosePointInRect(a, b))
-            bound := clippedEdgeBound(a, b, initialClip)
-            if bound.IsEmpty() {
-                // Precondition of clipEdgeBound not met
-                continue
-            }
-            maxBound := bound.Intersection(r)
-            if bound, intersects := clipEdgeBound(a, b, r, bound); !intersects {
-                if edgeIntersectsRect(a, b, maxBound.ExpandedByMargin(-errorDist)) {
-                    t.Errorf("edgeIntersectsRect(%v, %v, %v.ExpandedByMargin(%v) = true, want false", a, b, maxBound.ExpandedByMargin(-errorDist), -errorDist)
-                }
-            } else {
-                if !edgeIntersectsRect(a, b, maxBound.ExpandedByMargin(errorDist)) {
-                    t.Errorf("edgeIntersectsRect(%v, %v, %v.ExpandedByMargin(%v) = false, want true", a, b, maxBound.ExpandedByMargin(errorDist), errorDist)
-                }
-                // check that the bound is as large as possible.
-                ai := 0
-                if a.X > b.X {
-                    ai = 1
-                }
-                aj := 0
-                if a.Y > b.Y {
-                    aj = 1
-                }
-                checkPointOnBoundary(t, bound.VertexIJ(ai, aj), a, maxBound)
-                checkPointOnBoundary(t, bound.VertexIJ(1-ai, 1-aj), b, maxBound)
-            }
-        }
-    }
-}
-*/
