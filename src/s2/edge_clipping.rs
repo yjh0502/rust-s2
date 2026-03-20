@@ -92,7 +92,7 @@ pub fn clip_to_padded_face(
     // Fast path: both endpoints are on the given face
     if stuv::face(&a.0) == f && stuv::face(&b.0) == f {
         let (au, av) = stuv::valid_face_xyz_to_uv(f, &a.0);
-        let (bu, bv) = stuv::valid_face_xyz_to_uv(f, &a.0);
+        let (bu, bv) = stuv::valid_face_xyz_to_uv(f, &b.0);
         return (
             r2::point::Point { x: au, y: av },
             r2::point::Point { x: bu, y: bv },
@@ -451,7 +451,7 @@ fn clip_bound_axis(
     mut bound0: r1::interval::Interval,
     a1: f64,
     b1: f64,
-    bound1: r1::interval::Interval,
+    mut bound1: r1::interval::Interval,
     neg_slope: bool,
     clip: r1::interval::Interval,
 ) -> (r1::interval::Interval, r1::interval::Interval, bool) {
@@ -462,8 +462,9 @@ fn clip_bound_axis(
         }
         // narrow the intervals lower bound to the clip bound
         bound0.lo = clip.lo;
-        let (bound1, updated) =
+        let (b1, updated) =
             update_endpoint(bound1, neg_slope, interpolate(clip.lo, a0, b0, a1, b1));
+        bound1 = b1;
         if !updated {
             return (bound0, bound1, false);
         }
@@ -476,8 +477,9 @@ fn clip_bound_axis(
         }
         // narrow the intervals upper bound to the clip bound.
         bound0.hi = clip.hi;
-        let (bound1, updated) =
+        let (b1, updated) =
             update_endpoint(bound1, !neg_slope, interpolate(clip.hi, a0, b0, a1, b1));
+        bound1 = b1;
         if !updated {
             return (bound0, bound1, false);
         }
@@ -549,8 +551,8 @@ fn clip_edge_bound(
     if !up1 {
         return (bound, false);
     }
-    let (b1_x, b1_y, up2) =
-        clip_bound_axis(a.x, b.x, bound.x, a.y, b.y, bound.y, neg_slope, clip.x);
+    let (b1_y, b1_x, up2) =
+        clip_bound_axis(a.y, b.y, b0_y, a.x, b.x, b0_x, neg_slope, clip.y);
     if !up2 {
         return (r2::rect::Rect { x: b0_x, y: b0_y }, false);
     }
@@ -564,8 +566,11 @@ fn clip_edge_bound(
 ///  - If x == b, then x1 = b1 (exactly).
 ///  - If a <= x <= b, then a1 <= x1 <= b1 (even if a1 == b1).
 ///
-/// This requires a != b.
+/// When `a == b`, returns `a1` (matches Go `interpolateFloat64`).
 fn interpolate(x: f64, a: f64, b: f64, a1: f64, b1: f64) -> f64 {
+    if a == b {
+        return a1;
+    }
     if (a - x).abs() <= (b - x).abs() {
         return a1 + (b1 - a1) * (x - a) / (b - a);
     }
