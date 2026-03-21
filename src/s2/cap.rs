@@ -60,7 +60,7 @@ const CENTER_POINT: Point = Point(Vector {
 /// radius (r), the maximum chord length from the cap's center (d), and the
 /// radius of cap's base (a).
 ///
-/// ```ignore
+/// ```text
 ///     h = 1 - cos(r)
 ///       = 2 * sin^2(r/2)
 ///   d^2 = 2 * h
