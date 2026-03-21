@@ -551,8 +551,7 @@ fn clip_edge_bound(
     if !up1 {
         return (bound, false);
     }
-    let (b1_y, b1_x, up2) =
-        clip_bound_axis(a.y, b.y, b0_y, a.x, b.x, b0_x, neg_slope, clip.y);
+    let (b1_y, b1_x, up2) = clip_bound_axis(a.y, b.y, b0_y, a.x, b.x, b0_x, neg_slope, clip.y);
     if !up2 {
         return (r2::rect::Rect { x: b0_x, y: b0_y }, false);
     }
@@ -789,9 +788,7 @@ pub mod test {
     }
 
     fn perturbed_corner_or_midpoint<R: Rng>(rng: &mut R, p: Point, q: Point) -> Point {
-        let mut a = Point(
-            p.0 * rng.random_range(-1.0..2.0) + q.0 * rng.random_range(-1.0..2.0),
-        );
+        let mut a = Point(p.0 * rng.random_range(-1.0..2.0) + q.0 * rng.random_range(-1.0..2.0));
         if rng.random_range(0.0..1.0) < 0.1 {
             a = Point(a.0 + random::point(rng).0 * log_uniform(rng, 1e-300, 1.0));
         } else if rng.random_range(0.0..1.0) < 0.5 {
@@ -823,8 +820,11 @@ pub mod test {
 
         let a_prime = face_uv_to_point(segments[0].face, segments[0].a.x, segments[0].a.y);
         assert!(a.distance(&a_prime).rad() <= FACE_CLIP_ERROR_RADIANS);
-        let b_prime =
-            face_uv_to_point(segments[n - 1].face, segments[n - 1].b.x, segments[n - 1].b.y);
+        let b_prime = face_uv_to_point(
+            segments[n - 1].face,
+            segments[n - 1].b.x,
+            segments[n - 1].b.y,
+        );
         assert!(b.distance(&b_prime).rad() <= FACE_CLIP_ERROR_RADIANS);
 
         let (au, av) = stuv::valid_face_xyz_to_uv(segments[0].face, &a.0);
@@ -851,7 +851,11 @@ pub mod test {
                 continue;
             }
             assert_ne!(segments[i - 1].face, segments[i].face);
-            let prev = face_uv_to_point(segments[i - 1].face, segments[i - 1].b.x, segments[i - 1].b.y);
+            let prev = face_uv_to_point(
+                segments[i - 1].face,
+                segments[i - 1].b.x,
+                segments[i - 1].b.y,
+            );
             let cur = face_uv_to_point(segments[i].face, segments[i].a.x, segments[i].a.y);
             assert!(prev.approx_eq(&cur));
 
@@ -897,7 +901,11 @@ pub mod test {
         test_face_clipping(rng, b, a);
     }
 
-    fn choose_rect_point<R: Rng>(rng: &mut R, a: r2::point::Point, b: r2::point::Point) -> r2::point::Point {
+    fn choose_rect_point<R: Rng>(
+        rng: &mut R,
+        a: r2::point::Point,
+        b: r2::point::Point,
+    ) -> r2::point::Point {
         if rng.random_range(0.0..1.0) < 0.2 {
             if rng.random_range(0.0..1.0) < 0.5 {
                 a
@@ -971,13 +979,26 @@ pub mod test {
         }
     }
 
-    fn test_clip_edge<R: Rng>(rng: &mut R, a: r2::point::Point, b: r2::point::Point, clip: &r2::rect::Rect) {
+    fn test_clip_edge<R: Rng>(
+        rng: &mut R,
+        a: r2::point::Point,
+        b: r2::point::Point,
+        clip: &r2::rect::Rect,
+    ) {
         let error_dist = EDGE_CLIP_ERROR_UV_DIST + INTERSECT_RECT_ERROR_UV_DIST;
         let (a_clip, b_clip, intersects) = clip_edge(a, b, clip.clone());
         if !intersects {
-            assert!(!edge_intersects_rect(a, b, &clip.expanded_by_margin(-error_dist)));
+            assert!(!edge_intersects_rect(
+                a,
+                b,
+                &clip.expanded_by_margin(-error_dist)
+            ));
         } else {
-            assert!(edge_intersects_rect(a, b, &clip.expanded_by_margin(error_dist)));
+            assert!(edge_intersects_rect(
+                a,
+                b,
+                &clip.expanded_by_margin(error_dist)
+            ));
             assert!(get_fraction(a_clip, a, b) <= get_fraction(b_clip, a, b));
             check_point_on_boundary(a_clip, a, clip);
             check_point_on_boundary(b_clip, b, clip);
@@ -994,9 +1015,17 @@ pub mod test {
         let max_bound = bound.intersection(clip);
         let (bound2, intersects2) = clip_edge_bound(a, b, clip.clone(), bound);
         if !intersects2 {
-            assert!(!edge_intersects_rect(a, b, &max_bound.expanded_by_margin(-error_dist)));
+            assert!(!edge_intersects_rect(
+                a,
+                b,
+                &max_bound.expanded_by_margin(-error_dist)
+            ));
         } else {
-            assert!(edge_intersects_rect(a, b, &max_bound.expanded_by_margin(error_dist)));
+            assert!(edge_intersects_rect(
+                a,
+                b,
+                &max_bound.expanded_by_margin(error_dist)
+            ));
             let ai = if a.x > b.x { 1 } else { 0 };
             let aj = if a.y > b.y { 1 } else { 0 };
             check_point_on_boundary(bound2.vertex_ij(ai, aj), a, &max_bound);
