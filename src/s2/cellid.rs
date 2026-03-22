@@ -67,7 +67,7 @@ const MAX_SIZE_F64: f64 = MAX_SIZE as f64;
 const LOOKUP_BITS: u64 = 4;
 const INVERT_MASK: u8 = 0x02;
 
-fn lsb_for_level(level: u64) -> u64 {
+pub(crate) fn lsb_for_level(level: u64) -> u64 {
     1 << (2 * (MAX_LEVEL - level))
 }
 
