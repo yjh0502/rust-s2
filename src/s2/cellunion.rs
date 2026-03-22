@@ -1013,9 +1013,7 @@ mod tests {
     #[test]
     fn test_cellunion_leaf_cells_covered_full_sphere() {
         // 5-face union: all faces except one.
-        let five_faces = CellUnion(
-            (0..5).map(CellID::from_face).collect(),
-        );
+        let five_faces = CellUnion((0..5).map(CellID::from_face).collect());
         let one_face_leaves = 1u64 << (MAX_LEVEL * 2);
         assert_eq!(five_faces.leaf_cell_covered(), 5 * one_face_leaves);
 
