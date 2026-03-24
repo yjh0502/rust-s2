@@ -246,10 +246,21 @@ impl CellUnion {
         Self::merge(&[a.clone(), b.clone()])
     }
 
-    /// Intersection of two normalized cell unions.
+    /// Intersection of two cell unions whose cell ID vectors are sorted in increasing order
+    /// (as for a [`CellUnion`] built from normalized input).
+    ///
+    /// This does not call [`normalize`](Self::normalize) on the result, matching upstream S2:
+    /// if both inputs are [`is_normalized`](Self::is_normalized), the result is normalized;
+    /// otherwise callers can normalize explicitly if they need a canonical representation.
+    ///
+    /// In debug builds, asserts that inputs are sorted and that the normalization invariant
+    /// above holds (mirroring `ABSL_DCHECK` in the C++ implementation).
     pub fn intersection(a: &Self, b: &Self) -> Self {
         let x = &a.0;
         let y = &b.0;
+        debug_assert!(x.is_sorted());
+        debug_assert!(y.is_sorted());
+        // Mirrors `S2CellUnion::GetIntersection` in google/s2geometry `s2cell_union.cc`.
         let mut cu = Vec::new();
         let mut i = 0usize;
         let mut j = 0usize;
@@ -286,17 +297,22 @@ impl CellUnion {
                 j += 1;
             }
         }
-        let mut out = CellUnion(cu);
-        out.normalize();
+        debug_assert!(cu.is_sorted());
+        let out = CellUnion(cu);
+        debug_assert!(out.is_normalized() || !a.is_normalized() || !b.is_normalized());
         out
     }
 
     /// Intersection of a cell union with a single cell ID.
+    ///
+    /// Does not normalize the result. If `x` is [`is_normalized`](Self::is_normalized), the
+    /// result is normalized (same contract as upstream S2). `id` must be valid (debug-asserted).
     pub fn intersection_with_cell_id(x: &Self, id: CellID) -> Self {
+        debug_assert!(id.is_valid(), "invalid id: {:?}", id);
         if x.contains_cellid(&id) {
-            let mut cu = CellUnion(vec![id]);
-            cu.normalize();
-            return cu;
+            let out = CellUnion(vec![id]);
+            debug_assert!(out.is_normalized() || !x.is_normalized());
+            return out;
         }
         let id_max = id.range_max();
         let start = lower_bound_cellids(&x.0, 0, x.0.len(), id.range_min());
@@ -306,18 +322,26 @@ impl CellUnion {
             cu.push(x.0[k]);
             k += 1;
         }
-        let mut out = CellUnion(cu);
-        out.normalize();
+        let out = CellUnion(cu);
+        debug_assert!(out.is_normalized() || !x.is_normalized());
         out
     }
 
-    /// Set difference `x - y` for normalized inputs.
+    /// Set difference `x - y`.
+    ///
+    /// Does not normalize the result. If `x` is [`is_normalized`](Self::is_normalized), the
+    /// result is normalized (same contract as upstream S2). Call [`normalize`](Self::normalize)
+    /// afterward if you need a canonical union regardless of input shape.
     pub fn difference(x: &Self, y: &Self) -> Self {
+        // TODO: This is approximately O(N*log(N)), but could probably
+        // use similar techniques as intersection() to be more efficient.
         let mut cu = Vec::new();
         for xid in &x.0 {
             cell_union_difference_internal(&mut cu, *xid, y);
         }
-        CellUnion(cu)
+        let out = CellUnion(cu);
+        debug_assert!(out.is_normalized() || !x.is_normalized());
+        out
     }
 
     /// Whether this union contains every cell ID of `other` (regions semantics).
@@ -457,9 +481,16 @@ fn lower_bound_cellids(cells: &[CellID], begin: usize, end: usize, id: CellID) -
 }
 
 fn are_siblings(a: CellID, b: CellID, c: CellID, d: CellID) -> bool {
+    // A necessary (but not sufficient) condition is that the XOR of the
+    // four cells must be zero.  This is also very fast to test.
     if a.0 ^ b.0 ^ c.0 != d.0 {
         return false;
     }
+
+    // Now we do a slightly more expensive but exact test.  First, compute a
+    // mask that blocks out the two bits that encode the child position of
+    // `id` with respect to its parent, then check that the other three
+    // children all agree with `mask`.
     let mut mask = d.lsb() << 1;
     mask = !(mask + (mask << 1));
     let id_masked = d.0 & mask;
@@ -470,13 +501,23 @@ fn are_siblings(a: CellID, b: CellID, c: CellID, d: CellID) -> bool {
 }
 
 fn cell_union_difference_internal(out: &mut Vec<CellID>, id: CellID, other: &CellUnion) {
+    // Mirrors `GetDifferenceInternal` in google/s2geometry `s2cell_union.cc`.
+    // Add the difference between `id` and `other` to `out`.
+    // If they intersect but the difference is non-empty, divide and conquer.
     if !other.intersects_cellid(&id) {
         out.push(id);
         return;
     }
     if !other.contains_cellid(&id) {
-        for child in &id.children() {
-            cell_union_difference_internal(out, *child, other);
+        let mut child = id.child_begin();
+        let mut i = 0;
+        loop {
+            cell_union_difference_internal(out, child, other);
+            if i == 3 {
+                break;
+            }
+            child = child.next();
+            i += 1;
         }
     }
 }
@@ -732,6 +773,45 @@ mod tests {
     }
 
     #[test]
+    fn test_cellunion_intersection_with_cell_id_parent_covers_multiple_cells() {
+        // `x` holds two children of `parent`; `x` does not contain the parent id as one cell,
+        // so we exercise the range scan path (not the `contains_cellid` fast path).
+        let parent = CellID::from_face(2).child_begin_at_level(5);
+        let ch = parent.children();
+        let mut x = CellUnion(vec![ch[0], ch[1]]);
+        x.normalize();
+        assert!(x.is_normalized());
+
+        let cap = CellUnion::intersection_with_cell_id(&x, parent);
+        assert_eq!(cap.0, vec![ch[0], ch[1]]);
+        assert!(cap.is_normalized());
+    }
+
+    #[test]
+    fn test_normalized_intersection_and_difference_remain_normalized() {
+        let a = CellID::from_face(0).child_begin_at_level(3);
+        let b = CellID::from_face(1).child_begin_at_level(3);
+        let mut ua = CellUnion(vec![a]);
+        let mut ub = CellUnion(vec![b]);
+        ua.normalize();
+        ub.normalize();
+
+        let inter = CellUnion::intersection(&ua, &ub);
+        assert!(inter.is_normalized());
+        assert!(inter.0.is_empty());
+
+        let p = CellID::from_face(4).child_begin_at_level(4);
+        let ch = p.children();
+        let mut ux = CellUnion(vec![p]);
+        let mut uy = CellUnion(vec![ch[0]]);
+        ux.normalize();
+        uy.normalize();
+        let diff = CellUnion::difference(&ux, &uy);
+        assert!(diff.is_normalized());
+        assert_eq!(diff.0.len(), 3);
+    }
+
+    #[test]
     fn test_cellunion_from_range_empties_and_full_sphere() {
         let id_begin = CellID::from_face(0).child_begin_at_level(MAX_LEVEL);
         assert!(CellUnion::from_range(id_begin, id_begin).0.is_empty());
@@ -830,16 +910,21 @@ mod tests {
         let ch = parent.children();
 
         let u_parent = CellUnion(vec![parent]);
+        // Four siblings are valid but not normalized; C++ likewise allows
+        // GetIntersection without normalizing the output when an input is not.
         let u_children = CellUnion(vec![ch[0], ch[1], ch[2], ch[3]]);
 
-        // Intersection of parent with its own children yields the four children,
-        // which normalize back to the parent.
+        // Intersection yields the four leaf cells (same as upstream before any
+        // second Normalize pass); collapsing to the parent requires normalize().
         let inter = CellUnion::intersection(&u_parent, &u_children);
-        assert_eq!(inter.0.len(), 1);
-        assert_eq!(inter.0[0], parent);
+        assert_eq!(inter.0.len(), 4);
         for c in &ch {
             assert!(inter.contains_cellid(c));
         }
+        let mut inter_norm = inter.clone();
+        inter_norm.normalize();
+        assert_eq!(inter_norm.0.len(), 1);
+        assert_eq!(inter_norm.0[0], parent);
 
         // Intersect with just two children.
         let u_two = CellUnion(vec![ch[0], ch[2]]);
