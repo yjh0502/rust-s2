@@ -32,11 +32,11 @@ Full parity with Go.
 
 **complete**
 
- - Cell, CellID, LatLng, Metric, Point, Region, stuv
+ - Cell, CellID, CellUnion, LatLng, Metric, Point, Region, stuv
 
 **in progress**
 
- - CellUnion, edgeutil, predicates, Rect
+ - edgeutil, predicates, Rect
 
 **pending**
 
