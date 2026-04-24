@@ -13,6 +13,8 @@ pub mod rect_bounder;
 
 pub mod region;
 
+pub mod edge_crossings;
+pub mod edge_crosser;
 pub mod edgeutil;
 pub mod metric;
 pub mod predicates;
