@@ -448,8 +448,8 @@ pub fn get_intersection(a0: &Point, a1: &Point, b0: &Point, b1: &Point) -> Point
 ///
 ///  1. `angle_contains_vertex(a, b, a) == false`
 ///  2. `angle_contains_vertex(a, b, c) == !angle_contains_vertex(c, b, a)` unless `a == c`
-///  3. Given vertices `v_1` ... `v_k` ordered cyclically CCW around vertex `b`,
-///     `angle_contains_vertex(v_{i+1}, b, v_i)` is true for exactly one value of `i`.
+///  3. Given vertices `v₁` ... `vₖ` ordered cyclically CCW around vertex `b`,
+///     `angle_contains_vertex(vᵢ₊₁, b, vᵢ)` is true for exactly one value of `i`.
 pub fn angle_contains_vertex(a: &Point, b: &Point, c: &Point) -> bool {
     !ordered_ccw(&b.ortho(), c, a, b)
 }

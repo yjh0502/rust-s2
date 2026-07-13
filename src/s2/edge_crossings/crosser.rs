@@ -1,6 +1,6 @@
 //! This module defines [`EdgeCrosser`], which allows edges to be efficiently tested
 //! for intersection with a given fixed edge `ab`. It is especially efficient when testing
-//! for intersection with an edge chain connecting vertices `v0`, `v1`, `v2`, ...
+//! for intersection with an edge chain connecting vertices `v₀`, `v₁`, `v₂`, ...
 
 use crate::consts::*;
 use super::{
@@ -18,8 +18,8 @@ fn invert_dir(d: Direction) -> Direction {
 }
 
 /// `EdgeCrosser` allows edges to be efficiently tested for intersection with a
-/// given fixed edge `ab`. It is especially efficient when testing for intersection
-/// with an edge chain connecting vertices `v0`, `v1`, `v2`, ...
+/// given fixed edge `ab`. It is especially efficient when testing for
+/// intersection with an edge chain connecting vertices `v₀`, `v₁`, `v₂`, ...
 ///
 /// # Examples
 /// 
