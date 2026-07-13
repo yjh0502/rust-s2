@@ -17,6 +17,8 @@ pub mod edgeutil;
 pub mod metric;
 pub mod predicates;
 
+pub mod edge_crossings;
+
 pub mod shape;
 
 #[cfg(test)]
