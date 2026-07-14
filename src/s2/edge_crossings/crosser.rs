@@ -2,10 +2,8 @@
 //! for intersection with a given fixed edge `ab`. It is especially efficient when testing
 //! for intersection with an edge chain connecting vertices `v₀`, `v₁`, `v₂`, ...
 
+use super::{Crossing, SignedCrossing, robust_cross_prod, signed_vertex_crossing, vertex_crossing};
 use crate::consts::*;
-use super::{
-    Crossing, SignedCrossing, robust_cross_prod, signed_vertex_crossing, vertex_crossing,
-};
 use crate::s2::point::Point;
 use crate::s2::predicates::{Direction, robust_sign, triage_sign};
 
@@ -22,7 +20,7 @@ fn invert_dir(d: Direction) -> Direction {
 /// intersection with an edge chain connecting vertices `v₀`, `v₁`, `v₂`, ...
 ///
 /// # Examples
-/// 
+///
 /// Testing against independent, disjoint edges:
 /// ```rust
 /// # use s2::point::Point;
@@ -34,7 +32,7 @@ fn invert_dir(d: Direction) -> Direction {
 ///         .count()
 /// }
 /// ```
-/// 
+///
 /// Testing against a connected edge chain to avoid redundant vertex evaluations:
 /// ```rust
 /// # use s2::point::Point;
@@ -230,8 +228,10 @@ impl EdgeCrosser {
         }
 
         let error_bound = (1.5 + 1.0 / 3.0f64.sqrt()) * DBL_EPSILON;
-        if (self.c.0.dot(&self.a_tangent.0) > error_bound && d.0.dot(&self.a_tangent.0) > error_bound)
-            || (self.c.0.dot(&self.b_tangent.0) > error_bound && d.0.dot(&self.b_tangent.0) > error_bound)
+        if (self.c.0.dot(&self.a_tangent.0) > error_bound
+            && d.0.dot(&self.a_tangent.0) > error_bound)
+            || (self.c.0.dot(&self.b_tangent.0) > error_bound
+                && d.0.dot(&self.b_tangent.0) > error_bound)
         {
             return Crossing::DoNotCross;
         }
