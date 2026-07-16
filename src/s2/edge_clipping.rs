@@ -145,12 +145,12 @@ pub fn clip_to_padded_face(
     }
     norm_uvw = norm_uvw.normalize();
     let a_tan = norm_uvw.cross(&a_uvw);
-    let b_tan = norm_uvw.cross(&b_uvw);
+    let b_tan = b_uvw.cross(&norm_uvw);
 
     // As described in clipDestination, if the sum of the scores from clipping the two
     // endpoints is 3 or more, then the segment does not intersect this face
     let (a_uv, a_score) = clip_destination(b_uvw, a_uvw, scaled_n * -1_f64, b_tan, a_tan, scale_uv);
-    let (b_uv, b_score) = clip_destination(a_uvw, b_uvw, scaled_n * -1_f64, a_tan, b_tan, scale_uv);
+    let (b_uv, b_score) = clip_destination(a_uvw, b_uvw, scaled_n, a_tan, b_tan, scale_uv);
 
     (a_uv, b_uv, a_score + b_score < 3)
 }
