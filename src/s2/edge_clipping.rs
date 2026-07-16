@@ -774,6 +774,34 @@ fn next_face(face: u8, exit: r2::point::Point, axis: Axis, n: PointUVW, target_f
 #[cfg(test)]
 pub mod test {
     use super::*;
+
+    #[test]
+    fn test_clip_to_padded_face_edge_cases() {
+        let face: u8 = 0; // +X face (U = Y, V = Z)
+        let padding = 0.0;
+
+        // Case 1: Edge crosses the face boundary (U=2.0 to U=-2.0)
+        let a = Point::from_coords(1.0, 2.0, 0.0).normalize();
+        let b = Point::from_coords(1.0, -2.0, 0.0).normalize();
+        let (a_uv, b_uv, intersects) = super::clip_to_padded_face(a, b, face, padding);
+
+        assert_eq!(intersects, true, "Case 1: Should intersect");
+        assert!((a_uv.x - 1.0).abs() < 1e-9, "Case 1: A_UV x should be 1.0");
+        assert!(
+            (b_uv.x - -1.0).abs() < 1e-9,
+            "Case 1: B_UV x should be -1.0"
+        );
+
+        // Case 2: Edge completely outside the face bounds (U=5.0 to U=4.0)
+        let a_out = Point::from_coords(1.0, 5.0, 0.0).normalize();
+        let b_out = Point::from_coords(1.0, 4.0, 0.0).normalize();
+        let (_, _, intersects_out) = super::clip_to_padded_face(a_out, b_out, face, padding);
+
+        assert_eq!(
+            intersects_out, false,
+            "Case 2: Should correctly reject out-of-bounds edge"
+        );
+    }
     use crate::consts::DBL_EPSILON;
     use crate::s2::random;
     use float_extras::f64::nextafter;
