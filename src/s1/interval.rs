@@ -489,39 +489,40 @@ impl From<r1::interval::Interval> for Interval {
 #[allow(dead_code)]
 mod tests {
     use super::*;
+    use std::sync::LazyLock;
 
     // Some standard intervals for use throughout the tests.
-    lazy_static! {
-        static ref full: Interval = FULL;
-        static ref empty: Interval = EMPTY;
-        // Single-point intervals:
-        static ref zero: Interval = Interval::default();
-        static ref pi2: Interval = Interval::new(PI/2., PI/2.);
-        static ref pi: Interval = Interval::new(PI, PI);
-        static ref mipi  :Interval = Interval::new(-PI, -PI); // same as pi after normalization
-        static ref mipi2 :Interval = Interval::new(-PI/2., -PI/2.);
-        // Single quadrants:
-        static ref quad1 :Interval = Interval::new(0., PI/2.);
-        static ref quad2 :Interval = Interval::new(PI/2., -PI); // equivalent to (pi/2., pi)
-        static ref quad3 :Interval = Interval::new(PI, -PI/2.);
-        static ref quad4 :Interval = Interval::new(-PI/2., 0.);
-        // Quadrant pairs:
-        static ref quad12 :Interval = Interval::new(0., -PI);
-        static ref quad23 :Interval = Interval::new(PI/2., -PI/2.);
-        static ref quad34 :Interval = Interval::new(-PI, 0.);
-        static ref quad41 :Interval = Interval::new(-PI/2., PI/2.);
-        // Quadrant triples:
-        static ref quad123 :Interval = Interval::new(0., -PI/2.);
-        static ref quad234 :Interval = Interval::new(PI/2., 0.);
-        static ref quad341 :Interval = Interval::new(PI, PI/2.);
-        static ref quad412 :Interval = Interval::new(-PI/2., -PI);
-        // Small intervals around the midpoints between quadrants,
-        // such that the center of each interval is offset slightly CCW from the midpoint.
-        static ref mid12 :Interval = Interval::new(PI/2.-0.01, PI/2.+0.02);
-        static ref mid23 :Interval = Interval::new(PI-0.01, -PI+0.02);
-        static ref mid34 :Interval = Interval::new(-PI/2.-0.01, -PI/2.+0.02);
-        static ref mid41 :Interval = Interval::new(-0.01, 0.02);
-    }
+    static full: LazyLock<Interval> = LazyLock::new(|| FULL);
+    static empty: LazyLock<Interval> = LazyLock::new(|| EMPTY);
+    // Single-point intervals:
+    static zero: LazyLock<Interval> = LazyLock::new(Interval::default);
+    static pi2: LazyLock<Interval> = LazyLock::new(|| Interval::new(PI / 2., PI / 2.));
+    static pi: LazyLock<Interval> = LazyLock::new(|| Interval::new(PI, PI));
+    static mipi: LazyLock<Interval> = LazyLock::new(|| Interval::new(-PI, -PI)); // same as pi after normalization
+    static mipi2: LazyLock<Interval> = LazyLock::new(|| Interval::new(-PI / 2., -PI / 2.));
+    // Single quadrants:
+    static quad1: LazyLock<Interval> = LazyLock::new(|| Interval::new(0., PI / 2.));
+    static quad2: LazyLock<Interval> = LazyLock::new(|| Interval::new(PI / 2., -PI)); // equivalent to (pi/2., pi)
+    static quad3: LazyLock<Interval> = LazyLock::new(|| Interval::new(PI, -PI / 2.));
+    static quad4: LazyLock<Interval> = LazyLock::new(|| Interval::new(-PI / 2., 0.));
+    // Quadrant pairs:
+    static quad12: LazyLock<Interval> = LazyLock::new(|| Interval::new(0., -PI));
+    static quad23: LazyLock<Interval> = LazyLock::new(|| Interval::new(PI / 2., -PI / 2.));
+    static quad34: LazyLock<Interval> = LazyLock::new(|| Interval::new(-PI, 0.));
+    static quad41: LazyLock<Interval> = LazyLock::new(|| Interval::new(-PI / 2., PI / 2.));
+    // Quadrant triples:
+    static quad123: LazyLock<Interval> = LazyLock::new(|| Interval::new(0., -PI / 2.));
+    static quad234: LazyLock<Interval> = LazyLock::new(|| Interval::new(PI / 2., 0.));
+    static quad341: LazyLock<Interval> = LazyLock::new(|| Interval::new(PI, PI / 2.));
+    static quad412: LazyLock<Interval> = LazyLock::new(|| Interval::new(-PI / 2., -PI));
+    // Small intervals around the midpoints between quadrants,
+    // such that the center of each interval is offset slightly CCW from the midpoint.
+    static mid12: LazyLock<Interval> =
+        LazyLock::new(|| Interval::new(PI / 2. - 0.01, PI / 2. + 0.02));
+    static mid23: LazyLock<Interval> = LazyLock::new(|| Interval::new(PI - 0.01, -PI + 0.02));
+    static mid34: LazyLock<Interval> =
+        LazyLock::new(|| Interval::new(-PI / 2. - 0.01, -PI / 2. + 0.02));
+    static mid41: LazyLock<Interval> = LazyLock::new(|| Interval::new(-0.01, 0.02));
 
     #[test]
     fn test_interval_constructors() {
