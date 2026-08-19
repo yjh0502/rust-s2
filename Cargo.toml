@@ -6,7 +6,7 @@ edition = "2024"
 # "Breaking Changes" release-notes category in .github/release.yml).
 rust-version = "1.86"
 
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Jihyun Yu <yjh0502@gmail.com>", "Sascha Brawer <sascha@brawer.ch>"]
 
 license = "Apache-2.0"
