@@ -88,6 +88,21 @@ impl PreciseVector {
             z: bigdecimal::BigDecimal::abs(&self.z),
         }
     }
+
+    /// x returns the high-precision x component of this vector.
+    pub fn x(&self) -> &bigdecimal::BigDecimal {
+        &self.x
+    }
+
+    /// y returns the high-precision y component of this vector.
+    pub fn y(&self) -> &bigdecimal::BigDecimal {
+        &self.y
+    }
+
+    /// z returns the high-precision z component of this vector.
+    pub fn z(&self) -> &bigdecimal::BigDecimal {
+        &self.z
+    }
 }
 
 impl std::ops::Add<PreciseVector> for PreciseVector {
