@@ -270,7 +270,7 @@ pub enum Axis {
 mod tests {
     use super::*;
     use std::cmp::Ordering;
-    use std::f64::consts::PI;
+    use std::f64::consts::{PI, SQRT_2};
 
     macro_rules! V {
         ($x:expr, $y:expr, $z:expr) => {
@@ -390,7 +390,7 @@ mod tests {
     #[test]
     fn test_vector_distance() {
         assert_f64_eq!(V!(1., 0., 0.).distance(&V!(1., 0., 0.)), 0.);
-        assert_f64_eq!(V!(1., 0., 0.).distance(&V!(0., 1., 0.)), 1.41421356237310);
+        assert_f64_eq!(V!(1., 0., 0.).distance(&V!(0., 1., 0.)), SQRT_2);
         assert_f64_eq!(V!(1., 0., 0.).distance(&V!(0., 1., 1.)), 1.73205080756888);
         assert_f64_eq!(
             V!(1., 1., 1.).distance(&V!(-1., -1., -1.)),
