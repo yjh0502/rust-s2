@@ -811,14 +811,24 @@ impl std::fmt::Display for Rect {
     }
 }
 
-/*
+// Re-audited against the C++ source (google/s2geometry's s2latlng_rect.h)
+// on 2026-08-19; see issue #131 for the two genuine gaps below (AddPoint
+// and MayIntersect, previously listed here, are both already implemented:
+// AddPoint as `impl Add<&LatLng> for &Rect`, MayIntersect as
+// `Region::intersects_cell`).
+//
 // TODO: Implement the following, which are present in the C++ version:
-//   - AddPoint(const S2LatLng&)
-//   - ExpandedByDistance(S1Angle)
-//   - GetDistance(const S2LatLngRect&)
-//   - MayIntersect(const S2Cell&)
-//   - Encode, Decode
-*/
+//   - ExpandedByDistance(S1Angle) -- expand along the sphere surface by an
+//     angular distance; distinct from the per-axis expanded() we have.
+//   - GetDistance(const S2LatLngRect&) -- minimum surface distance between
+//     two rects; distinct from the Hausdorff-distance methods we have.
+//
+// Lower priority, not tracked in #131:
+//   - Encode, Decode: C++'s native binary wire format. Different paradigm
+//     from this crate's existing serde support; unclear if worth adding.
+//   - AddPoint(const S2Point&) and the single-S1Angle ApproxEquals overload
+//     are minor convenience overloads on top of the LatLng-based versions
+//     we already have; callers can convert explicitly today.
 
 #[cfg(test)]
 #[allow(non_upper_case_globals)]
