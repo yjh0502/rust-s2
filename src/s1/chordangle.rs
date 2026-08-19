@@ -21,9 +21,6 @@ use std::f64::consts::PI;
 use crate::consts::*;
 use crate::s1::angle::*;
 
-#[cfg(feature = "float_extras")]
-use float_extras::f64::nextafter;
-
 /// ChordAngle represents the angle subtended by a chord (i.e., the straight
 /// line segment connecting two points on the sphere). Its representation
 /// makes it very efficient for computing and comparing distances, but unlike
@@ -259,7 +256,6 @@ impl ChordAngle {
         self.sin() / self.cos()
     }
 
-    #[cfg(feature = "float_extras")]
     pub fn successor(&self) -> Self {
         if self.0 >= MAXLENGTH2 {
             ChordAngle::inf()
