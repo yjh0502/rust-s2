@@ -19,11 +19,24 @@ jobs:
     - name: Run tests
       run: cargo test --release
 
+  # Packages the crate and attests SLSA Build Level 3 provenance for it,
+  # before anything is published -- see release-build.yml's header comment
+  # for why this is a separate reusable workflow rather than jobs inlined
+  # here.
+  attest-provenance:
+    name: Package and attest build provenance
+    needs: [test]
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/release-build.yml
+
   # https://crates.io/docs/trusted-publishing
   publish:
     name: Publish release
     runs-on: ubuntu-latest
-    needs: [test]
+    needs: [attest-provenance]
     permissions:
       id-token: write  # for OIDC token exchange
     steps:
@@ -33,9 +46,23 @@ jobs:
       uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18  # v1.0.5
       id: auth
     - name: Publish release
-      run: cargo publish
+      run: cargo publish --locked
       env:
         CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+    # cargo publish always repackages internally (it doesn't accept a
+    # pre-built .crate as input), so this confirms it reproduced exactly
+    # the bytes that attest-provenance signed, rather than just assuming
+    # cargo package is deterministic.
+    - name: Verify published bytes match the attested digest
+      run: |
+        FILE=$(ls target/package/*.crate)
+        ACTUAL=$(sha256sum "$FILE" | cut -d ' ' -f1)
+        EXPECTED="${{ needs.attest-provenance.outputs.crate-sha256 }}"
+        if [ "$ACTUAL" != "$EXPECTED" ]; then
+          echo "::error::cargo publish repackaged the crate with different bytes than what was attested (expected $EXPECTED, got $ACTUAL) -- the provenance attestation no longer matches what was published." >&2
+          exit 1
+        fi
+        echo "OK: published bytes match the attested digest ($ACTUAL)"
 
   # Runs only after a successful crates.io publish, so a GitHub Release
   # never points at a version that isn't actually on crates.io. Uses
