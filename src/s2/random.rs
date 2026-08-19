@@ -1,10 +1,9 @@
-use cgmath;
 use std::f64::consts::PI;
 
 use crate::s2::cap::Cap;
 use crate::s2::cellid::*;
 use crate::s2::latlng::LatLng;
-use crate::s2::point::{self, Point};
+use crate::s2::point::{self, Frame, Point};
 use crate::s2::rect::Rect;
 use rand;
 use rand::{Rng, RngExt};
@@ -51,17 +50,17 @@ pub fn rect<R: Rng>(rng: &mut R) -> Rect {
     Rect::from(latlng::<R>(rng)).add(&latlng::<R>(rng))
 }
 
-pub fn frame<R: Rng>(rng: &mut R) -> cgmath::Matrix3<f64> {
+pub fn frame<R: Rng>(rng: &mut R) -> Frame {
     let z = point(rng);
     frame_at_point(rng, z)
 }
 
-pub fn frame_at_point<R: Rng>(rng: &mut R, z: Point) -> cgmath::Matrix3<f64> {
+pub fn frame_at_point<R: Rng>(rng: &mut R, z: Point) -> Frame {
     let p = point(rng);
     let x = z.cross(&p).normalize();
     let y = z.cross(&x).normalize();
 
-    cgmath::Matrix3::from_cols(x.into(), y.into(), z.into())
+    Frame::from_cols(x.0, y.0, z.0)
 }
 
 pub fn cellid<R>(rng: &mut R) -> CellID
