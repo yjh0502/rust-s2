@@ -25,7 +25,10 @@ limitations under the License.
 //! edge-crossing predicates more efficiently than can be done here.
 
 use crate::consts::*;
+use crate::r3::precisevector::PreciseVector;
 use crate::s2::point::Point;
+use bigdecimal::BigDecimal;
+use bigdecimal::num_bigint::Sign as BigSign;
 
 /// MAX_DETERMINANT_ERROR is the maximum error in computing (AxB).C where all vectors
 /// are unit length. Using standard inequalities, it can be shown that
@@ -55,7 +58,7 @@ const MAX_DETERMINANT_ERROR: f64 = 1.8274 * DBL_EPSILON;
 /// its sign with certainty.
 const DET_ERROR_MULTIPLIER: f64 = 3.2321 * DBL_EPSILON;
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Direction {
     Clockwise,
@@ -208,318 +211,533 @@ fn expensive_sign(a: &Point, b: &Point, c: &Point) -> Direction {
         det_sign
     } else {
         // Otherwise fall back to exact arithmetic and symbolic permutations.
-        exact_sign(a, b, c, false)
+        exact_sign(a, b, c, true)
     }
 }
 
-/// exact-sign reports the direction sign of the points using exact precision arithmetic.
-fn exact_sign(_: &Point, _: &Point, _: &Point, _: bool) -> Direction {
-    // In the C++ version, the final computation is performed using OpenSSL's
-    // Bignum exact precision math library. The existence of an equivalent
-    // library in Go is indeterminate. In C++, using the exact precision library
-    // to solve this stage is ~300x slower than the above checks.
-    // TODO(roberts): Select and incorporate an appropriate Go exact precision
-    // floating point library for the remaining calculations.
-    Direction::Indeterminate
+/// direction_sign converts the sign of a high-precision value into a Direction,
+/// following the convention that CounterClockwise corresponds to a positive
+/// sign, Clockwise to a negative sign, and Indeterminate to zero.
+fn direction_sign(v: &BigDecimal) -> Direction {
+    match v.sign() {
+        BigSign::Plus => Direction::CounterClockwise,
+        BigSign::Minus => Direction::Clockwise,
+        BigSign::NoSign => Direction::Indeterminate,
+    }
 }
 
-/*
-package s2
+/// flip reverses a Direction, leaving Indeterminate unchanged.
+fn flip(d: Direction) -> Direction {
+    match d {
+        Direction::Clockwise => Direction::CounterClockwise,
+        Direction::CounterClockwise => Direction::Clockwise,
+        Direction::Indeterminate => Direction::Indeterminate,
+    }
+}
 
-import (
-    "math"
-    "testing"
-
-    "github.com/golang/geo/r3"
-)
-
-func TestPredicatesSign(t *testing.T) {
-    tests := []struct {
-        p1x, p1y, p1z, p2x, p2y, p2z, p3x, p3y, p3z float64
-        want                                        bool
-    }{
-        {1, 0, 0, 0, 1, 0, 0, 0, 1, true},
-        {0, 1, 0, 0, 0, 1, 1, 0, 0, true},
-        {0, 0, 1, 1, 0, 0, 0, 1, 0, true},
-        {1, 1, 0, 0, 1, 1, 1, 0, 1, true},
-        {-3, -1, 4, 2, -1, -3, 1, -2, 0, true},
-
-        // All degenerate cases of Sign(). Let M_1, M_2, ... be the sequence of
-        // submatrices whose determinant sign is tested by that function. Then the
-        // i-th test below is a 3x3 matrix M (with rows A, B, C) such that:
-        //
-        //    det(M) = 0
-        //    det(M_j) = 0 for j < i
-        //    det(M_i) != 0
-        //    A < B < C in lexicographic order.
-        // det(M_1) = b0*c1 - b1*c0
-        {-3, -1, 0, -2, 1, 0, 1, -2, 0, false},
-        // det(M_2) = b2*c0 - b0*c2
-        {-6, 3, 3, -4, 2, -1, -2, 1, 4, false},
-        // det(M_3) = b1*c2 - b2*c1
-        {0, -1, -1, 0, 1, -2, 0, 2, 1, false},
-        // From this point onward, B or C must be zero, or B is proportional to C.
-        // det(M_4) = c0*a1 - c1*a0
-        {-1, 2, 7, 2, 1, -4, 4, 2, -8, false},
-        // det(M_5) = c0
-        {-4, -2, 7, 2, 1, -4, 4, 2, -8, false},
-        // det(M_6) = -c1
-        {0, -5, 7, 0, -4, 8, 0, -2, 4, false},
-        // det(M_7) = c2*a0 - c0*a2
-        {-5, -2, 7, 0, 0, -2, 0, 0, -1, false},
-        // det(M_8) = c2
-        {0, -2, 7, 0, 0, 1, 0, 0, 2, false},
+/// exact_sign reports the direction sign of the points using exact precision
+/// arithmetic, falling back to symbolic perturbation if the three points are
+/// (exactly) collinear and `perturb` is true.
+fn exact_sign(a: &Point, b: &Point, c: &Point, perturb: bool) -> Direction {
+    // Sort the three points in lexicographic order, keeping track of the
+    // sign of the permutation. (Each exchange inverts the sign of the
+    // determinant.)
+    let mut perm_sign = Direction::CounterClockwise;
+    let (mut pa, mut pb, mut pc) = (a, b, c);
+    if pa.0 > pb.0 {
+        std::mem::swap(&mut pa, &mut pb);
+        perm_sign = flip(perm_sign);
+    }
+    if pb.0 > pc.0 {
+        std::mem::swap(&mut pb, &mut pc);
+        perm_sign = flip(perm_sign);
+    }
+    if pa.0 > pb.0 {
+        std::mem::swap(&mut pa, &mut pb);
+        perm_sign = flip(perm_sign);
     }
 
-    for _, test := range tests {
-        p1 := Point{r3.Vector{test.p1x, test.p1y, test.p1z}}
-        p2 := Point{r3.Vector{test.p2x, test.p2y, test.p2z}}
-        p3 := Point{r3.Vector{test.p3x, test.p3y, test.p3z}}
-        result := Sign(p1, p2, p3)
-        if result != test.want {
-            t.Errorf("Sign(%v, %v, %v) = %v, want %v", p1, p2, p3, result, test.want)
-        }
-        if test.want {
-            // For these cases we can test the reversibility condition
-            result = Sign(p3, p2, p1)
-            if result == test.want {
-                t.Errorf("Sign(%v, %v, %v) = %v, want %v", p3, p2, p1, result, !test.want)
+    // Construct multiple-precision versions of the sorted points and
+    // compute their exact 3x3 determinant.
+    let xa = PreciseVector::from(pa.0);
+    let xb = PreciseVector::from(pb.0);
+    let xc = PreciseVector::from(pc.0);
+    let xb_cross_xc = xb.cross(xc.clone());
+    let det = xa.dot(xb_cross_xc.clone());
+
+    // Unlike C++'s Bignum or Go's big.Float, BigDecimal performs +, -, and *
+    // exactly (no rounding), so the sign of `det` is the true sign of the
+    // determinant and no precision analysis is needed here.
+
+    // If the exact determinant is non-zero, we're done.
+    let mut det_sign = direction_sign(&det);
+    if det_sign == Direction::Indeterminate && perturb {
+        // The points are exactly collinear. For example, this happens when
+        // three points are spaced at exactly equal intervals along a
+        // longitude line. Resolve the sign via symbolic perturbation. This
+        // case does not happen in practice because IEEE 754 rounding errors
+        // prevent three exactly collinear points from happening, other than
+        // in tests that explicitly construct such situations.
+        det_sign = symbolically_perturbed_sign(&xa, &xb, &xc, &xb_cross_xc);
+    }
+
+    // permSign is always CounterClockwise or Clockwise (never Indeterminate),
+    // so the combined sign is Indeterminate exactly when det_sign is.
+    if det_sign == Direction::Indeterminate {
+        Direction::Indeterminate
+    } else if perm_sign == det_sign {
+        Direction::CounterClockwise
+    } else {
+        Direction::Clockwise
+    }
+}
+
+/// symbolically_perturbed_sign reports the sign of the determinant of three
+/// points A, B, C under a model where every possible Point is slightly
+/// perturbed by a unique infinitesimal amount such that no three perturbed
+/// points are collinear and no four are coplanar. The perturbations are so
+/// small that they do not change the sign of any determinant that was
+/// non-zero before the perturbation, and therefore can be safely ignored
+/// unless the exact determinant of the three points is zero.
+///
+/// This returns CounterClockwise or Clockwise according to the sign of the
+/// determinant after the symbolic perturbations are taken into account.
+///
+/// Since the symbolic perturbation of a given point is fixed (i.e. it does
+/// not depend on the other two arguments), the results of this function are
+/// always self-consistent: it will never return a result that corresponds to
+/// an impossible configuration of non-degenerate points.
+///
+/// Requires that the exact 3x3 determinant of a, b, c is zero, and that the
+/// points are distinct with a < b < c in lexicographic order.
+///
+/// Reference: "Simulation of Simplicity" (Edelsbrunner and Muecke, ACM
+/// Transactions on Graphics, 1990).
+fn symbolically_perturbed_sign(
+    a: &PreciseVector,
+    b: &PreciseVector,
+    c: &PreciseVector,
+    b_cross_c: &PreciseVector,
+) -> Direction {
+    // This is a direct translation of the fifteen-case expansion of the
+    // fully-perturbed 3x3 determinant of A, B, C in powers of the
+    // perturbation parameter; see the Go/C++ implementations for the
+    // derivation.
+    let mut d = direction_sign(b_cross_c.z()); // da.Z
+    if d != Direction::Indeterminate {
+        return d;
+    }
+    d = direction_sign(b_cross_c.y()); // da.Y
+    if d != Direction::Indeterminate {
+        return d;
+    }
+    d = direction_sign(b_cross_c.x()); // da.X
+    if d != Direction::Indeterminate {
+        return d;
+    }
+
+    d = direction_sign(&(c.x() * a.y() - c.y() * a.x())); // db.Z
+    if d != Direction::Indeterminate {
+        return d;
+    }
+    d = direction_sign(c.x()); // db.Z * da.Y
+    if d != Direction::Indeterminate {
+        return d;
+    }
+    d = flip(direction_sign(c.y())); // db.Z * da.X
+    if d != Direction::Indeterminate {
+        return d;
+    }
+
+    d = direction_sign(&(c.z() * a.x() - c.x() * a.z())); // db.Y
+    if d != Direction::Indeterminate {
+        return d;
+    }
+    d = direction_sign(c.z()); // db.Y * da.X
+    if d != Direction::Indeterminate {
+        return d;
+    }
+
+    d = direction_sign(&(a.x() * b.y() - a.y() * b.x())); // dc.Z
+    if d != Direction::Indeterminate {
+        return d;
+    }
+    d = flip(direction_sign(b.x())); // dc.Z * da.Y
+    if d != Direction::Indeterminate {
+        return d;
+    }
+    d = direction_sign(b.y()); // dc.Z * da.X
+    if d != Direction::Indeterminate {
+        return d;
+    }
+    d = direction_sign(a.x()); // dc.Z * db.Y
+    if d != Direction::Indeterminate {
+        return d;
+    }
+    Direction::CounterClockwise // dc.Z * db.Y * da.X
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::r3::vector::Vector;
+
+    fn pt(x: f64, y: f64, z: f64) -> Point {
+        Point(Vector { x, y, z })
+    }
+
+    struct SignTest {
+        p1: Point,
+        p2: Point,
+        p3: Point,
+        want: bool,
+    }
+
+    #[test]
+    fn test_sign() {
+        let tests = vec![
+            SignTest {
+                p1: pt(1., 0., 0.),
+                p2: pt(0., 1., 0.),
+                p3: pt(0., 0., 1.),
+                want: true,
+            },
+            SignTest {
+                p1: pt(0., 1., 0.),
+                p2: pt(0., 0., 1.),
+                p3: pt(1., 0., 0.),
+                want: true,
+            },
+            SignTest {
+                p1: pt(0., 0., 1.),
+                p2: pt(1., 0., 0.),
+                p3: pt(0., 1., 0.),
+                want: true,
+            },
+            SignTest {
+                p1: pt(1., 1., 0.),
+                p2: pt(0., 1., 1.),
+                p3: pt(1., 0., 1.),
+                want: true,
+            },
+            SignTest {
+                p1: pt(-3., -1., 4.),
+                p2: pt(2., -1., -3.),
+                p3: pt(1., -2., 0.),
+                want: true,
+            },
+            // All degenerate cases of sign(). Let M_1, M_2, ... be the sequence of
+            // submatrices whose determinant sign is tested by that function. Then the
+            // i-th test below is a 3x3 matrix M (with rows A, B, C) such that:
+            //
+            //    det(M) = 0
+            //    det(M_j) = 0 for j < i
+            //    det(M_i) != 0
+            //    A < B < C in lexicographic order.
+            // det(M_1) = b0*c1 - b1*c0
+            SignTest {
+                p1: pt(-3., -1., 0.),
+                p2: pt(-2., 1., 0.),
+                p3: pt(1., -2., 0.),
+                want: false,
+            },
+            // det(M_2) = b2*c0 - b0*c2
+            SignTest {
+                p1: pt(-6., 3., 3.),
+                p2: pt(-4., 2., -1.),
+                p3: pt(-2., 1., 4.),
+                want: false,
+            },
+            // det(M_3) = b1*c2 - b2*c1
+            SignTest {
+                p1: pt(0., -1., -1.),
+                p2: pt(0., 1., -2.),
+                p3: pt(0., 2., 1.),
+                want: false,
+            },
+            // From this point onward, B or C must be zero, or B is proportional to C.
+            // det(M_4) = c0*a1 - c1*a0
+            SignTest {
+                p1: pt(-1., 2., 7.),
+                p2: pt(2., 1., -4.),
+                p3: pt(4., 2., -8.),
+                want: false,
+            },
+            // det(M_5) = c0
+            SignTest {
+                p1: pt(-4., -2., 7.),
+                p2: pt(2., 1., -4.),
+                p3: pt(4., 2., -8.),
+                want: false,
+            },
+            // det(M_6) = -c1
+            SignTest {
+                p1: pt(0., -5., 7.),
+                p2: pt(0., -4., 8.),
+                p3: pt(0., -2., 4.),
+                want: false,
+            },
+            // det(M_7) = c2*a0 - c0*a2
+            SignTest {
+                p1: pt(-5., -2., 7.),
+                p2: pt(0., 0., -2.),
+                p3: pt(0., 0., -1.),
+                want: false,
+            },
+            // det(M_8) = c2
+            SignTest {
+                p1: pt(0., -2., 7.),
+                p2: pt(0., 0., 1.),
+                p3: pt(0., 0., 2.),
+                want: false,
+            },
+        ];
+
+        for t in &tests {
+            let got = sign(&t.p1, &t.p2, &t.p3);
+            assert_eq!(
+                got, t.want,
+                "sign({:?}, {:?}, {:?}) = {}, want {}",
+                t.p1, t.p2, t.p3, got, t.want
+            );
+            if t.want {
+                // For these cases we can test the reversibility condition.
+                let reversed = sign(&t.p3, &t.p2, &t.p1);
+                assert_ne!(
+                    reversed, t.want,
+                    "sign({:?}, {:?}, {:?}) = {}, want {}",
+                    t.p3, t.p2, t.p1, reversed, !t.want
+                );
             }
         }
     }
-}
 
-// Points used in the various RobustSign tests.
-var (
-    // The following points happen to be *exactly collinear* along a line that it
-    // approximate tangent to the surface of the unit sphere. In fact, C is the
-    // exact midpoint of the line segment AB. All of these points are close
-    // enough to unit length to satisfy r3.Vector.IsUnit().
-    poA = Point{r3.Vector{0.72571927877036835, 0.46058825605889098, 0.51106749730504852}}
-    poB = Point{r3.Vector{0.7257192746638208, 0.46058826573818168, 0.51106749441312738}}
-    poC = Point{r3.Vector{0.72571927671709457, 0.46058826089853633, 0.51106749585908795}}
+    // The following points happen to be *exactly collinear* along a line that
+    // is approximately tangent to the surface of the unit sphere. In fact, C
+    // is the exact midpoint of the line segment AB. All of these points are
+    // close enough to unit length to satisfy Vector::is_unit().
+    fn po_a() -> Point {
+        pt(
+            0.72571927877036835,
+            0.46058825605889098,
+            0.51106749730504852,
+        )
+    }
+    fn po_b() -> Point {
+        pt(0.7257192746638208, 0.46058826573818168, 0.51106749441312738)
+    }
+    fn po_c() -> Point {
+        pt(
+            0.72571927671709457,
+            0.46058826089853633,
+            0.51106749585908795,
+        )
+    }
 
     // The points "x1" and "x2" are exactly proportional, i.e. they both lie
     // on a common line through the origin. Both points are considered to be
-    // normalized, and in fact they both satisfy (x == x.Normalize()).
+    // normalized, and in fact they both satisfy (x == x.normalize()).
     // Therefore the triangle (x1, x2, -x1) consists of three distinct points
     // that all lie on a common line through the origin.
-    x1 = Point{r3.Vector{0.99999999999999989, 1.4901161193847655e-08, 0}}
-    x2 = Point{r3.Vector{1, 1.4901161193847656e-08, 0}}
+    fn x1() -> Point {
+        pt(0.99999999999999989, 1.4901161193847655e-08, 0.)
+    }
+    fn x2() -> Point {
+        pt(1., 1.4901161193847656e-08, 0.)
+    }
 
     // Here are two more points that are distinct, exactly proportional, and
-    // that satisfy (x == x.Normalize()).
-    x3 = Point{r3.Vector{1, 1, 1}.Normalize()}
-    x4 = Point{x3.Mul(0.99999999999999989)}
-
-    // The following three points demonstrate that Normalize() is not idempotent, i.e.
-    // y0.Normalize() != y0.Normalize().Normalize(). Both points are exactly proportional.
-    y0 = Point{r3.Vector{1, 1, 0}}
-    y1 = Point{y0.Normalize()}
-    y2 = Point{y1.Normalize()}
-)
-
-func TestPredicatesRobustSignEqualities(t *testing.T) {
-    tests := []struct {
-        p1, p2 Point
-        want   bool
-    }{
-        {Point{poC.Sub(poA.Vector)}, Point{poB.Sub(poC.Vector)}, true},
-        {x1, Point{x1.Normalize()}, true},
-        {x2, Point{x2.Normalize()}, true},
-        {x3, Point{x3.Normalize()}, true},
-        {x4, Point{x4.Normalize()}, true},
-        {x3, x4, false},
-        {y1, y2, false},
-        {y2, Point{y2.Normalize()}, true},
+    // that satisfy (x == x.normalize()).
+    fn x3() -> Point {
+        Point(
+            Vector {
+                x: 1.,
+                y: 1.,
+                z: 1.,
+            }
+            .normalize(),
+        )
+    }
+    fn x4() -> Point {
+        Point(x3().0 * 0.99999999999999989)
     }
 
-    for _, test := range tests {
-        if got := test.p1.Vector == test.p2.Vector; got != test.want {
-            t.Errorf("Testing equality for RobustSign. %v = %v, got %v want %v", test.p1, test.p2, got, test.want)
-        }
+    // The following three points demonstrate that normalize() is not
+    // idempotent, i.e. y0.normalize() != y0.normalize().normalize(). Both
+    // points are exactly proportional.
+    fn y0() -> Point {
+        pt(1., 1., 0.)
     }
-}
-
-func TestPredicatesRobustSign(t *testing.T) {
-    x := Point{r3.Vector{1, 0, 0}}
-    y := Point{r3.Vector{0, 1, 0}}
-    z := Point{r3.Vector{0, 0, 1}}
-
-    tests := []struct {
-        p1, p2, p3 Point
-        want       Direction
-    }{
-        // Simple collinear points test cases.
-        // a == b != c
-        {x, x, z, Indeterminate},
-        // a != b == c
-        {x, y, y, Indeterminate},
-        // c == a != b
-        {z, x, z, Indeterminate},
-        // CCW
-        {x, y, z, CounterClockwise},
-        // CW
-        {z, y, x, Clockwise},
-
-        // Edge cases:
-        // The following points happen to be *exactly collinear* along a line that it
-        // approximate tangent to the surface of the unit sphere. In fact, C is the
-        // exact midpoint of the line segment AB. All of these points are close
-        // enough to unit length to satisfy S2::IsUnitLength().
-        {
-            // Until we get ExactSign, this will only return Indeterminate.
-            // It should be Clockwise.
-            poA, poB, poC, Indeterminate,
-        },
-
-        // The points "x1" and "x2" are exactly proportional, i.e. they both lie
-        // on a common line through the origin. Both points are considered to be
-        // normalized, and in fact they both satisfy (x == x.Normalize()).
-        // Therefore the triangle (x1, x2, -x1) consists of three distinct points
-        // that all lie on a common line through the origin.
-        {
-            // Until we get ExactSign, this will only return Indeterminate.
-            // It should be CounterClockwise.
-            x1, x2, Point{x1.Mul(-1.0)}, Indeterminate,
-        },
-
-        // Here are two more points that are distinct, exactly proportional, and
-        // that satisfy (x == x.Normalize()).
-        {
-            // Until we get ExactSign, this will only return Indeterminate.
-            // It should be Clockwise.
-            x3, x4, Point{x3.Mul(-1.0)}, Indeterminate,
-        },
-
-        // The following points demonstrate that Normalize() is not idempotent,
-        // i.e. y0.Normalize() != y0.Normalize().Normalize(). Both points satisfy
-        // S2::IsNormalized(), though, and the two points are exactly proportional.
-        {
-            // Until we get ExactSign, this will only return Indeterminate.
-            // It should be CounterClockwise.
-            y1, y2, Point{y1.Mul(-1.0)}, Indeterminate,
-        },
+    fn y1() -> Point {
+        Point(y0().0.normalize())
+    }
+    fn y2() -> Point {
+        Point(y1().0.normalize())
     }
 
-    for _, test := range tests {
-        result := RobustSign(test.p1, test.p2, test.p3)
-        if result != test.want {
-            t.Errorf("RobustSign(%v, %v, %v) got %v, want %v",
-                test.p1, test.p2, test.p3, result, test.want)
-        }
-        // Test RobustSign(b,c,a) == RobustSign(a,b,c) for all a,b,c
-        rotated := RobustSign(test.p2, test.p3, test.p1)
-        if rotated != result {
-            t.Errorf("RobustSign(%v, %v, %v) vs Rotated RobustSign(%v, %v, %v) got %v, want %v",
-                test.p1, test.p2, test.p3, test.p2, test.p3, test.p1, rotated, result)
-        }
-        // Test RobustSign(c,b,a) == -RobustSign(a,b,c) for all a,b,c
-        want := Clockwise
-        if result == Clockwise {
-            want = CounterClockwise
-        } else if result == Indeterminate {
-            want = Indeterminate
-        }
-        reversed := RobustSign(test.p3, test.p2, test.p1)
-        if reversed != want {
-            t.Errorf("RobustSign(%v, %v, %v) vs Reversed RobustSign(%v, %v, %v) got %v, want %v",
-                test.p1, test.p2, test.p3, test.p3, test.p2, test.p1, reversed, -1*result)
+    #[test]
+    fn test_robust_sign_equalities() {
+        let tests = vec![
+            (Point(po_c().0 - po_a().0), Point(po_b().0 - po_c().0), true),
+            (x1(), Point(x1().0.normalize()), true),
+            (x2(), Point(x2().0.normalize()), true),
+            (x3(), Point(x3().0.normalize()), true),
+            (x4(), Point(x4().0.normalize()), true),
+            (x3(), x4(), false),
+            (y1(), y2(), false),
+            (y2(), Point(y2().0.normalize()), true),
+        ];
+
+        for (p1, p2, want) in tests {
+            assert_eq!(
+                p1.0 == p2.0,
+                want,
+                "testing equality for robust_sign: {:?} == {:?}",
+                p1,
+                p2
+            );
         }
     }
 
-    // Test cases that should not be indeterminate.
-    /*
-        Uncomment these tests once RobustSign is completed.
-        if got := RobustSign(poA, poB, poC); got == Indeterminate {
-            t.Errorf("RobustSign(%v,%v,%v) = %v, want not Indeterminate", poA, poA, poA, got)
+    #[test]
+    fn test_robust_sign() {
+        let x = pt(1., 0., 0.);
+        let y = pt(0., 1., 0.);
+        let z = pt(0., 0., 1.);
+
+        struct RobustSignTest {
+            p1: Point,
+            p2: Point,
+            p3: Point,
+            want: Direction,
         }
-        if got := RobustSign(x1, x2, Point{x1.Mul(-1)}); got == Indeterminate {
-            t.Errorf("RobustSign(%v,%v,%v) = %v, want not Indeterminate", x1, x2, x1.Mul(-1), got)
+
+        let tests = vec![
+            // Simple collinear points test cases.
+            // a == b != c
+            RobustSignTest {
+                p1: x,
+                p2: x,
+                p3: z,
+                want: Direction::Indeterminate,
+            },
+            // a != b == c
+            RobustSignTest {
+                p1: x,
+                p2: y,
+                p3: y,
+                want: Direction::Indeterminate,
+            },
+            // c == a != b
+            RobustSignTest {
+                p1: z,
+                p2: x,
+                p3: z,
+                want: Direction::Indeterminate,
+            },
+            // CCW
+            RobustSignTest {
+                p1: x,
+                p2: y,
+                p3: z,
+                want: Direction::CounterClockwise,
+            },
+            // CW
+            RobustSignTest {
+                p1: z,
+                p2: y,
+                p3: x,
+                want: Direction::Clockwise,
+            },
+            // Edge cases: The following points happen to be *exactly collinear*
+            // along a line that is approximately tangent to the surface of the
+            // unit sphere. In fact, C is the exact midpoint of the line segment
+            // AB. All of these points are close enough to unit length to satisfy
+            // Vector::is_unit(). This used to only resolve to Indeterminate
+            // before exact_sign() was implemented.
+            RobustSignTest {
+                p1: po_a(),
+                p2: po_b(),
+                p3: po_c(),
+                want: Direction::Clockwise,
+            },
+            // The points "x1" and "x2" are exactly proportional, i.e. they both
+            // lie on a common line through the origin. Both points are considered
+            // to be normalized, and in fact they both satisfy (x ==
+            // x.normalize()). Therefore the triangle (x1, x2, -x1) consists of
+            // three distinct points that all lie on a common line through the
+            // origin.
+            RobustSignTest {
+                p1: x1(),
+                p2: x2(),
+                p3: Point(x1().0 * -1.0),
+                want: Direction::CounterClockwise,
+            },
+            // Here are two more points that are distinct, exactly proportional,
+            // and that satisfy (x == x.normalize()).
+            RobustSignTest {
+                p1: x3(),
+                p2: x4(),
+                p3: Point(x3().0 * -1.0),
+                want: Direction::Clockwise,
+            },
+            // The following points demonstrate that normalize() is not
+            // idempotent, i.e. y0.normalize() != y0.normalize().normalize().
+            // Both points satisfy is_unit(), though, and the two points are
+            // exactly proportional.
+            RobustSignTest {
+                p1: y1(),
+                p2: y2(),
+                p3: Point(y1().0 * -1.0),
+                want: Direction::CounterClockwise,
+            },
+        ];
+
+        for t in &tests {
+            let result = robust_sign(&t.p1, &t.p2, &t.p3);
+            assert_eq!(
+                result, t.want,
+                "robust_sign({:?}, {:?}, {:?}) = {:?}, want {:?}",
+                t.p1, t.p2, t.p3, result, t.want
+            );
+            // Test robust_sign(b,c,a) == robust_sign(a,b,c) for all a,b,c.
+            let rotated = robust_sign(&t.p2, &t.p3, &t.p1);
+            assert_eq!(
+                rotated, result,
+                "robust_sign({:?}, {:?}, {:?}) vs rotated robust_sign({:?}, {:?}, {:?}) = {:?}, want {:?}",
+                t.p1, t.p2, t.p3, t.p2, t.p3, t.p1, rotated, result
+            );
+            // Test robust_sign(c,b,a) == -robust_sign(a,b,c) for all a,b,c.
+            let want = match result {
+                Direction::Clockwise => Direction::CounterClockwise,
+                Direction::CounterClockwise => Direction::Clockwise,
+                Direction::Indeterminate => Direction::Indeterminate,
+            };
+            let reversed = robust_sign(&t.p3, &t.p2, &t.p1);
+            assert_eq!(
+                reversed, want,
+                "robust_sign({:?}, {:?}, {:?}) vs reversed robust_sign({:?}, {:?}, {:?}) = {:?}, want {:?}",
+                t.p1, t.p2, t.p3, t.p3, t.p2, t.p1, reversed, want
+            );
         }
-        if got := RobustSign(x3, x4, Point{x3.Mul(-1)}); got == Indeterminate {
-            t.Errorf("RobustSign(%v,%v,%v) = %v, want not Indeterminate", x3, x4, x3.Mul(-1), got)
-        }
-        if got := RobustSign(y1, y2, Point{y1.Mul(-1)}); got == Indeterminate {
-            t.Errorf("RobustSign(%v,%v,%v) = %v, want not Indeterminate", x1, x2, y1.Mul(-1), got)
-        }
-    */
-}
 
-func TestPredicatesStableSignFailureRate(t *testing.T) {
-    const earthRadiusKm = 6371.01
-    const iters = 1000
-
-    // Verify that stableSign is able to handle most cases where the three
-    // points are as collinear as possible. (For reference, triageSign fails
-    // almost 100% of the time on this test.)
-    //
-    // Note that the failure rate *decreases* as the points get closer together,
-    // and the decrease is approximately linear. For example, the failure rate
-    // is 0.4% for collinear points spaced 1km apart, but only 0.0004% for
-    // collinear points spaced 1 meter apart.
-    //
-    //  1km spacing: <  1% (actual is closer to 0.4%)
-    // 10km spacing: < 10% (actual is closer to 4%)
-    want := 0.01
-    spacing := 1.0
-
-    // Estimate the probability that stableSign will not be able to compute
-    // the determinant sign of a triangle A, B, C consisting of three points
-    // that are as collinear as possible and spaced the given distance apart
-    // by counting up the times it returns Indeterminate.
-    failureCount := 0
-    m := math.Tan(spacing / earthRadiusKm)
-    for iter := 0; iter < iters; iter++ {
-        f := randomFrame()
-        a := f.col(0)
-        x := f.col(1)
-
-        b := Point{a.Sub(x.Mul(m)).Normalize()}
-        c := Point{a.Add(x.Mul(m)).Normalize()}
-        sign := stableSign(a, b, c)
-        if sign != Indeterminate {
-            // TODO(roberts): Once exactSign is implemented, uncomment this case.
-            //if got := exactSign(a, b, c, true); got != sign {
-            //	t.Errorf("exactSign(%v, %v, %v, true) = %v, want %v", a, b, c, got, sign)
-            //}
-        } else {
-            failureCount++
-        }
-    }
-
-    rate := float64(failureCount) / float64(iters)
-    if rate >= want {
-        t.Errorf("stableSign failure rate for spacing %v km = %v, want %v", spacing, rate, want)
-    }
-}
-
-func BenchmarkSign(b *testing.B) {
-    p1 := Point{r3.Vector{-3, -1, 4}}
-    p2 := Point{r3.Vector{2, -1, -3}}
-    p3 := Point{r3.Vector{1, -2, 0}}
-    for i := 0; i < b.N; i++ {
-        Sign(p1, p2, p3)
-    }
-}
-
-// BenchmarkRobustSignSimple runs the benchmark for points that satisfy the first
-// checks in RobustSign to compare the performance to that of Sign().
-func BenchmarkRobustSignSimple(b *testing.B) {
-    p1 := Point{r3.Vector{-3, -1, 4}}
-    p2 := Point{r3.Vector{2, -1, -3}}
-    p3 := Point{r3.Vector{1, -2, 0}}
-    for i := 0; i < b.N; i++ {
-        RobustSign(p1, p2, p3)
+        // None of the edge cases above should be indeterminate now that
+        // exact_sign() is implemented.
+        assert_ne!(
+            robust_sign(&po_a(), &po_b(), &po_c()),
+            Direction::Indeterminate
+        );
+        assert_ne!(
+            robust_sign(&x1(), &x2(), &Point(x1().0 * -1.0)),
+            Direction::Indeterminate
+        );
+        assert_ne!(
+            robust_sign(&x3(), &x4(), &Point(x3().0 * -1.0)),
+            Direction::Indeterminate
+        );
+        assert_ne!(
+            robust_sign(&y1(), &y2(), &Point(y1().0 * -1.0)),
+            Direction::Indeterminate
+        );
     }
 }
-
-// BenchmarkRobustSignNearCollinear runs the benchmark for points that are almost but not
-// quite collinear, so the tests have to use most of the calculations of RobustSign
-// before getting to an answer.
-func BenchmarkRobustSignNearCollinear(b *testing.B) {
-    for i := 0; i < b.N; i++ {
-        RobustSign(poA, poB, poC)
-    }
-}
-*/
