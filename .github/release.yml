@@ -5,6 +5,7 @@ changelog:
     - title: 💥 Breaking Changes
       labels:
         - breaking-change
+        - msrv
     - title: 🆕 Enhancements
       labels:
         - enhancement
@@ -23,3 +24,4 @@ changelog:
           - breaking-change
           - dependencies
           - enhancement
+          - msrv
