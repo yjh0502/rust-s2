@@ -41,8 +41,11 @@ jobs:
     - name: Run tests
       run: |
         cargo llvm-cov test --cobertura --verbose --output-path cobertura.xml --features serde
+    # --all-targets so lints inside #[cfg(test)] code are actually checked --
+    # a plain `cargo clippy` never builds test code at all (see #122, where a
+    # deny-by-default lint sat unnoticed in test code because of exactly this).
     - name: Check for lint warnings with Clippy
-      run: cargo clippy --locked
+      run: cargo clippy --all-features --all-targets --locked
     - name: Upload test coverage to Coveralls.io
       with:
         fail-on-error: false
