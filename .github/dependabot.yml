@@ -4,7 +4,14 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Conventional Commits (see CONTRIBUTING.md): "chore" so these never
+    # trigger a release-plz version bump on their own.
+    commit-message:
+      prefix: "chore"
+      include: "scope"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    commit-message:
+      prefix: "chore(ci)"
