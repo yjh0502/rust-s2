@@ -23,6 +23,50 @@ limitations under the License.
 //!
 //! See also EdgeCrosser, which implements various exact
 //! edge-crossing predicates more efficiently than can be done here.
+//!
+//! ## Porting notes (functions and tests, source and verification status)
+//!
+//! This file was originally ported from Go's `s2/predicates.go`
+//! (golang/geo). The notes below track, for each piece touched or added
+//! while fixing https://github.com/yjh0502/rust-s2/issues/132, which
+//! upstream(s) it was checked against and whether that check found the
+//! two upstreams in agreement or not.
+//!
+//! - `exact_sign` / `symbolically_perturbed_sign`: ported from Go's
+//!   `exactSign` / `symbolicallyPerturbedSign`, then independently checked
+//!   line-by-line against C++'s `ExactSign` / `SymbolicallyPerturbedSign`
+//!   (`s2predicates.cc`, using `ExactFloat`/Bignum where Go uses
+//!   `big.Float` and we use `bigdecimal::BigDecimal`). **Verified
+//!   identical** in both: same branch order, same cascade, no
+//!   discrepancy.
+//! - `stable_sign`: pre-existing (Go-derived) function; while adding the
+//!   test below, checked against both C++'s `StableSign` and Go's
+//!   `stableSign`. **Discrepancy found**: both upstreams guard against the
+//!   max-error computation underflowing to zero (`minNoUnderflowError` /
+//!   `kMinNoUnderflowError`) before trusting the result; this Rust port
+//!   was missing that guard entirely. Fixed to match both (they agree
+//!   with each other, so there was no C++-vs-Go conflict to resolve).
+//! - `test_sign`, `test_robust_sign`, `test_robust_sign_equalities`:
+//!   ported from Go's `TestPredicatesSign` / `TestPredicatesRobustSign` /
+//!   `TestPredicatesRobustSignEqualities`, which existed in this file as
+//!   dead, commented-out Go source before this fix. Not cross-checked
+//!   against C++'s `s2predicates_test.cc` test bodies (which structure
+//!   the same cases differently, as `Sign.CollinearPoints`), since the
+//!   Go-derived tests already cover the same points and directions.
+//! - `test_symbolic_perturbation_code_coverage`: ported from C++'s
+//!   `Sign.SymbolicPerturbationCodeCoverage` (`s2predicates_test.cc`).
+//!   No Go equivalent exists. All 13 cases pass, which is independent
+//!   confirmation that `symbolically_perturbed_sign` above is correct.
+//! - `test_stable_sign_underflow`: ported from C++'s
+//!   `Sign.StableSignUnderflow` (`s2predicates_test.cc`). No Go
+//!   equivalent exists. This is the regression test for the `stable_sign`
+//!   discrepancy noted above.
+//! - Not ported: C++'s `SignTest::StressTest`, a randomized great-circle
+//!   fuzz test with substantial supporting fixture code; and Go's/C++'s
+//!   `CompareDistances`, `CompareDistance`, `SignDotProd`,
+//!   `CircleEdgeIntersectionOrdering`, which back closest/furthest-edge
+//!   query functionality not yet ported to this crate (see
+//!   https://github.com/yjh0502/rust-s2/issues/133).
 
 use crate::consts::*;
 use crate::r3::precisevector::PreciseVector;
