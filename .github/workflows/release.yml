@@ -53,9 +53,15 @@ jobs:
     # pre-built .crate as input), so this confirms it reproduced exactly
     # the bytes that attest-provenance signed, rather than just assuming
     # cargo package is deterministic.
+    #
+    # Note the path: `cargo publish` stages the .crate one directory
+    # deeper than plain `cargo package` does (tmp-crate/, not directly in
+    # target/package/) -- verified locally with cargo 1.97.1. First real
+    # run of this step (v0.2.0) failed with exactly this glob missing the
+    # file, even though the publish itself had already succeeded.
     - name: Verify published bytes match the attested digest
       run: |
-        FILE=$(ls target/package/*.crate)
+        FILE=$(ls target/package/tmp-crate/*.crate)
         ACTUAL=$(sha256sum "$FILE" | cut -d ' ' -f1)
         EXPECTED="${{ needs.attest-provenance.outputs.crate-sha256 }}"
         if [ "$ACTUAL" != "$EXPECTED" ]; then
