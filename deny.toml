@@ -1,0 +1,29 @@
+# cargo-deny configuration. Run locally with `cargo deny check`.
+# https://embarkstudios.github.io/cargo-deny/
+#
+# Checks the full resolved dependency tree (all-features) for: known
+# security/unmaintained advisories, disallowed licenses, and dependencies
+# pulled from anywhere other than crates.io.
+
+[graph]
+all-features = true
+
+[advisories]
+# Deny known vulnerabilities and yanked crates; the default lint level
+# already denies both.
+
+[licenses]
+# Every license actually in use today (see full-tree audit in #115-#120):
+# MIT/Apache-2.0-family throughout, plus Unicode-3.0 on unicode-ident.
+allow = ["MIT", "Apache-2.0", "Unicode-3.0"]
+
+[bans]
+# Multiple versions of the same crate are a build-time/binary-size cost,
+# not a correctness problem, so warn rather than fail CI on them.
+multiple-versions = "warn"
+
+[sources]
+# Every dependency should come from crates.io -- fail loudly on anything
+# fetched from git or an unrecognized registry.
+unknown-registry = "deny"
+unknown-git = "deny"

@@ -1,0 +1,33 @@
+name: cargo-deny
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  schedule:
+    # Advisories get published against dependencies that haven't changed at
+    # all (that's exactly how #115 happened -- cgmath sat still in Cargo.lock
+    # for years before RUSTSEC-2026-0196 was filed against it), so re-check
+    # weekly even when nothing in this repo has changed.
+    - cron: "0 6 * * 1"
+
+permissions: {}
+
+jobs:
+  cargo-deny:
+    name: Check advisories, licenses, and sources
+    runs-on: ubuntu-latest
+    permissions: {}
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+    - name: Install cargo-deny
+      uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026  # v2.85.11
+      with:
+        tool: cargo-deny
+    # deny.toml scopes this to advisories/licenses/sources; see that file
+    # for what's actually enforced and why.
+    - name: Run cargo deny check
+      run: cargo deny check
