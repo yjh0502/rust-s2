@@ -162,6 +162,12 @@ pub fn stable_sign(a: &Point, b: &Point, c: &Point) -> Direction {
     let det = -e1.cross(&e2).dot(op);
     let max_err = DET_ERROR_MULTIPLIER * (e1.norm2() * e2.norm2()).sqrt();
 
+    // Errors smaller than this value may not be accurate due to underflow.
+    let min_no_underflow_error = DET_ERROR_MULTIPLIER * f64::MIN_POSITIVE.sqrt();
+    if max_err < min_no_underflow_error {
+        return Direction::Indeterminate;
+    }
+
     // If the determinant isn't zero, within maxErr, we know definitively the point ordering.
     if det > max_err {
         Direction::CounterClockwise
@@ -738,6 +744,150 @@ mod tests {
         assert_ne!(
             robust_sign(&y1(), &y2(), &Point(y1().0 * -1.0)),
             Direction::Indeterminate
+        );
+    }
+
+    #[test]
+    fn test_stable_sign_underflow() {
+        // Verify that stable_sign returns Indeterminate when its error
+        // calculation underflows, while exact_sign (and therefore
+        // robust_sign) still resolves the correct answer via exact
+        // arithmetic.
+        let a = pt(1., 1.9535722048627587e-90, 7.4882501322554515e-80);
+        let b = pt(1., 9.6702373087191359e-127, 3.706704857169321e-116);
+        let c = pt(1., 3.8163353663361477e-142, 1.4628419538608985e-131);
+
+        assert_eq!(stable_sign(&a, &b, &c), Direction::Indeterminate);
+        assert_eq!(exact_sign(&a, &b, &c, true), Direction::CounterClockwise);
+        assert_eq!(robust_sign(&a, &b, &c), Direction::CounterClockwise);
+    }
+
+    // check_symbolic_sign verifies that expensive_sign resolves a, b, c
+    // (which must be exactly coplanar with the origin, with a < b < c in
+    // lexicographic order) to `expected` for every rotation of (a,b,c) and
+    // to the opposite direction for every reversal. This is intended
+    // specifically for checking the cases where symbolic perturbation is
+    // needed to break ties.
+    fn check_symbolic_sign(expected: Direction, a: Point, b: Point, c: Point) {
+        assert!(a.0 < b.0);
+        assert!(b.0 < c.0);
+        assert_eq!(a.0.dot(&b.0.cross(&c.0)), 0.0);
+
+        assert_eq!(expensive_sign(&a, &b, &c), expected);
+        assert_eq!(expensive_sign(&b, &c, &a), expected);
+        assert_eq!(expensive_sign(&c, &a, &b), expected);
+        let reversed = flip(expected);
+        assert_eq!(expensive_sign(&c, &b, &a), reversed);
+        assert_eq!(expensive_sign(&b, &a, &c), reversed);
+        assert_eq!(expensive_sign(&a, &c, &b), reversed);
+    }
+
+    /// Exercises every branch of symbolically_perturbed_sign(). Let M_1,
+    /// M_2, ... be the sequence of submatrices whose determinant sign is
+    /// tested by that function. Then the i-th case below is a 3x3 matrix M
+    /// (with rows A, B, C) such that:
+    ///
+    ///    det(M) = 0
+    ///    det(M_j) = 0 for j < i
+    ///    det(M_i) != 0
+    ///    A < B < C in lexicographic order.
+    ///
+    /// Reversing the sign of any "return" in symbolically_perturbed_sign()
+    /// should make one of these cases fail.
+    #[test]
+    fn test_symbolic_perturbation_code_coverage() {
+        // det(M_1) = b0*c1 - b1*c0
+        check_symbolic_sign(
+            Direction::CounterClockwise,
+            pt(-3., -1., 0.),
+            pt(-2., 1., 0.),
+            pt(1., -2., 0.),
+        );
+        // det(M_2) = b2*c0 - b0*c2
+        check_symbolic_sign(
+            Direction::CounterClockwise,
+            pt(-6., 3., 3.),
+            pt(-4., 2., -1.),
+            pt(-2., 1., 4.),
+        );
+        // det(M_3) = b1*c2 - b2*c1
+        check_symbolic_sign(
+            Direction::CounterClockwise,
+            pt(0., -1., -1.),
+            pt(0., 1., -2.),
+            pt(0., 2., 1.),
+        );
+        // From this point onward, B or C must be zero, or B is proportional to C.
+        // det(M_4) = c0*a1 - c1*a0
+        check_symbolic_sign(
+            Direction::CounterClockwise,
+            pt(-1., 2., 7.),
+            pt(2., 1., -4.),
+            pt(4., 2., -8.),
+        );
+        // det(M_5) = c0
+        check_symbolic_sign(
+            Direction::CounterClockwise,
+            pt(-4., -2., 7.),
+            pt(2., 1., -4.),
+            pt(4., 2., -8.),
+        );
+        // det(M_6) = -c1
+        check_symbolic_sign(
+            Direction::CounterClockwise,
+            pt(0., -5., 7.),
+            pt(0., -4., 8.),
+            pt(0., -2., 4.),
+        );
+        // det(M_7) = c2*a0 - c0*a2
+        check_symbolic_sign(
+            Direction::CounterClockwise,
+            pt(-5., -2., 7.),
+            pt(0., 0., -2.),
+            pt(0., 0., -1.),
+        );
+        // det(M_8) = c2
+        check_symbolic_sign(
+            Direction::CounterClockwise,
+            pt(0., -2., 7.),
+            pt(0., 0., 1.),
+            pt(0., 0., 2.),
+        );
+        // From this point onward, C must be zero.
+        // det(M_9) = a0*b1 - a1*b0
+        check_symbolic_sign(
+            Direction::CounterClockwise,
+            pt(-3., 1., 7.),
+            pt(-1., -4., 1.),
+            pt(0., 0., 0.),
+        );
+        // det(M_10) = -b0
+        check_symbolic_sign(
+            Direction::CounterClockwise,
+            pt(-6., -4., 7.),
+            pt(-3., -2., 1.),
+            pt(0., 0., 0.),
+        );
+        // det(M_11) = b1
+        check_symbolic_sign(
+            Direction::Clockwise,
+            pt(0., -4., 7.),
+            pt(0., -2., 1.),
+            pt(0., 0., 0.),
+        );
+        // det(M_12) = a0
+        check_symbolic_sign(
+            Direction::Clockwise,
+            pt(-1., -4., 5.),
+            pt(0., 0., -3.),
+            pt(0., 0., 0.),
+        );
+        // det(M_13) = 1
+        check_symbolic_sign(
+            Direction::CounterClockwise,
+            pt(0., -4., 5.),
+            pt(0., 0., -5.),
+            pt(0., 0., 0.),
         );
     }
 }
