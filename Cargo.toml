@@ -14,7 +14,7 @@ license = "Apache-2.0"
 description = "S2 geometric library"
 homepage = "https://github.com/yjh0502/rust-s2"
 repository = "https://github.com/yjh0502/rust-s2"
-documentation = "https://docs.rs/rust-s2"
+documentation = "https://docs.rs/s2"
 
 keywords = ["geo", "s2"]
 
