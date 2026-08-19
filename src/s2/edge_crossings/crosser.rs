@@ -274,8 +274,15 @@ mod tests {
     use crate::r3::vector::Vector;
     use crate::s2::point::Point;
 
+    // EdgeCrosser::new() guards against non-unit points via debug_assert!,
+    // which -- like all debug_assert!s -- compiles to a no-op in release
+    // builds. So these only actually panic (and are only meaningful) with
+    // debug assertions enabled; #[cfg(debug_assertions)] keeps them from
+    // failing under `cargo test --release` (as run by the release
+    // pipeline), where the checked invariant is compiled out by design.
     #[test]
     #[should_panic]
+    #[cfg(debug_assertions)]
     fn test_invalid_default_points() {
         let p = Point::default();
         let _crosser = EdgeCrosser::new(&p, &p);
@@ -283,6 +290,7 @@ mod tests {
 
     #[test]
     #[should_panic]
+    #[cfg(debug_assertions)]
     fn test_invalid_nan_points() {
         let nan = std::f64::NAN;
         let p = Point(Vector::new(nan, nan, nan));
