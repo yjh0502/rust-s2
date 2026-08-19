@@ -458,6 +458,7 @@ mod tests {
 
     use crate::s2::stuv::st_to_uv;
     use std::f64::consts::PI;
+    use std::sync::LazyLock;
 
     #[test]
     fn test_default() {
@@ -662,11 +663,9 @@ mod tests {
         y: 1.,
         z: 1.,
     });
-    lazy_static! {
-        // For testing the Girard area fall through case.
-        static ref g2: Point = (g1 + (pr * 1e-15)).normalize();
-        static ref g3: Point = (g1 + (pq * 1e-15)).normalize();
-    }
+    // For testing the Girard area fall through case.
+    static g2: LazyLock<Point> = LazyLock::new(|| (g1 + (pr * 1e-15)).normalize());
+    static g3: LazyLock<Point> = LazyLock::new(|| (g1 + (pq * 1e-15)).normalize());
 
     fn point_area_case(a: &Point, b: &Point, c: &Point, want: f64, nearness: f64) {
         assert!(f64_near(want, point_area(&a, &b, &c), nearness));

@@ -25,6 +25,7 @@ use crate::r3::vector::Vector;
 use crate::s2::latlng::*;
 use crate::s2::point::Point;
 use crate::s2::stuv::*;
+use std::sync::LazyLock;
 
 /// CellID uniquely identifies a cell in the S2 cell decomposition.
 /// The most significant 3 bits encode the face number (0-5). The
@@ -864,50 +865,48 @@ pub const IJ_TO_POS: [[u8; 4]; 4] = [[0, 1, 3, 2], [0, 3, 1, 2], [2, 3, 1, 0], [
 pub const POS_TO_IJ: [[u8; 4]; 4] = [[0, 1, 3, 2], [0, 2, 3, 1], [3, 2, 0, 1], [3, 1, 0, 2]];
 pub const POS_TO_ORIENTATION: [u8; 4] = [SWAP_MASK, 0, 0, INVERT_MASK | SWAP_MASK];
 
-lazy_static! {
-    static ref LOOKUP_TBL: [Vec<u64>; 2] = {
-        let size = 1 << (2 * LOOKUP_BITS + 2);
-        let mut lookup_pos = Vec::new();
-        let mut lookup_ij = Vec::new();
-        lookup_pos.resize(size, 0);
-        lookup_ij.resize(size, 0);
+static LOOKUP_TBL: LazyLock<[Vec<u64>; 2]> = LazyLock::new(|| {
+    let size = 1 << (2 * LOOKUP_BITS + 2);
+    let mut lookup_pos = Vec::new();
+    let mut lookup_ij = Vec::new();
+    lookup_pos.resize(size, 0);
+    lookup_ij.resize(size, 0);
 
-        init_lookup_cell(0, 0, 0, 0, 0, 0, &mut lookup_pos, &mut lookup_ij);
-        init_lookup_cell(
-            0,
-            0,
-            0,
-            SWAP_MASK,
-            0,
-            SWAP_MASK,
-            &mut lookup_pos,
-            &mut lookup_ij,
-        );
-        init_lookup_cell(
-            0,
-            0,
-            0,
-            INVERT_MASK,
-            0,
-            INVERT_MASK,
-            &mut lookup_pos,
-            &mut lookup_ij,
-        );
-        init_lookup_cell(
-            0,
-            0,
-            0,
-            SWAP_MASK | INVERT_MASK,
-            0,
-            SWAP_MASK | INVERT_MASK,
-            &mut lookup_pos,
-            &mut lookup_ij,
-        );
-        [lookup_pos, lookup_ij]
-    };
-    static ref LOOKUP_POS: &'static [u64] = LOOKUP_TBL[0].as_slice();
-    static ref LOOKUP_IJ: &'static [u64] = LOOKUP_TBL[1].as_slice();
-}
+    init_lookup_cell(0, 0, 0, 0, 0, 0, &mut lookup_pos, &mut lookup_ij);
+    init_lookup_cell(
+        0,
+        0,
+        0,
+        SWAP_MASK,
+        0,
+        SWAP_MASK,
+        &mut lookup_pos,
+        &mut lookup_ij,
+    );
+    init_lookup_cell(
+        0,
+        0,
+        0,
+        INVERT_MASK,
+        0,
+        INVERT_MASK,
+        &mut lookup_pos,
+        &mut lookup_ij,
+    );
+    init_lookup_cell(
+        0,
+        0,
+        0,
+        SWAP_MASK | INVERT_MASK,
+        0,
+        SWAP_MASK | INVERT_MASK,
+        &mut lookup_pos,
+        &mut lookup_ij,
+    );
+    [lookup_pos, lookup_ij]
+});
+static LOOKUP_POS: LazyLock<&'static [u64]> = LazyLock::new(|| LOOKUP_TBL[0].as_slice());
+static LOOKUP_IJ: LazyLock<&'static [u64]> = LazyLock::new(|| LOOKUP_TBL[1].as_slice());
 
 /// init_lookup_cell initializes the lookupIJ table at init time.
 fn init_lookup_cell(

@@ -29,10 +29,10 @@ use crate::s2::point::*;
 use crate::s2::region::Region;
 use crate::s2::stuv::*;
 use std::f64::consts::PI;
+use std::sync::LazyLock;
 
-lazy_static! {
-    static ref POLE_MIN_LAT: f64 = (1. / 3f64).sqrt().asin() - 0.5 * DBL_EPSILON;
-}
+static POLE_MIN_LAT: LazyLock<f64> =
+    LazyLock::new(|| (1. / 3f64).sqrt().asin() - 0.5 * DBL_EPSILON);
 
 /// Cell is an S2 region object that represents a cell. Unlike CellIDs,
 /// it supports efficient containment and intersection tests. However, it is
