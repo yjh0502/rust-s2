@@ -1,7 +1,5 @@
 use std;
 
-use cgmath::{Matrix, Matrix3, Vector3};
-
 use crate::consts::*;
 use crate::r3::vector::Vector;
 use crate::s1;
@@ -73,24 +71,27 @@ impl std::ops::Mul<f64> for &Point {
     }
 }
 
-impl From<Point> for Vector3<f64> {
-    fn from(p: Point) -> Self {
-        (&p).into()
+impl From<Vector> for Point {
+    fn from(v: Vector) -> Self {
+        Point(v)
     }
 }
-impl<'a> From<&'a Point> for Vector3<f64> {
-    fn from(p: &'a Point) -> Self {
-        Vector3::new(p.0.x, p.0.y, p.0.z)
-    }
+
+/// Frame is an orthonormal 3x3 "frame" matrix, represented as three column
+/// vectors, used to convert points into/out of a local tangent-plane basis.
+/// It is always orthonormal in practice, so its transpose acts as its
+/// inverse.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Frame {
+    pub x: Vector,
+    pub y: Vector,
+    pub z: Vector,
 }
-impl From<Vector3<f64>> for Point {
-    fn from(p: Vector3<f64>) -> Self {
-        (&p).into()
-    }
-}
-impl<'a> From<&'a Vector3<f64>> for Point {
-    fn from(p: &'a Vector3<f64>) -> Self {
-        Point(Vector::new(p.x, p.y, p.z))
+
+impl Frame {
+    /// from_cols builds a Frame from its three column vectors.
+    pub fn from_cols(x: Vector, y: Vector, z: Vector) -> Self {
+        Frame { x, y, z }
     }
 }
 
@@ -180,32 +181,30 @@ impl Point {
     }
 
     // frame returns the orthonormal frame for the given point on the unit sphere.
-    //struct for Frame and From<>/Into<>?
-    //TODO: private
-    pub fn frame(&self) -> Matrix3<f64> {
+    pub(crate) fn frame(&self) -> Frame {
         let c2 = *self;
         let c1 = self.ortho();
         let c0 = Point(c1.0.cross(&self.0));
 
-        Matrix3::from_cols(c0.into(), c1.into(), c2.into())
+        Frame::from_cols(c0.0, c1.0, c2.0)
     }
 }
 
 // from_frame returns the coordinates of the given point in standard axis-aligned basis
 // from its orthonormal basis m.
 // The resulting point p satisfies the identity (p == m * q).
-//TODO: private
-pub fn from_frame(m: &Matrix3<f64>, p: &Point) -> Point {
-    let v: Vector3<f64> = p.into();
-    (m * v).into()
+pub(crate) fn from_frame(m: &Frame, q: &Point) -> Point {
+    Point(m.x * q.0.x + m.y * q.0.y + m.z * q.0.z)
 }
 
 // to_frame returns the coordinates of the given point with respect to its orthonormal basis m.
 // The resulting point q satisfies the identity (m * q == p).
-//TODO: private
-pub fn to_frame(m: &Matrix3<f64>, p: &Point) -> Point {
-    // The inverse of an orthonormal matrix is its transpose.
-    Point::from(m.transpose() * Vector3::from(p))
+// Currently only exercised by tests, kept as the counterpart to from_frame.
+#[allow(dead_code)]
+pub(crate) fn to_frame(m: &Frame, p: &Point) -> Point {
+    // The inverse of an orthonormal matrix is its transpose, so we dot p
+    // against each column of m instead of multiplying by an inverse.
+    Point(Vector::new(p.0.dot(&m.x), p.0.dot(&m.y), p.0.dot(&m.z)))
 }
 
 /// ordered_ccw returns true if the edges OA, OB, and OC are encountered in that
@@ -392,11 +391,7 @@ pub fn regular_points(center: &Point, radius: Angle, num_vertices: usize) -> Vec
 /// with numVertices vertices, all on a circle of the specified angular radius around
 /// the center. The radius is the actual distance from the center to each vertex.
 /// TODO: private?
-fn regular_points_for_frame(
-    frame: &Matrix3<f64>,
-    radius: Angle,
-    num_vertices: usize,
-) -> Vec<Point> {
+fn regular_points_for_frame(frame: &Frame, radius: Angle, num_vertices: usize) -> Vec<Point> {
     // We construct the loop in the given frame coordinates, with the center at
     // (0, 0, 1). For a loop of radius r, the loop vertices have the form
     // (x, y, z) where x^2 + y^2 = sin(r) and z = cos(r). The distance on the
@@ -882,8 +877,6 @@ mod tests {
     }
     */
 
-    use cgmath::SquareMatrix;
-
     // tests for frame
     #[test]
     fn test_point_frames() {
@@ -892,7 +885,9 @@ mod tests {
 
         assert!(Point::from(m.x).0.is_unit());
         assert!(Point::from(m.y).0.is_unit());
-        assert_f64_eq!(m.determinant(), 1.);
+        // Sanity-check that the frame is orthonormal: for an orthonormal
+        // right-handed basis, x cross y == z.
+        assert!(Point(m.x.cross(&m.y)).approx_eq(&Point(m.z)));
 
         assert!(Point(Vector::new(1., 0., 0.)).approx_eq(&to_frame(&m, &Point::from(m.x))));
         assert!(Point(Vector::new(0., 1., 0.)).approx_eq(&to_frame(&m, &Point::from(m.y))));
