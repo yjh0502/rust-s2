@@ -802,9 +802,8 @@ pub mod test {
             "Case 2: Should correctly reject out-of-bounds edge"
         );
     }
-    use crate::consts::DBL_EPSILON;
+    use crate::consts::{DBL_EPSILON, nextafter};
     use crate::s2::random;
-    use float_extras::f64::nextafter;
     use rand::{Rng, RngExt};
 
     fn log_uniform<R: Rng>(rng: &mut R, lo: f64, hi: f64) -> f64 {

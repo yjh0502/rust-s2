@@ -41,6 +41,23 @@ pub fn remainder(x: f64, y: f64) -> f64 {
     ::libm::remquo(x, y).0
 }
 
+/// nextafter returns the next representable f64 after x, moving in the
+/// direction of y: y itself if x == y, NaN if either argument is NaN,
+/// otherwise the adjacent representable value one step closer to y. This
+/// mirrors C's nextafter, built on f64::next_up()/next_down() (stable
+/// since Rust 1.86) instead of pulling in a dedicated dependency for it.
+pub fn nextafter(x: f64, y: f64) -> f64 {
+    if x.is_nan() || y.is_nan() {
+        f64::NAN
+    } else if x == y {
+        y
+    } else if x < y {
+        x.next_up()
+    } else {
+        x.next_down()
+    }
+}
+
 pub fn clamp<T>(val: T, min: T, max: T) -> T
 where
     T: PartialOrd,
@@ -70,4 +87,29 @@ where
         }
     }
     i
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_nextafter() {
+        // Equal inputs: returns y unchanged, regardless of direction.
+        assert_eq!(1.0, nextafter(1.0, 1.0));
+        assert_eq!(0.0, nextafter(0.0, 0.0));
+
+        // Moves by exactly one ULP, in the direction of y.
+        assert_eq!(1.0f64.next_up(), nextafter(1.0, 2.0));
+        assert_eq!(1.0f64.next_down(), nextafter(1.0, 0.0));
+
+        // Crossing zero in either direction steps to the smallest subnormal
+        // of the appropriate sign.
+        assert_eq!(-5e-324, nextafter(0.0, -1.0));
+        assert_eq!(5e-324, nextafter(-0.0, 1.0));
+
+        // NaN in either position propagates to NaN.
+        assert!(nextafter(f64::NAN, 1.0).is_nan());
+        assert!(nextafter(1.0, f64::NAN).is_nan());
+    }
 }
